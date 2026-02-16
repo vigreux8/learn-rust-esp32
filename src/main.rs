@@ -2,7 +2,7 @@ use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_svc::sys::EspError;
 
-// 1. DIS À RUST QUE LE FICHIER SERVO.RS EXISTE
+// 1. DIS À RUST QUE LE DOSSIER  EXISTE
 mod servo;
 
 // 2. IMPORTE TES STRUCTURES DEPUIS CE MODULE
