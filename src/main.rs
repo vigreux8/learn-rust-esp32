@@ -24,13 +24,13 @@ fn main() -> Result<(), EspError> {
 
     loop {
         // On bouge le bras à 0° et la pince à 180°
-        servo_bras.set_angle(0)?;
-        servo_pince.set_angle(180)?;
+        servo_bras.set_speed(10)?;
+        servo_pince.set_speed(-10)?;
         FreeRtos::delay_ms(1000);
 
-        // On inverse
-        servo_bras.set_angle(180)?;
-        servo_pince.set_angle(0)?;
+        // On bouge le bras à 0° et la pince à 180°
+        servo_bras.set_speed(-10)?;
+        servo_pince.set_speed(10)?;
         FreeRtos::delay_ms(1000);
     }
 }

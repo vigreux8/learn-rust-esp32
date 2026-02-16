@@ -13,7 +13,7 @@ pub struct ServoBus<'a, T: LedcTimer> {
 impl<'a, T: LedcTimer> ServoBus<'a, T> {
     /// Initialise le timer pour les servos (SG90 = 50Hz).
     pub fn new(timer_periph: impl Peripheral<P = T> + 'a) -> Result<Self, EspError> {
-        let timer = LedcTimerDriver::new(
+        let timer: LedcTimerDriver<'_, T> = LedcTimerDriver::new(
             timer_periph,
             &TimerConfig::new()
                 .frequency(50.Hz().into())
@@ -45,21 +45,22 @@ pub struct ServoController<'a> {
 
 impl<'a> ServoController<'a> {
     /// Définit l'angle du servo entre 0 et 180 degrés.
-    pub fn set_angle(&mut self, angle: u32) -> Result<(), EspError> {
+    pub fn set_speed(&mut self, speed: i32) -> Result<(), EspError> {
         let max_duty = self.pwm.get_max_duty();
+        let clamped_speed = speed.clamp(-100, 100);
 
-        // Calcul pour SG90 (0.5ms à 2.5ms sur une période de 20ms)
-        // Rapport cyclique : 0.5/20 = 2.5% (min) et 2.5/20 = 12.5% (max)
-        let min = max_duty / 40;
-        let max = max_duty / 8;
+        // Point mort (1.5ms) -> environ 7.5% du cycle
+        let neutral = (max_duty * 150) / 2000; // 1.5ms / 20ms * max_duty
 
-        let duty = self.interpolate(angle, min, max);
+        // On calcule l'écart (0.5ms de chaque côté pour atteindre 1ms ou 2ms)
+        let range = (max_duty * 50) / 2000; // 0.5ms / 20ms * max_duty
+
+        let duty = (neutral as i32 + (clamped_speed * range as i32 / 100)) as u32;
+
         self.pwm.set_duty(duty)
     }
 
-    /// Fonction utilitaire pour mapper l'angle vers le duty cycle.
-    fn interpolate(&self, angle: u32, min: u32, max: u32) -> u32 {
-        let clamped_angle = angle.min(180);
-        (clamped_angle * (max - min) / 180) + min
+    pub fn stop(&mut self) -> Result<(), EspError> {
+        self.set_speed(0)
     }
 }
