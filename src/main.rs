@@ -1,16 +1,36 @@
+use esp_idf_svc::hal::delay::FreeRtos;
+use esp_idf_svc::hal::peripherals::Peripherals;
+use esp_idf_svc::sys::EspError;
+
+// 1. DIS À RUST QUE LE FICHIER SERVO.RS EXISTE
 mod servo;
 
-use servo::run_servo_test;
+// 2. IMPORTE TES STRUCTURES DEPUIS CE MODULE
+use crate::servo::ServoBus;
 
-fn main() {
-    // It is necessary to call this function once. Otherwise, some patches to the runtime
-    // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
-    esp_idf_svc::sys::link_patches();
+fn main() -> Result<(), EspError> {
+    // 1. Récupération des périphériques
+    let peripherals = Peripherals::take()?;
 
-    // Bind the log crate to the ESP Logging facilities
-    esp_idf_svc::log::EspLogger::initialize_default();
+    // 2. Initialisation du Bus unique (Timer 0)
+    let bus = ServoBus::new(peripherals.ledc.timer0)?;
 
-    if let Err(err) = run_servo_test() {
-        log::error!("Erreur servo: {err}");
+    // 3. Création des servos individuels
+    // On donne simplement le channel et la pin GPIO
+    let mut servo_bras = bus.add_servo(peripherals.ledc.channel0, peripherals.pins.gpio2)?;
+    let mut servo_pince = bus.add_servo(peripherals.ledc.channel1, peripherals.pins.gpio33)?;
+
+    log::info!("Servos prêts !");
+
+    loop {
+        // On bouge le bras à 0° et la pince à 180°
+        servo_bras.set_angle(0)?;
+        servo_pince.set_angle(180)?;
+        FreeRtos::delay_ms(1000);
+
+        // On inverse
+        servo_bras.set_angle(180)?;
+        servo_pince.set_angle(0)?;
+        FreeRtos::delay_ms(1000);
     }
 }
