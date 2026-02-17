@@ -1,6 +1,7 @@
 const sliders = document.querySelectorAll(".speed-slider");
 const stopButtons = document.querySelectorAll(".stop-button");
 const statusEl = document.getElementById("transport-status");
+const lastSent = new Map();
 
 function setStatus(message) {
   if (statusEl) {
@@ -8,17 +9,23 @@ function setStatus(message) {
   }
 }
 
-async function sendSpeed(target, value) {
+async function sendSpeed(target, value, force = false) {
+  const speed = String(value);
+  if (!force && lastSent.get(target) === speed) {
+    return;
+  }
+
   try {
     const response = await fetch("/api/servo", {
       method: "POST",
       headers: { "Content-Type": "text/plain; charset=utf-8" },
-      body: `${target}:${value}`,
+      body: `${target}:${speed}`,
     });
 
     if (!response.ok) {
       setStatus(`HTTP erreur ${response.status}`);
     } else {
+      lastSent.set(target, speed);
       setStatus("Commande HTTP envoyée.");
     }
   } catch (_error) {
@@ -33,13 +40,17 @@ function resetSliderToZero(target) {
   }
 
   slider.value = "0";
-  sendSpeed(target, 0);
+  sendSpeed(target, 0, true);
 }
 
 sliders.forEach((slider) => {
-  slider.addEventListener("input", () => {
+  const sendOnRelease = () => {
     sendSpeed(slider.dataset.target, slider.value);
-  });
+  };
+
+  slider.addEventListener("change", sendOnRelease);
+  slider.addEventListener("pointerup", sendOnRelease);
+  slider.addEventListener("touchend", sendOnRelease, { passive: true });
 });
 
 stopButtons.forEach((button) => {

@@ -3,6 +3,7 @@ const stopButtons = document.querySelectorAll(".stop-button");
 const statusEl = document.getElementById("transport-status");
 let ws = null;
 let reconnectTimer = null;
+const pendingByTarget = new Map();
 
 function setStatus(message) {
   if (statusEl) {
@@ -14,7 +15,21 @@ function sendSpeed(target, value) {
   const message = `${target}:${value}`;
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(message);
+    return;
   }
+
+  pendingByTarget.set(target, message);
+}
+
+function flushPending() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  for (const message of pendingByTarget.values()) {
+    ws.send(message);
+  }
+  pendingByTarget.clear();
 }
 
 function resetSliderToZero(target) {
@@ -32,6 +47,11 @@ function connectWebSocket() {
   ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
   ws.onopen = () => {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    flushPending();
     setStatus("WebSocket connecté.");
   };
 

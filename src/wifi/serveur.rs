@@ -222,22 +222,15 @@ fn register_routes(
                 return Ok(());
             }
 
-            let (frame_type, len) = ws.recv(&mut [])?;
+            let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
+            let (frame_type, received_len) = ws.recv(&mut buffer)?;
             if !matches!(frame_type, FrameType::Text(_) | FrameType::Binary(_)) {
                 return Ok(());
             }
 
-            if len == 0 {
+            if received_len == 0 {
                 return Ok(());
             }
-
-            if len > WS_MAX_PAYLOAD_LEN {
-                ws.send(FrameType::Text(false), b"payload_too_large")?;
-                return Ok(());
-            }
-
-            let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
-            let (_frame_type, received_len) = ws.recv(&mut buffer)?;
 
             let payload = match str::from_utf8(&buffer[..received_len]) {
                 Ok(value) => value,
