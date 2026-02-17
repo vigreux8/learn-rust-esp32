@@ -1,6 +1,6 @@
 const sliders = document.querySelectorAll(".speed-slider");
 const stopButtons = document.querySelectorAll(".stop-button");
-const statusEl = document.getElementById("ws-status");
+const statusEl = document.getElementById("transport-status");
 let ws = null;
 let reconnectTimer = null;
 

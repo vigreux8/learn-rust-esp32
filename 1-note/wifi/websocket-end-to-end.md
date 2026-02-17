@@ -122,7 +122,101 @@ sequenceDiagram
 
 ---
 
-## 5. Résumé des fichiers à garder en tête
+## 5. Bibliothèques esp-idf-svc : serveur HTTP et WebSocket
+
+Tout le serveur et le WebSocket s'appuient sur la crate **`esp-idf-svc`** (bindings Rust pour ESP-IDF). Ci-dessous : les **types / structs / énumérations** avec leur **import** et leur **rôle**, pour avoir sous la main tout ce qu'il faut pour créer le serveur et le WebSocket.
+
+### En HTTP seulement vs avec WebSocket
+
+| Contexte | Ce qu'il faut toucher |
+|----------|------------------------|
+| **Serveur HTTP uniquement** (pages, API REST, pas de `/ws`) | **Wi-Fi** + **Serveur HTTP** + **Erreurs** (sections ci-dessous). Aucune config spéciale dans `sdkconfig.defaults`. Les routes se font avec `fn_handler` uniquement. |
+| **Avec WebSocket** (route `/ws` en plus) | Tout ce qui précède **plus** : **WebSocket** (imports + `ws_handler`), et la config décrite dans la section **sdkconfig.defaults** ci-dessous. Sans elle, le serveur refusera l'upgrade WebSocket sur `/ws`. |
+
+Donc : en **HTTP seul**, tu n'as rien à activer côté firmware ; la section "WebSocket" et la section "sdkconfig.defaults" ne concernent que lorsque tu ajoutes une route WebSocket.
+
+### sdkconfig.defaults (option WebSocket uniquement)
+
+Cette config se trouve dans le **fichier** `sdkconfig.defaults` à la racine du projet (à côté de `Cargo.toml`). Elle n’est nécessaire **que** si tu utilises une route WebSocket (`ws_handler`).
+
+Ajoute ou vérifie la ligne suivante dans **`sdkconfig.defaults`** :
+
+```
+CONFIG_HTTPD_WS_SUPPORT=y
+```
+
+Sans cette ligne dans `sdkconfig.defaults`, le serveur HTTP ESP-IDF ne gère pas l’upgrade WebSocket et la route `/ws` ne fonctionnera pas.
+
+### Dépendance Cargo
+
+```toml
+[dependencies]
+esp-idf-svc = "0.51"
+```
+
+### Wi-Fi (point d'accès)
+
+| Nom | Import | À quoi ça sert |
+|-----|--------|-----------------|
+| **Modem** | `esp_idf_svc::hal::modem::Modem` | Périphérique modem Wi-Fi, passé à `EspWifi::new` pour initialiser le WiFi. |
+| **EspSystemEventLoop** | `esp_idf_svc::eventloop::EspSystemEventLoop` | Boucle d'événements système ; utilisée par le WiFi et `BlockingWifi::wrap`. |
+| **EspDefaultNvsPartition** | `esp_idf_svc::nvs::EspDefaultNvsPartition` | Partition NVS par défaut ; requise par `EspWifi::new` pour la config WiFi. |
+| **EspWifi** | `esp_idf_svc::wifi::EspWifi` | Driver WiFi bas niveau (créé avec `EspWifi::new(modem, sys_loop, nvs)`). |
+| **BlockingWifi** | `esp_idf_svc::wifi::BlockingWifi` | Wrapper synchrone autour de `EspWifi` : `start()`, `wait_netif_up()`, etc. |
+| **Configuration** | `esp_idf_svc::wifi::Configuration` | Enum de config WiFi ; en AP on utilise `Configuration::AccessPoint(...)`. |
+| **AccessPointConfiguration** | `esp_idf_svc::wifi::AccessPointConfiguration` | SSID, mot de passe, canal, auth, max_connections pour l'AP. |
+| **AuthMethod** | `esp_idf_svc::wifi::AuthMethod` | Méthode d'authentification (ex. `AuthMethod::None` pour AP ouvert). |
+
+### Serveur HTTP
+
+| Nom | Import | À quoi ça sert |
+|-----|--------|-----------------|
+| **EspHttpServer** | `esp_idf_svc::http::server::EspHttpServer` | Serveur HTTP ; créé avec `EspHttpServer::new_nonstatic(&Configuration { ... })`, enregistre routes et `ws_handler`. |
+| **Configuration** (HTTP) | `esp_idf_svc::http::server::Configuration` | Config du serveur (ex. `stack_size`) ; passé à `EspHttpServer::new_nonstatic`. |
+| **Method** | `esp_idf_svc::http::Method` | Méthode HTTP : `Method::Get`, `Method::Post`, etc. |
+| **fn_handler** | méthode sur `EspHttpServer` | Enregistre une route HTTP (ex. `server.fn_handler("/", Method::Get, \|req\| { ... })`). |
+| **into_response** | sur l'objet requête dans le handler | Construit la réponse HTTP (code, headers) et renvoie un writer pour le corps. |
+| **Write** | `esp_idf_svc::io::Write` | Trait pour écrire le corps de la réponse (ex. `.write_all(html.as_bytes())`). |
+| **EspIOError** | `esp_idf_svc::io::EspIOError` | Type d'erreur I/O utilisé dans les handlers HTTP (fn_handler). |
+
+### WebSocket
+
+| Nom | Import | À quoi ça sert |
+|-----|--------|-----------------|
+| **ws_handler** | méthode sur `EspHttpServer` | Enregistre la route WebSocket : `server.ws_handler("/ws", \|ws: &mut EspHttpWsConnection\| { ... })`. |
+| **EspHttpWsConnection** | `esp_idf_svc::http::server::ws::EspHttpWsConnection` | Connexion WebSocket côté serveur ; reçu dans le callback : `is_new()`, `is_closed()`, `recv()`, `send()`, `session()`. |
+| **FrameType** | `esp_idf_svc::ws::FrameType` | Type de frame WebSocket : `FrameType::Text(false)` pour envoyer du texte ; utilisé dans `ws.recv()` (type reçu) et `ws.send()`. |
+| **Read** | `esp_idf_svc::io::Read` | Trait utilisé indirectement par `recv` pour lire les données reçues. |
+
+### Erreurs et bas niveau
+
+| Nom | Import | À quoi ça sert |
+|-----|--------|-----------------|
+| **EspError** | `esp_idf_svc::sys::EspError` | Erreur ESP-IDF ; type de retour des appels WiFi, HTTP, WebSocket. |
+| **ESP_FAIL** | `esp_idf_svc::sys::ESP_FAIL` | Code d'erreur ESP-IDF (ex. pour construire une `EspError` dans un handler). |
+
+### Bloc d'imports type pour serveur + WebSocket
+
+```rust
+use esp_idf_svc::eventloop::EspSystemEventLoop;
+use esp_idf_svc::hal::modem::Modem;
+use esp_idf_svc::http::server::ws::EspHttpWsConnection;
+use esp_idf_svc::http::server::EspHttpServer;
+use esp_idf_svc::http::Method;
+use esp_idf_svc::io::{EspIOError, Write};
+use esp_idf_svc::nvs::EspDefaultNvsPartition;
+use esp_idf_svc::sys::EspError;
+use esp_idf_svc::wifi::{
+    AccessPointConfiguration, AuthMethod, BlockingWifi, Configuration, EspWifi,
+};
+use esp_idf_svc::ws::FrameType;
+```
+
+Avec ça, tu disposes de toutes les **library** (types + méthodes) nécessaires pour créer le point d'accès Wi-Fi, le serveur HTTP et la route WebSocket. Pour le WebSocket, n’oublie pas la section **sdkconfig.defaults** ci-dessus.
+
+---
+
+## 6. Résumé des fichiers à garder en tête
 
 - **Activation WebSocket** : `sdkconfig.defaults`  
 - **Route et logique serveur** : `src/wifi/serveur.rs` (imports `EspHttpWsConnection`, `FrameType`, `ws_handler`, `parse_speed_command`, `MotorControllers`)  

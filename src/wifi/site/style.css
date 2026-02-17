@@ -35,6 +35,35 @@ h1 {
   letter-spacing: 0.02em;
 }
 
+.mode-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.mode-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 8px 18px rgba(17, 34, 45, 0.08);
+}
+
+.mode-button.active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(145deg, var(--accent), var(--accent-strong));
+}
+
 .motors-grid {
   width: min(860px, 96vw);
   display: grid;

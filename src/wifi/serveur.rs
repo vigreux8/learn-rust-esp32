@@ -24,8 +24,10 @@ const SERVER_STACK_SIZE: usize = 8192;
 const WS_MAX_PAYLOAD_LEN: usize = 32;
 
 const INDEX_HTML: &str = include_str!("site/main.html");
+const HTTP_INDEX_HTML: &str = include_str!("site/http.html");
 const STYLE_CSS: &str = include_str!("site/style.css");
 const SCRIPT_JS: &str = include_str!("site/script.js");
+const HTTP_SCRIPT_JS: &str = include_str!("site/script-http.js");
 
 pub struct WifiServer<'a> {
     _wifi: BlockingWifi<EspWifi<'static>>,
@@ -123,7 +125,20 @@ fn register_routes<'a>(
                 ("Cache-Control", "no-store, max-age=0"),
             ],
         )?
-            .write_all(INDEX_HTML.as_bytes())?;
+        .write_all(INDEX_HTML.as_bytes())?;
+        Ok(())
+    })?;
+
+    server.fn_handler("/http", Method::Get, |req| -> Result<(), EspIOError> {
+        req.into_response(
+            200,
+            None,
+            &[
+                ("Content-Type", "text/html; charset=utf-8"),
+                ("Cache-Control", "no-store, max-age=0"),
+            ],
+        )?
+        .write_all(HTTP_INDEX_HTML.as_bytes())?;
         Ok(())
     })?;
 
@@ -136,22 +151,26 @@ fn register_routes<'a>(
                 ("Cache-Control", "no-store, max-age=0"),
             ],
         )?
-            .write_all(STYLE_CSS.as_bytes())?;
-        Ok(())
-    })?;
-
-    server.fn_handler("/style-v2.css", Method::Get, |req| -> Result<(), EspIOError> {
-        req.into_response(
-            200,
-            None,
-            &[
-                ("Content-Type", "text/css; charset=utf-8"),
-                ("Cache-Control", "no-store, max-age=0"),
-            ],
-        )?
         .write_all(STYLE_CSS.as_bytes())?;
         Ok(())
     })?;
+
+    server.fn_handler(
+        "/style-v2.css",
+        Method::Get,
+        |req| -> Result<(), EspIOError> {
+            req.into_response(
+                200,
+                None,
+                &[
+                    ("Content-Type", "text/css; charset=utf-8"),
+                    ("Cache-Control", "no-store, max-age=0"),
+                ],
+            )?
+            .write_all(STYLE_CSS.as_bytes())?;
+            Ok(())
+        },
+    )?;
 
     server.fn_handler("/script.js", Method::Get, |req| -> Result<(), EspIOError> {
         req.into_response(
@@ -166,76 +185,159 @@ fn register_routes<'a>(
         Ok(())
     })?;
 
-    server.fn_handler("/script-v2.js", Method::Get, |req| -> Result<(), EspIOError> {
-        req.into_response(
-            200,
-            None,
-            &[
-                ("Content-Type", "application/javascript; charset=utf-8"),
-                ("Cache-Control", "no-store, max-age=0"),
-            ],
-        )?
-        .write_all(SCRIPT_JS.as_bytes())?;
-        Ok(())
-    })?;
+    server.fn_handler(
+        "/script-v2.js",
+        Method::Get,
+        |req| -> Result<(), EspIOError> {
+            req.into_response(
+                200,
+                None,
+                &[
+                    ("Content-Type", "application/javascript; charset=utf-8"),
+                    ("Cache-Control", "no-store, max-age=0"),
+                ],
+            )?
+            .write_all(SCRIPT_JS.as_bytes())?;
+            Ok(())
+        },
+    )?;
+
+    server.fn_handler(
+        "/script-http-v1.js",
+        Method::Get,
+        |req| -> Result<(), EspIOError> {
+            req.into_response(
+                200,
+                None,
+                &[
+                    ("Content-Type", "application/javascript; charset=utf-8"),
+                    ("Cache-Control", "no-store, max-age=0"),
+                ],
+            )?
+            .write_all(HTTP_SCRIPT_JS.as_bytes())?;
+            Ok(())
+        },
+    )?;
 
     let controllers = Arc::new(Mutex::new(MotorControllers {
         moteur_bras,
         moteur_pince,
     }));
 
-    server.ws_handler("/ws", move |ws: &mut EspHttpWsConnection| -> Result<(), EspError> {
-        if ws.is_new() {
-            log::info!("Nouvelle session WebSocket (fd={})", ws.session());
-            ws.send(FrameType::Text(false), b"connected")?;
-            return Ok(());
-        }
+    let controllers_http = Arc::clone(&controllers);
+    unsafe {
+        server.fn_handler_nonstatic::<EspIOError, _>(
+            "/api/servo",
+            Method::Post,
+            move |mut req| {
+                let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
+                let mut len = 0_usize;
 
-        if ws.is_closed() {
-            log::info!("Session WebSocket fermée (fd={})", ws.session());
-            return Ok(());
-        }
+                while len < WS_MAX_PAYLOAD_LEN {
+                    let read = req.read(&mut buffer[len..])?;
+                    if read == 0 {
+                        break;
+                    }
+                    len += read;
+                }
 
-        let (frame_type, len) = ws.recv(&mut [])?;
-        if !matches!(frame_type, FrameType::Text(_) | FrameType::Binary(_)) {
-            return Ok(());
-        }
+                if len == WS_MAX_PAYLOAD_LEN {
+                    let mut extra = [0_u8; 1];
+                    if req.read(&mut extra)? > 0 {
+                        req.into_status_response(413)?
+                            .write_all(b"payload_too_large")?;
+                        return Ok(());
+                    }
+                }
 
-        if len == 0 {
-            return Ok(());
-        }
+                if len == 0 {
+                    req.into_status_response(400)?.write_all(b"empty_payload")?;
+                    return Ok(());
+                }
 
-        if len > WS_MAX_PAYLOAD_LEN {
-            ws.send(FrameType::Text(false), b"payload_too_large")?;
-            return Ok(());
-        }
+                let payload = match str::from_utf8(&buffer[..len]) {
+                    Ok(value) => value,
+                    Err(_) => {
+                        req.into_status_response(400)?.write_all(b"invalid_utf8")?;
+                        return Ok(());
+                    }
+                };
 
-        let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
-        let (_frame_type, received_len) = ws.recv(&mut buffer)?;
+                let Some((target, speed)) = parse_speed_command(payload) else {
+                    req.into_status_response(400)?
+                        .write_all(b"invalid_command")?;
+                    return Ok(());
+                };
 
-        let payload = match str::from_utf8(&buffer[..received_len]) {
-            Ok(value) => value,
-            Err(_) => {
-                ws.send(FrameType::Text(false), b"invalid_utf8")?;
+                log::info!("Commande HTTP reçue: `{}` -> speed={}", payload, speed);
+
+                let mut motors = controllers_http
+                    .lock()
+                    .map_err(|_| EspIOError(EspError::from_infallible::<ESP_FAIL>()))?;
+                motors.apply_speed(target, speed).map_err(EspIOError)?;
+
+                req.into_response(200, None, &[("Content-Type", "text/plain; charset=utf-8")])?
+                    .write_all(b"ok")?;
+                Ok(())
+            },
+        )?;
+    }
+
+    server.ws_handler(
+        "/ws",
+        move |ws: &mut EspHttpWsConnection| -> Result<(), EspError> {
+            if ws.is_new() {
+                log::info!("Nouvelle session WebSocket (fd={})", ws.session());
+                ws.send(FrameType::Text(false), b"connected")?;
                 return Ok(());
             }
-        };
 
-        let Some((target, speed)) = parse_speed_command(payload) else {
-            ws.send(FrameType::Text(false), b"invalid_command")?;
-            return Ok(());
-        };
+            if ws.is_closed() {
+                log::info!("Session WebSocket fermée (fd={})", ws.session());
+                return Ok(());
+            }
 
-        log::info!("Commande WS reçue: `{}` -> speed={}", payload, speed);
+            let (frame_type, len) = ws.recv(&mut [])?;
+            if !matches!(frame_type, FrameType::Text(_) | FrameType::Binary(_)) {
+                return Ok(());
+            }
 
-        let mut motors = controllers
-            .lock()
-            .map_err(|_| EspError::from_infallible::<ESP_FAIL>())?;
-        motors.apply_speed(target, speed)?;
+            if len == 0 {
+                return Ok(());
+            }
 
-        ws.send(FrameType::Text(false), b"ok")?;
-        Ok(())
-    })?;
+            if len > WS_MAX_PAYLOAD_LEN {
+                ws.send(FrameType::Text(false), b"payload_too_large")?;
+                return Ok(());
+            }
+
+            let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
+            let (_frame_type, received_len) = ws.recv(&mut buffer)?;
+
+            let payload = match str::from_utf8(&buffer[..received_len]) {
+                Ok(value) => value,
+                Err(_) => {
+                    ws.send(FrameType::Text(false), b"invalid_utf8")?;
+                    return Ok(());
+                }
+            };
+
+            let Some((target, speed)) = parse_speed_command(payload) else {
+                ws.send(FrameType::Text(false), b"invalid_command")?;
+                return Ok(());
+            };
+
+            log::info!("Commande WS reçue: `{}` -> speed={}", payload, speed);
+
+            let mut motors = controllers
+                .lock()
+                .map_err(|_| EspError::from_infallible::<ESP_FAIL>())?;
+            motors.apply_speed(target, speed)?;
+
+            ws.send(FrameType::Text(false), b"ok")?;
+            Ok(())
+        },
+    )?;
 
     Ok(())
 }
