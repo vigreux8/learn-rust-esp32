@@ -1,5 +1,7 @@
+use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::hal::peripherals::Peripherals;
+use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::EspError;
 
 // 1. DIS À RUST QUE LE DOSSIER  EXISTE
@@ -16,9 +18,11 @@ fn main() -> Result<(), EspError> {
 
     // 1. Récupération des périphériques
     let peripherals = Peripherals::take()?;
+    let sys_loop = EspSystemEventLoop::take()?;
+    let nvs = EspDefaultNvsPartition::take()?;
 
     // 2. Point d'accès Wi-Fi + serveur web embarqué
-    let _wifi_server = WifiServer::start(peripherals.modem)?;
+    let _wifi_server = WifiServer::start(peripherals.modem, sys_loop, nvs)?;
 
     // 3. Initialisation du Bus unique (Timer 0)
     let bus = ServoBus::new(peripherals.ledc.timer0)?;

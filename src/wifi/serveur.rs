@@ -26,10 +26,11 @@ pub struct WifiServer {
 }
 
 impl WifiServer {
-    pub fn start(modem: Modem) -> Result<Self, EspError> {
-        let sys_loop = EspSystemEventLoop::take()?;
-        let nvs = EspDefaultNvsPartition::take()?;
-
+    pub fn start(
+        modem: Modem,
+        sys_loop: EspSystemEventLoop,
+        nvs: EspDefaultNvsPartition,
+    ) -> Result<Self, EspError> {
         let mut wifi =
             BlockingWifi::wrap(EspWifi::new(modem, sys_loop.clone(), Some(nvs))?, sys_loop)?;
 
@@ -47,10 +48,7 @@ impl WifiServer {
         wifi.start()?;
         wifi.wait_netif_up()?;
 
-        log::info!(
-            "AP prêt. SSID: `{}` | Ouvre http://192.168.71.1",
-            WIFI_SSID
-        );
+        log::info!("AP prêt. SSID: `{}` | Ouvre http://192.168.71.1", WIFI_SSID);
 
         let mut server = EspHttpServer::new(&esp_idf_svc::http::server::Configuration {
             stack_size: SERVER_STACK_SIZE,
