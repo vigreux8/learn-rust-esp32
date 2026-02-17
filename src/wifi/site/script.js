@@ -17,6 +17,16 @@ function sendSpeed(target, value) {
   }
 }
 
+function resetSliderToZero(target) {
+  const slider = document.querySelector(`.speed-slider[data-target="${target}"]`);
+  if (!slider) {
+    return;
+  }
+
+  slider.value = "0";
+  sendSpeed(target, 0);
+}
+
 function connectWebSocket() {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
@@ -50,13 +60,7 @@ sliders.forEach((slider) => {
 stopButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const target = button.dataset.target;
-    const slider = document.querySelector(`.speed-slider[data-target="${target}"]`);
-
-    if (slider) {
-      slider.value = "0";
-    }
-
-    sendSpeed(target, 0);
+    resetSliderToZero(target);
   });
 });
 
@@ -71,4 +75,3 @@ window.addEventListener("beforeunload", () => {
 
 connectWebSocket();
 setStatus("Connexion WebSocket en cours...");
-}

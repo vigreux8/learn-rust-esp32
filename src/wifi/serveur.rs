@@ -115,14 +115,41 @@ fn register_routes<'a>(
     moteur_pince: ServoController<'a>,
 ) -> Result<(), EspError> {
     server.fn_handler("/", Method::Get, |req| -> Result<(), EspIOError> {
-        req.into_response(200, None, &[("Content-Type", "text/html; charset=utf-8")])?
+        req.into_response(
+            200,
+            None,
+            &[
+                ("Content-Type", "text/html; charset=utf-8"),
+                ("Cache-Control", "no-store, max-age=0"),
+            ],
+        )?
             .write_all(INDEX_HTML.as_bytes())?;
         Ok(())
     })?;
 
     server.fn_handler("/style.css", Method::Get, |req| -> Result<(), EspIOError> {
-        req.into_response(200, None, &[("Content-Type", "text/css; charset=utf-8")])?
+        req.into_response(
+            200,
+            None,
+            &[
+                ("Content-Type", "text/css; charset=utf-8"),
+                ("Cache-Control", "no-store, max-age=0"),
+            ],
+        )?
             .write_all(STYLE_CSS.as_bytes())?;
+        Ok(())
+    })?;
+
+    server.fn_handler("/style-v2.css", Method::Get, |req| -> Result<(), EspIOError> {
+        req.into_response(
+            200,
+            None,
+            &[
+                ("Content-Type", "text/css; charset=utf-8"),
+                ("Cache-Control", "no-store, max-age=0"),
+            ],
+        )?
+        .write_all(STYLE_CSS.as_bytes())?;
         Ok(())
     })?;
 
@@ -130,7 +157,23 @@ fn register_routes<'a>(
         req.into_response(
             200,
             None,
-            &[("Content-Type", "application/javascript; charset=utf-8")],
+            &[
+                ("Content-Type", "application/javascript; charset=utf-8"),
+                ("Cache-Control", "no-store, max-age=0"),
+            ],
+        )?
+        .write_all(SCRIPT_JS.as_bytes())?;
+        Ok(())
+    })?;
+
+    server.fn_handler("/script-v2.js", Method::Get, |req| -> Result<(), EspIOError> {
+        req.into_response(
+            200,
+            None,
+            &[
+                ("Content-Type", "application/javascript; charset=utf-8"),
+                ("Cache-Control", "no-store, max-age=0"),
+            ],
         )?
         .write_all(SCRIPT_JS.as_bytes())?;
         Ok(())
@@ -182,6 +225,8 @@ fn register_routes<'a>(
             ws.send(FrameType::Text(false), b"invalid_command")?;
             return Ok(());
         };
+
+        log::info!("Commande WS reçue: `{}` -> speed={}", payload, speed);
 
         let mut motors = controllers
             .lock()
