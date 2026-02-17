@@ -110,6 +110,7 @@ sequenceDiagram
 - handlers HTTP safe avec durée de vie `'static`:
   - `EspHttpServer::new(...)`
   - `fn_handler(...)` pour la route HTTP commande
+- mDNS publie l'ESP32 sous `http://servo.local` (fallback IP: `http://192.168.71.1`)
 - taille max de payload bornée (`WS_MAX_PAYLOAD_LEN`) pour robustesse
 - cache navigateur limité via `Cache-Control: no-store` sur assets
 

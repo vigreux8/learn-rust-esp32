@@ -3,6 +3,7 @@ const stopButtons = document.querySelectorAll(".stop-button");
 const statusEl = document.getElementById("transport-status");
 let ws = null;
 let reconnectTimer = null;
+let connectTimeoutTimer = null;
 const pendingByTarget = new Map();
 let shouldReconnect = true;
 
@@ -43,6 +44,12 @@ function resetSliderToZero(target) {
   sendSpeed(target, 0);
 }
 
+function buildWebSocketUrl() {
+  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const host = window.location.host || "192.168.71.1";
+  return `${wsProtocol}://${host}/ws`;
+}
+
 function connectWebSocket() {
   if (!shouldReconnect) {
     return;
@@ -51,13 +58,28 @@ function connectWebSocket() {
     return;
   }
 
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const socket = new WebSocket(`${protocol}://${window.location.host}/ws`);
+  const socket = new WebSocket(buildWebSocketUrl());
   ws = socket;
+  setStatus("Connexion WebSocket en cours...");
+
+  if (connectTimeoutTimer) {
+    clearTimeout(connectTimeoutTimer);
+    connectTimeoutTimer = null;
+  }
+  connectTimeoutTimer = setTimeout(() => {
+    if (ws === socket && socket.readyState === WebSocket.CONNECTING) {
+      setStatus("Timeout ouverture WebSocket. Nouvelle tentative...");
+      socket.close();
+    }
+  }, 4000);
 
   socket.onopen = () => {
     if (ws !== socket) {
       return;
+    }
+    if (connectTimeoutTimer) {
+      clearTimeout(connectTimeoutTimer);
+      connectTimeoutTimer = null;
     }
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -68,6 +90,10 @@ function connectWebSocket() {
   };
 
   socket.onclose = (event) => {
+    if (connectTimeoutTimer) {
+      clearTimeout(connectTimeoutTimer);
+      connectTimeoutTimer = null;
+    }
     if (ws === socket) {
       ws = null;
     }
@@ -109,6 +135,10 @@ stopButtons.forEach((button) => {
 
 function cleanupWebSocket() {
   shouldReconnect = false;
+  if (connectTimeoutTimer) {
+    clearTimeout(connectTimeoutTimer);
+    connectTimeoutTimer = null;
+  }
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
@@ -121,6 +151,11 @@ function cleanupWebSocket() {
 
 window.addEventListener("beforeunload", cleanupWebSocket);
 window.addEventListener("pagehide", cleanupWebSocket);
+window.addEventListener("pageshow", () => {
+  shouldReconnect = true;
+  if (!ws || ws.readyState === WebSocket.CLOSED) {
+    connectWebSocket();
+  }
+});
 
 connectWebSocket();
-setStatus("Connexion WebSocket en cours...");

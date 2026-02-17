@@ -14,3 +14,10 @@ CONFIG_HTTPD_WS_SUPPORT=y
 
 # Les navigateurs desktop envoient souvent de gros headers HTTP.
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+
+# Active le composant mDNS et l'annonce sur l'interface AP (mode hotspot ESP32).
+CONFIG_MDNS_ENABLED=y
+CONFIG_MDNS_PREDEF_NETIF_AP=y
+CONFIG_MDNS_PREDEF_NETIF_STA=n
+
+

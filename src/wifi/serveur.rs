@@ -7,6 +7,7 @@ use esp_idf_svc::http::server::ws::EspHttpWsConnection;
 use esp_idf_svc::http::server::EspHttpServer;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::{EspIOError, Write};
+use esp_idf_svc::mdns::EspMdns;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::{EspError, ESP_ERR_INVALID_SIZE, ESP_FAIL};
 use esp_idf_svc::wifi::{
@@ -22,6 +23,8 @@ const WIFI_PASSWORD: &str = "";
 const WIFI_CHANNEL: u8 = 1;
 const SERVER_STACK_SIZE: usize = 8192;
 const WS_MAX_PAYLOAD_LEN: usize = 32;
+const MDNS_HOSTNAME: &str = "servo";
+const MDNS_INSTANCE_NAME: &str = "ESP32 Servo Controller";
 
 const INDEX_HTML: &str = include_str!("site/main.html");
 const HTTP_INDEX_HTML: &str = include_str!("site/http.html");
@@ -32,6 +35,7 @@ const HTTP_SCRIPT_JS: &str = include_str!("site/script-http.js");
 pub struct WifiServer {
     _wifi: BlockingWifi<EspWifi<'static>>,
     _server: EspHttpServer<'static>,
+    _mdns: EspMdns,
 }
 
 struct MotorControllers {
@@ -46,9 +50,17 @@ enum MotorTarget {
 
 impl MotorControllers {
     fn apply_speed(&mut self, target: MotorTarget, speed: i32) -> Result<(), EspError> {
+        let apply = |servo: &mut ServoController<'static>| {
+            if speed == 0 {
+                servo.stop()
+            } else {
+                servo.set_speed(speed)
+            }
+        };
+
         match target {
-            MotorTarget::Bras => self.moteur_bras.set_speed(speed),
-            MotorTarget::Pince => self.moteur_pince.set_speed(speed),
+            MotorTarget::Bras => apply(&mut self.moteur_bras),
+            MotorTarget::Pince => apply(&mut self.moteur_pince),
         }
     }
 }
@@ -78,11 +90,24 @@ impl WifiServer {
         wifi.start()?;
         wifi.wait_netif_up()?;
 
-        log::info!("AP prêt. SSID: `{}` | Ouvre http://192.168.71.1", WIFI_SSID);
+        log::info!(
+            "AP prêt. SSID: `{}` | DNS: http://{}.local | IP: http://192.168.71.1",
+            WIFI_SSID,
+            MDNS_HOSTNAME
+        );
+
+        let mut mdns = EspMdns::take()?;
+        mdns.set_hostname(MDNS_HOSTNAME)?;
+        mdns.set_instance_name(MDNS_INSTANCE_NAME)?;
+        mdns.add_service(None, "_http", "_tcp", 80, &[])?;
+        log::info!(
+            "mDNS publié: http://{}.local (fallback IP: http://192.168.71.1)",
+            MDNS_HOSTNAME
+        );
 
         let mut server = EspHttpServer::new(&esp_idf_svc::http::server::Configuration {
             stack_size: SERVER_STACK_SIZE,
-            max_open_sockets: 2,
+            max_open_sockets: 7,
             lru_purge_enable: true,
             ..Default::default()
         })
@@ -93,6 +118,7 @@ impl WifiServer {
         Ok(Self {
             _wifi: wifi,
             _server: server,
+            _mdns: mdns,
         })
     }
 }
