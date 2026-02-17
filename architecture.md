@@ -18,20 +18,20 @@ Le backend est en Rust (`esp-idf-svc`) avec:
 ## Structure des modules
 ```text
 src/
-  main.rs
-  servo/
-    mod.rs
-    bus.rs
-    controller.rs
-  wifi/
-    mod.rs
-    serveur.rs
-    site/
-      main.html
-      http.html
-      style.css
-      script.js
-      script-http.js
+  main.rs              # Point d'entrée : init ESP-IDF, bus PWM, 2 contrôleurs servo, démarrage WifiServer
+  servo/               # Module servo : bus PWM LEDC et contrôleurs bras / pince
+    mod.rs             # Réexporte bus + controller
+    bus.rs             # LEDC 50 Hz, création des ServoController par channel/pin
+    controller.rs      # set_speed / stop, conversion vitesse [-100..100] → duty PWM
+  wifi/                # Module Wi-Fi : AP, serveur HTTP, WebSocket, site embarqué
+    mod.rs             # Réexporte WifiServer (serveur)
+    serveur.rs         # AP, mDNS, routes statiques, /ws, POST /api/servo, parse commandes
+    site/              # Assets statiques servis par le serveur (include_str!)
+      main.html        # Page UI mode WebSocket (route /)
+      http.html        # Page UI mode HTTP (route /http)
+      style.css        # Styles communs aux deux UIs
+      script.js        # Client WebSocket : connexion /ws, envoi commandes, reconnexion
+      script-http.js   # Client HTTP : POST /api/servo pour commandes
 ```
 
 ## Rôles des composants
