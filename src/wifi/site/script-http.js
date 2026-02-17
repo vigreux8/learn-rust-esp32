@@ -19,6 +19,7 @@ async function sendSpeed(target, value, force = false) {
     const response = await fetch("/api/servo", {
       method: "POST",
       headers: { "Content-Type": "text/plain; charset=utf-8" },
+      keepalive: false,
       body: `${target}:${speed}`,
     });
 
