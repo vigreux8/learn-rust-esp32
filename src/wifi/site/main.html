@@ -3,16 +3,49 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ESP32 - Cerveau Moteur</title>
+  <title>ESP32 - Contrôle Servomoteurs</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <main class="card">
-    <h1>Cerveau Moteur</h1>
-    <p>Connecté directement à l'ESP32 (mode AP).</p>
-    <button id="hello-button" type="button">Hello World</button>
-    <p id="result" class="result">En attente d'un clic...</p>
+  <h1>Contrôle Temps Réel</h1>
+
+  <main class="motors-grid">
+    <section class="motor-card">
+      <div class="motor-header">
+        <h2>Moteur Bras</h2>
+        <button type="button" class="stop-button" data-target="bras">STOP</button>
+      </div>
+      <input
+        id="slider-bras"
+        class="speed-slider"
+        data-target="bras"
+        type="range"
+        min="-100"
+        max="100"
+        step="1"
+        value="0"
+      />
+    </section>
+
+    <section class="motor-card">
+      <div class="motor-header">
+        <h2>Moteur Pince</h2>
+        <button type="button" class="stop-button" data-target="pince">STOP</button>
+      </div>
+      <input
+        id="slider-pince"
+        class="speed-slider"
+        data-target="pince"
+        type="range"
+        min="-100"
+        max="100"
+        step="1"
+        value="0"
+      />
+    </section>
   </main>
+
+  <p id="ws-status" class="ws-status">Connexion WebSocket en cours...</p>
 
   <script src="/script.js"></script>
 </body>

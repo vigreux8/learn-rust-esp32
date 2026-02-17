@@ -8,3 +8,9 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=8000
 # Workaround for https://github.com/espressif/esp-idf/issues/7631
 #CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n
 #CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n
+
+# Active le support WebSocket côté serveur HTTP ESP-IDF.
+CONFIG_HTTPD_WS_SUPPORT=y
+
+# Les navigateurs desktop envoient souvent de gros headers HTTP.
+CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
