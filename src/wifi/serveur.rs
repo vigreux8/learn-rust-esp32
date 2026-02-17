@@ -29,14 +29,14 @@ const STYLE_CSS: &str = include_str!("site/style.css");
 const SCRIPT_JS: &str = include_str!("site/script.js");
 const HTTP_SCRIPT_JS: &str = include_str!("site/script-http.js");
 
-pub struct WifiServer<'a> {
+pub struct WifiServer {
     _wifi: BlockingWifi<EspWifi<'static>>,
-    _server: EspHttpServer<'a>,
+    _server: EspHttpServer<'static>,
 }
 
-struct MotorControllers<'a> {
-    moteur_bras: ServoController<'a>,
-    moteur_pince: ServoController<'a>,
+struct MotorControllers {
+    moteur_bras: ServoController<'static>,
+    moteur_pince: ServoController<'static>,
 }
 
 enum MotorTarget {
@@ -44,7 +44,7 @@ enum MotorTarget {
     Pince,
 }
 
-impl MotorControllers<'_> {
+impl MotorControllers {
     fn apply_speed(&mut self, target: MotorTarget, speed: i32) -> Result<(), EspError> {
         match target {
             MotorTarget::Bras => self.moteur_bras.set_speed(speed),
@@ -53,13 +53,13 @@ impl MotorControllers<'_> {
     }
 }
 
-impl<'a> WifiServer<'a> {
+impl WifiServer {
     pub fn start(
         modem: Modem,
         sys_loop: EspSystemEventLoop,
         nvs: EspDefaultNvsPartition,
-        moteur_bras: ServoController<'a>,
-        moteur_pince: ServoController<'a>,
+        moteur_bras: ServoController<'static>,
+        moteur_pince: ServoController<'static>,
     ) -> Result<Self, EspError> {
         let mut wifi =
             BlockingWifi::wrap(EspWifi::new(modem, sys_loop.clone(), Some(nvs))?, sys_loop)?;
@@ -80,12 +80,10 @@ impl<'a> WifiServer<'a> {
 
         log::info!("AP prêt. SSID: `{}` | Ouvre http://192.168.71.1", WIFI_SSID);
 
-        let mut server = unsafe {
-            EspHttpServer::new_nonstatic(&esp_idf_svc::http::server::Configuration {
-                stack_size: SERVER_STACK_SIZE,
-                ..Default::default()
-            })
-        }
+        let mut server = EspHttpServer::new(&esp_idf_svc::http::server::Configuration {
+            stack_size: SERVER_STACK_SIZE,
+            ..Default::default()
+        })
         .map_err(|e| e.0)?;
 
         register_routes(&mut server, moteur_bras, moteur_pince)?;
@@ -111,113 +109,47 @@ fn parse_speed_command(payload: &str) -> Option<(MotorTarget, i32)> {
     Some((target, speed))
 }
 
-fn register_routes<'a>(
-    server: &mut EspHttpServer<'a>,
-    moteur_bras: ServoController<'a>,
-    moteur_pince: ServoController<'a>,
+fn register_routes(
+    server: &mut EspHttpServer<'static>,
+    moteur_bras: ServoController<'static>,
+    moteur_pince: ServoController<'static>,
 ) -> Result<(), EspError> {
-    server.fn_handler("/", Method::Get, |req| -> Result<(), EspIOError> {
-        req.into_response(
-            200,
-            None,
-            &[
-                ("Content-Type", "text/html; charset=utf-8"),
-                ("Cache-Control", "no-store, max-age=0"),
-            ],
-        )?
-        .write_all(INDEX_HTML.as_bytes())?;
-        Ok(())
-    })?;
+    let static_routes = [
+        ("/", INDEX_HTML, "text/html; charset=utf-8"),
+        ("/http", HTTP_INDEX_HTML, "text/html; charset=utf-8"),
+        ("/style.css", STYLE_CSS, "text/css; charset=utf-8"),
+        ("/style-v2.css", STYLE_CSS, "text/css; charset=utf-8"),
+        (
+            "/script.js",
+            SCRIPT_JS,
+            "application/javascript; charset=utf-8",
+        ),
+        (
+            "/script-v2.js",
+            SCRIPT_JS,
+            "application/javascript; charset=utf-8",
+        ),
+        (
+            "/script-http-v1.js",
+            HTTP_SCRIPT_JS,
+            "application/javascript; charset=utf-8",
+        ),
+    ];
 
-    server.fn_handler("/http", Method::Get, |req| -> Result<(), EspIOError> {
-        req.into_response(
-            200,
-            None,
-            &[
-                ("Content-Type", "text/html; charset=utf-8"),
-                ("Cache-Control", "no-store, max-age=0"),
-            ],
-        )?
-        .write_all(HTTP_INDEX_HTML.as_bytes())?;
-        Ok(())
-    })?;
-
-    server.fn_handler("/style.css", Method::Get, |req| -> Result<(), EspIOError> {
-        req.into_response(
-            200,
-            None,
-            &[
-                ("Content-Type", "text/css; charset=utf-8"),
-                ("Cache-Control", "no-store, max-age=0"),
-            ],
-        )?
-        .write_all(STYLE_CSS.as_bytes())?;
-        Ok(())
-    })?;
-
-    server.fn_handler(
-        "/style-v2.css",
-        Method::Get,
-        |req| -> Result<(), EspIOError> {
+    for (path, content, content_type) in static_routes {
+        server.fn_handler(path, Method::Get, move |req| -> Result<(), EspIOError> {
             req.into_response(
                 200,
                 None,
                 &[
-                    ("Content-Type", "text/css; charset=utf-8"),
+                    ("Content-Type", content_type),
                     ("Cache-Control", "no-store, max-age=0"),
                 ],
             )?
-            .write_all(STYLE_CSS.as_bytes())?;
+            .write_all(content.as_bytes())?;
             Ok(())
-        },
-    )?;
-
-    server.fn_handler("/script.js", Method::Get, |req| -> Result<(), EspIOError> {
-        req.into_response(
-            200,
-            None,
-            &[
-                ("Content-Type", "application/javascript; charset=utf-8"),
-                ("Cache-Control", "no-store, max-age=0"),
-            ],
-        )?
-        .write_all(SCRIPT_JS.as_bytes())?;
-        Ok(())
-    })?;
-
-    server.fn_handler(
-        "/script-v2.js",
-        Method::Get,
-        |req| -> Result<(), EspIOError> {
-            req.into_response(
-                200,
-                None,
-                &[
-                    ("Content-Type", "application/javascript; charset=utf-8"),
-                    ("Cache-Control", "no-store, max-age=0"),
-                ],
-            )?
-            .write_all(SCRIPT_JS.as_bytes())?;
-            Ok(())
-        },
-    )?;
-
-    server.fn_handler(
-        "/script-http-v1.js",
-        Method::Get,
-        |req| -> Result<(), EspIOError> {
-            req.into_response(
-                200,
-                None,
-                &[
-                    ("Content-Type", "application/javascript; charset=utf-8"),
-                    ("Cache-Control", "no-store, max-age=0"),
-                ],
-            )?
-            .write_all(HTTP_SCRIPT_JS.as_bytes())?;
-            Ok(())
-        },
-    )?;
+        })?;
+    }
 
     let controllers = Arc::new(Mutex::new(MotorControllers {
         moteur_bras,
@@ -225,63 +157,56 @@ fn register_routes<'a>(
     }));
 
     let controllers_http = Arc::clone(&controllers);
-    unsafe {
-        server.fn_handler_nonstatic::<EspIOError, _>(
-            "/api/servo",
-            Method::Post,
-            move |mut req| {
-                let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
-                let mut len = 0_usize;
+    server.fn_handler("/api/servo", Method::Post, move |mut req| -> Result<(), EspIOError> {
+        let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
+        let mut len = 0_usize;
 
-                while len < WS_MAX_PAYLOAD_LEN {
-                    let read = req.read(&mut buffer[len..])?;
-                    if read == 0 {
-                        break;
-                    }
-                    len += read;
-                }
+        while len < WS_MAX_PAYLOAD_LEN {
+            let read = req.read(&mut buffer[len..])?;
+            if read == 0 {
+                break;
+            }
+            len += read;
+        }
 
-                if len == WS_MAX_PAYLOAD_LEN {
-                    let mut extra = [0_u8; 1];
-                    if req.read(&mut extra)? > 0 {
-                        req.into_status_response(413)?
-                            .write_all(b"payload_too_large")?;
-                        return Ok(());
-                    }
-                }
+        if len == WS_MAX_PAYLOAD_LEN {
+            let mut extra = [0_u8; 1];
+            if req.read(&mut extra)? > 0 {
+                req.into_status_response(413)?
+                    .write_all(b"payload_too_large")?;
+                return Ok(());
+            }
+        }
 
-                if len == 0 {
-                    req.into_status_response(400)?.write_all(b"empty_payload")?;
-                    return Ok(());
-                }
+        if len == 0 {
+            req.into_status_response(400)?.write_all(b"empty_payload")?;
+            return Ok(());
+        }
 
-                let payload = match str::from_utf8(&buffer[..len]) {
-                    Ok(value) => value,
-                    Err(_) => {
-                        req.into_status_response(400)?.write_all(b"invalid_utf8")?;
-                        return Ok(());
-                    }
-                };
+        let payload = match str::from_utf8(&buffer[..len]) {
+            Ok(value) => value,
+            Err(_) => {
+                req.into_status_response(400)?.write_all(b"invalid_utf8")?;
+                return Ok(());
+            }
+        };
 
-                let Some((target, speed)) = parse_speed_command(payload) else {
-                    req.into_status_response(400)?
-                        .write_all(b"invalid_command")?;
-                    return Ok(());
-                };
+        let Some((target, speed)) = parse_speed_command(payload) else {
+            req.into_status_response(400)?.write_all(b"invalid_command")?;
+            return Ok(());
+        };
 
-                log::info!("Commande HTTP reçue: `{}` -> speed={}", payload, speed);
+        log::info!("Commande HTTP reçue: `{}` -> speed={}", payload, speed);
 
-                let mut motors = controllers_http
-                    .lock()
-                    .map_err(|_| EspIOError(EspError::from_infallible::<ESP_FAIL>()))?;
-                motors.apply_speed(target, speed).map_err(EspIOError)?;
+        let mut motors = controllers_http
+            .lock()
+            .map_err(|_| EspIOError(EspError::from_infallible::<ESP_FAIL>()))?;
+        motors.apply_speed(target, speed).map_err(EspIOError)?;
 
-                req.into_response(200, None, &[("Content-Type", "text/plain; charset=utf-8")])?
-                    .write_all(b"ok")?;
-                Ok(())
-            },
-        )?;
-    }
+        req.into_response(200, None, &[("Content-Type", "text/plain; charset=utf-8")])?
+            .write_all(b"ok")?;
+        Ok(())
+    })?;
 
     server.ws_handler(
         "/ws",
