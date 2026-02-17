@@ -1,3 +1,5 @@
+// création du wifi / gestion dns / switch entre http et websocket
+
 use core::convert::TryInto;
 use core::str;
 
@@ -107,7 +109,7 @@ impl WifiServer {
 
         let mut server = EspHttpServer::new(&esp_idf_svc::http::server::Configuration {
             stack_size: SERVER_STACK_SIZE,
-            max_open_sockets: 7,
+            max_open_sockets: 3,
             lru_purge_enable: true,
             ..Default::default()
         })
