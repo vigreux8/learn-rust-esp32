@@ -4,6 +4,7 @@ const statusEl = document.getElementById("transport-status");
 let ws = null;
 let reconnectTimer = null;
 const pendingByTarget = new Map();
+let shouldReconnect = true;
 
 function setStatus(message) {
   if (statusEl) {
@@ -43,10 +44,21 @@ function resetSliderToZero(target) {
 }
 
 function connectWebSocket() {
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+  if (!shouldReconnect) {
+    return;
+  }
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
 
-  ws.onopen = () => {
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const socket = new WebSocket(`${protocol}://${window.location.host}/ws`);
+  ws = socket;
+
+  socket.onopen = () => {
+    if (ws !== socket) {
+      return;
+    }
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
@@ -55,16 +67,27 @@ function connectWebSocket() {
     setStatus("WebSocket connecté.");
   };
 
-  ws.onclose = () => {
-    setStatus("WebSocket déconnecté. Reconnexion...");
-    reconnectTimer = setTimeout(connectWebSocket, 1500);
+  socket.onclose = (event) => {
+    if (ws === socket) {
+      ws = null;
+    }
+    if (!shouldReconnect) {
+      return;
+    }
+    setStatus(`WebSocket déconnecté (code ${event.code}). Reconnexion...`);
+    if (!reconnectTimer) {
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectWebSocket();
+      }, 1500);
+    }
   };
 
-  ws.onerror = () => {
+  socket.onerror = () => {
     setStatus("Erreur WebSocket.");
   };
 
-  ws.onmessage = (event) => {
+  socket.onmessage = (event) => {
     if (event.data && event.data !== "ok" && event.data !== "connected") {
       setStatus(`ESP32: ${event.data}`);
     }
@@ -84,14 +107,20 @@ stopButtons.forEach((button) => {
   });
 });
 
-window.addEventListener("beforeunload", () => {
+function cleanupWebSocket() {
+  shouldReconnect = false;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
+    reconnectTimer = null;
   }
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.close();
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    ws.close(1000, "navigate");
   }
-});
+  ws = null;
+}
+
+window.addEventListener("beforeunload", cleanupWebSocket);
+window.addEventListener("pagehide", cleanupWebSocket);
 
 connectWebSocket();
 setStatus("Connexion WebSocket en cours...");

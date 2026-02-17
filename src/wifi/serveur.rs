@@ -8,7 +8,7 @@ use esp_idf_svc::http::server::EspHttpServer;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::{EspIOError, Write};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
-use esp_idf_svc::sys::{EspError, ESP_FAIL};
+use esp_idf_svc::sys::{EspError, ESP_ERR_INVALID_SIZE, ESP_FAIL};
 use esp_idf_svc::wifi::{
     AccessPointConfiguration, AuthMethod, BlockingWifi, Configuration, EspWifi,
 };
@@ -222,10 +222,33 @@ fn register_routes(
                 return Ok(());
             }
 
+            // NOTE: API ESP-IDF WS: d'abord metadata (len/type), puis payload.
+            let (frame_type, len) = ws.recv(&mut [])?;
+
+            if len > WS_MAX_PAYLOAD_LEN {
+                ws.send(FrameType::Text(false), b"payload_too_large")?;
+                ws.send(FrameType::Close, &[])?;
+                return Err(EspError::from_infallible::<ESP_ERR_INVALID_SIZE>());
+            }
+
             let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
-            let (frame_type, received_len) = ws.recv(&mut buffer)?;
-            if !matches!(frame_type, FrameType::Text(_) | FrameType::Binary(_)) {
-                return Ok(());
+            let received_len = if len > 0 {
+                let (_frame_type, received_len) = ws.recv(&mut buffer)?;
+                received_len
+            } else {
+                0
+            };
+
+            match frame_type {
+                FrameType::Ping => {
+                    ws.send(FrameType::Pong, &buffer[..received_len])?;
+                    return Ok(());
+                }
+                FrameType::Pong
+                | FrameType::Close
+                | FrameType::SocketClose
+                | FrameType::Continue(_) => return Ok(()),
+                FrameType::Text(_) | FrameType::Binary(_) => {}
             }
 
             if received_len == 0 {
