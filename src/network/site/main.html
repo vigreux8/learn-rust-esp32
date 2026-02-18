@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ESP32 - Contrôle Servomoteurs (HTTP)</title>
-  <link rel="stylesheet" href="/style-v2.css" />
+  <title>ESP32 - Contrôle Servomoteurs</title>
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <h1>Contrôle Temps Réel</h1>
   <nav class="mode-nav" aria-label="Modes de contrôle">
-    <a class="mode-button" href="/">WebSocketServo</a>
-    <a class="mode-button active" href="/http">HttpServo</a>
+    <a class="mode-button active" href="/">WebSocketServo</a>
+    <a class="mode-button" href="/http">HttpServo</a>
   </nav>
 
   <main class="motors-grid">
@@ -49,8 +49,8 @@
     </section>
   </main>
 
-  <p id="transport-status" class="ws-status">Canal HTTP prêt.</p>
+  <p id="transport-status" class="ws-status">Connexion WebSocket en cours...</p>
 
-  <script src="/script-http-v1.js"></script>
+  <script type="module" src="/script/main.js"></script>
 </body>
 </html>

@@ -18,103 +18,117 @@ Le backend est en Rust (`esp-idf-svc`) avec:
 ## Structure des modules
 ```text
 src/
-  main.rs              # Point d'entrée : init ESP-IDF, bus PWM, 2 contrôleurs servo, démarrage WifiServer
-  servo/               # Module servo : bus PWM LEDC et contrôleurs bras / pince
-    mod.rs             # Réexporte bus + controller
-    bus.rs             # LEDC 50 Hz, création des ServoController par channel/pin
-    controller.rs      # set_speed / stop, conversion vitesse [-100..100] → duty PWM
-  wifi/                # Module Wi-Fi : AP, serveur HTTP, WebSocket, site embarqué
-    mod.rs             # Réexporte WifiServer (serveur)
-    serveur.rs         # AP, mDNS, routes statiques, /ws, POST /api/servo, parse commandes
-    site/              # Assets statiques servis par le serveur (include_str!)
-      main.html        # Page UI mode WebSocket (route /)
-      http.html        # Page UI mode HTTP (route /http)
-      style.css        # Styles communs aux deux UIs
-      script.js        # Client WebSocket : connexion /ws, envoi commandes, reconnexion
-      script-http.js   # Client HTTP : POST /api/servo pour commandes
+├── main.rs
+├── hardware/
+│   ├── mod.rs
+│   ├── manager.rs
+│   └── servo/
+│       ├── mod.rs
+│       ├── bus.rs
+│       └── controller_sg_360.rs
+└── network/
+    ├── mod.rs
+    ├── manager.rs
+    ├── services/
+    │   ├── mod.rs
+    │   ├── wifi.rs
+    │   ├── dns.rs
+    │   └── http.rs
+    ├── handlers/
+    │   ├── mod.rs
+    │   ├── http.rs
+    │   └── ws.rs
+    └── site/
+        ├── main.html
+        ├── http.html
+        ├── style.css
+        └── script/
+            ├── api/
+            │   ├── network.js
+            │   └── servo.js
+            ├── ui.js
+            ├── main.js
+            └── http.js
 ```
 
 ## Rôles des composants
 - `src/main.rs`
   - initialise ESP-IDF
-  - crée le bus PWM (`ServoBus`)
-  - instancie les deux contrôleurs servo
-  - démarre `WifiServer` en lui injectant les moteurs
+  - instancie `HardwareManager` (bus PWM)
+  - crée `moteur_bras` et `moteur_pince`
+  - démarre `NetworkManager`
 
-- `src/servo/bus.rs`
+- `src/hardware/manager.rs`
+  - stocke le bus hardware (`ServoBus`)
+  - expose `servo_bus()` pour créer les contrôleurs moteurs
+
+- `src/hardware/servo/bus.rs`
   - configure LEDC (50 Hz)
   - crée des `ServoController` par channel/pin
 
-- `src/servo/controller.rs`
+- `src/hardware/servo/controller_sg_360.rs`
   - convertit une vitesse `[-100..100]` en duty PWM
   - API: `set_speed(speed)` et `stop()`
 
-- `src/wifi/serveur.rs`
-  - démarre AP Wi-Fi
-  - enregistre routes statiques (HTML/CSS/JS)
-  - route WebSocket `/ws` (commande temps réel)
-  - route HTTP `/api/servo` (commande via POST)
-  - parse des messages `bras:<speed>` / `pince:<speed>`
+- `src/network/manager.rs`
+  - orchestre le démarrage réseau
+  - `start()` ne contient que des appels à des fonctions privées:
+    - `start_wifi(...)`
+    - `start_dns()`
+    - `start_http_server()`
+    - `build_motor_controllers(...)`
+    - `register_handlers(...)`
+  - contient aussi `parse_speed_command(...)`
+
+- `src/network/services/wifi.rs`
+  - configuration AP (SSID, canal, auth)
+  - démarrage AP via `start_access_point(...)`
+
+- `src/network/services/dns.rs`
+  - configuration et publication mDNS (`servo.local`)
+
+- `src/network/services/http.rs`
+  - configuration serveur HTTP (`stack_size`, `max_open_sockets`, `lru_purge_enable`)
+  - création via `setup_http_server()`
+
+- `src/network/handlers/http.rs`
+  - routes statiques (HTML/CSS/JS)
+  - endpoint `POST /api/servo`
+
+- `src/network/handlers/ws.rs`
+  - endpoint `GET /ws` WebSocket
 
 ## Routes exposées
-- `GET /` -> UI WebSocket
-- `GET /http` -> UI HTTP
-- `GET /style-v2.css`
-- `GET /script-v2.js`
-- `GET /script-http-v1.js`
-- `GET /style.css` et `GET /script.js` (compat)
-- `GET /ws` (upgrade WebSocket)
-- `POST /api/servo` (body texte: `bras:25` ou `pince:-40`)
+- `GET /` -> UI WebSocket (`main.html`)
+- `GET /http` -> UI HTTP (`http.html`)
+- `GET /style.css` -> Styles CSS (`style.css`)
+- `GET /script/main.js` -> bootstrap front WebSocket
+- `GET /script/http.js` -> bootstrap front HTTP
+- `GET /script/ui.js` -> binding UI
+- `GET /script/api/network.js` -> transport WS/HTTP
+- `GET /script/api/servo.js` -> API métier servo
+- `GET /ws` -> Upgrade WebSocket
+- `POST /api/servo` -> Commande servo (body texte: `bras:25` ou `pince:-40`)
 
 ## Flux d'exécution
 ```mermaid
 flowchart TD
-    A[main.rs] --> B[Init peripherals + Wi-Fi AP]
-    B --> C[ServoBus 50Hz]
-    C --> D[moteur_bras + moteur_pince]
-    D --> E[WifiServer::start]
-    E --> F[Routes HTTP + WS actives]
-```
-
-## Flux commande WebSocket
-```mermaid
-sequenceDiagram
-    participant UI as Browser (/)
-    participant WS as /ws handler
-    participant CTRL as MotorControllers
-    participant SERVO as ServoController
-
-    UI->>WS: "bras:30"
-    WS->>CTRL: parse_speed_command
-    CTRL->>SERVO: moteur_bras.set_speed(30)
-    WS-->>UI: "ok"
-```
-
-## Flux commande HTTP
-```mermaid
-sequenceDiagram
-    participant UI as Browser (/http)
-    participant API as POST /api/servo
-    participant CTRL as MotorControllers
-    participant SERVO as ServoController
-
-    UI->>API: body "pince:-20"
-    API->>CTRL: parse_speed_command
-    CTRL->>SERVO: moteur_pince.set_speed(-20)
-    API-->>UI: 200 "ok"
+    A[main.rs] --> B[HardwareManager::new]
+    B --> C[Création moteur_bras + moteur_pince]
+    C --> D[NetworkManager::start]
+    D --> E[start_wifi]
+    D --> F[start_dns]
+    D --> G[start_http_server]
+    D --> H[register_handlers]
 ```
 
 ## Points techniques importants
 - WebSocket activé via `sdkconfig.defaults`:
   - `CONFIG_HTTPD_WS_SUPPORT=y`
-- handlers HTTP safe avec durée de vie `'static`:
-  - `EspHttpServer::new(...)`
-  - `fn_handler(...)` pour la route HTTP commande
+- `EspHttpServer::new(...)` avec:
+  - `stack_size: 8192`
+  - `max_open_sockets: 3`
 - mDNS publie l'ESP32 sous `http://servo.local` (fallback IP: `http://192.168.71.1`)
-- taille max de payload bornée (`WS_MAX_PAYLOAD_LEN`) pour robustesse
-- cache navigateur limité via `Cache-Control: no-store` sur assets
-
-## Extension future recommandée
-- endpoint de télémétrie (`/api/state`) pour remonter la vitesse courante
-- route favicon/icône pour nettoyer les logs 404
-- abstraction `CommandTransport` si on ajoute MQTT/BLE plus tard
+- taille max de payload bornée (`WS_MAX_PAYLOAD_LEN = 32`)
+- partage des contrôleurs via `Arc<Mutex<MotorControllers>>`
+- gestion des erreurs: UTF-8, taille payload, format commande
