@@ -1,6 +1,5 @@
-pub mod dns;
-pub mod handlers;
 pub mod manager;
-pub mod wifi;
+pub mod services;
+pub mod handlers;
 
 pub use manager::NetworkManager;

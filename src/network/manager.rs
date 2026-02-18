@@ -9,9 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::hardware::servo::controller_sg_360::ServoController;
 
-use super::{dns, handlers, wifi};
-
-const SERVER_STACK_SIZE: usize = 8192;
+use super::{handlers, services::dns, services::http, services::wifi};
 pub(crate) const WS_MAX_PAYLOAD_LEN: usize = 32;
 
 pub struct NetworkManager {
@@ -97,13 +95,7 @@ impl NetworkManager {
     }
 
     fn start_http_server() -> Result<EspHttpServer<'static>, EspError> {
-        EspHttpServer::new(&esp_idf_svc::http::server::Configuration {
-            stack_size: SERVER_STACK_SIZE,
-            max_open_sockets: 3,
-            lru_purge_enable: true,
-            ..Default::default()
-        })
-        .map_err(|e| e.0)
+        http::setup_http_server()
     }
 
     fn build_motor_controllers(

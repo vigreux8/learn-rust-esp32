@@ -29,8 +29,11 @@ src/
 └── network/
     ├── mod.rs
     ├── manager.rs
-    ├── wifi.rs
-    ├── dns.rs
+    ├── services/
+    │   ├── mod.rs
+    │   ├── wifi.rs
+    │   ├── dns.rs
+    │   └── http.rs
     ├── handlers/
     │   ├── mod.rs
     │   ├── http.rs
@@ -77,12 +80,16 @@ src/
     - `register_handlers(...)`
   - contient aussi `parse_speed_command(...)`
 
-- `src/network/wifi.rs`
+- `src/network/services/wifi.rs`
   - configuration AP (SSID, canal, auth)
   - démarrage AP via `start_access_point(...)`
 
-- `src/network/dns.rs`
+- `src/network/services/dns.rs`
   - configuration et publication mDNS (`servo.local`)
+
+- `src/network/services/http.rs`
+  - configuration serveur HTTP (`stack_size`, `max_open_sockets`, `lru_purge_enable`)
+  - création via `setup_http_server()`
 
 - `src/network/handlers/http.rs`
   - routes statiques (HTML/CSS/JS)
