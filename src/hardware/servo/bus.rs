@@ -1,5 +1,5 @@
 // use crate::servo::controller::ServoController;  // j'utilise super car le fichier bus et controleur sont trés lié  il y a peut de chance qu'il soit séparer
-use super::controller::ServoController;
+use super::controller_sg_360::ServoController;
 
 use esp_idf_svc::hal::gpio::OutputPin;
 use esp_idf_svc::hal::ledc::config::TimerConfig;
