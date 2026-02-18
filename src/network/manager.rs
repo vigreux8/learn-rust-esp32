@@ -9,7 +9,12 @@ use std::sync::{Arc, Mutex};
 
 use crate::hardware::servo::controller_sg_360::ServoController;
 
-use super::{handlers, services::dns, services::http, services::wifi};
+use super::{
+    handlers,
+    services::dns::DnsService,
+    services::http::HttpServerService,
+    services::wifi::WifiService,
+};
 pub(crate) const WS_MAX_PAYLOAD_LEN: usize = 32;
 
 pub struct NetworkManager {
@@ -55,9 +60,20 @@ impl NetworkManager {
         moteur_bras: ServoController<'static>,
         moteur_pince: ServoController<'static>,
     ) -> Result<Self, EspError> {
-        let wifi_driver = Self::start_wifi(modem, sys_loop, nvs)?;
-        let mdns = Self::start_dns()?;
-        let mut server = Self::start_http_server()?;
+        let wifi_driver = WifiService::init(modem, sys_loop, nvs)?;
+        log::info!(
+            "AP prêt. SSID: `{}` | DNS: http://{}.local | IP: http://192.168.71.1",
+            WifiService::SSID,
+            DnsService::HOSTNAME
+        );
+
+        let mdns = DnsService::init()?;
+        log::info!(
+            "mDNS publié: http://{}.local (fallback IP: http://192.168.71.1)",
+            DnsService::HOSTNAME
+        );
+
+        let mut server = HttpServerService::init()?;
         let controllers = Self::build_motor_controllers(moteur_bras, moteur_pince);
 
         Self::register_handlers(&mut server, controllers)?;
@@ -67,35 +83,6 @@ impl NetworkManager {
             _server: server,
             _mdns: mdns,
         })
-    }
-
-    fn start_wifi(
-        modem: Modem,
-        sys_loop: EspSystemEventLoop,
-        nvs: EspDefaultNvsPartition,
-    ) -> Result<BlockingWifi<EspWifi<'static>>, EspError> {
-        let mut wifi_driver =
-            BlockingWifi::wrap(EspWifi::new(modem, sys_loop.clone(), Some(nvs))?, sys_loop)?;
-        wifi::start_access_point(&mut wifi_driver)?;
-        log::info!(
-            "AP prêt. SSID: `{}` | DNS: http://{}.local | IP: http://192.168.71.1",
-            wifi::WIFI_SSID,
-            dns::MDNS_HOSTNAME
-        );
-        Ok(wifi_driver)
-    }
-
-    fn start_dns() -> Result<EspMdns, EspError> {
-        let mdns = dns::setup_mdns()?;
-        log::info!(
-            "mDNS publié: http://{}.local (fallback IP: http://192.168.71.1)",
-            dns::MDNS_HOSTNAME
-        );
-        Ok(mdns)
-    }
-
-    fn start_http_server() -> Result<EspHttpServer<'static>, EspError> {
-        http::setup_http_server()
     }
 
     fn build_motor_controllers(
