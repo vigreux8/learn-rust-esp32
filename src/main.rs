@@ -7,7 +7,7 @@ use esp_idf_svc::sys::EspError;
 mod hardware;
 mod network;
 
-use crate::hardware::manager::HardwareDevices;
+use crate::hardware::manager::HardwareManager;
 use crate::network::NetworkManager;
 
 fn main() -> Result<(), EspError> {
@@ -21,7 +21,7 @@ fn main() -> Result<(), EspError> {
     let nvs = EspDefaultNvsPartition::take()?;
 
     // 2. Initialisation du manager hardware (bus PWM)
-    let hardware = HardwareDevices::new(peripherals.ledc.timer0)?;
+    let hardware = HardwareManager::new(peripherals.ledc.timer0)?;
 
     // 3. Création des servos individuels
     let moteur_bras = hardware
