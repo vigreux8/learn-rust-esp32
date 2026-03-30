@@ -1,21 +1,26 @@
 # Architecture du projet `servomoteur`
 
 ## Vue d'ensemble
+
 Ce projet embarqué ESP32 expose une interface web pour piloter deux servomoteurs:
+
 - `moteur_bras`
 - `moteur_pince`
 
 Deux modes de pilotage existent côté front:
+
 - `WebSocketServo` (`/`)
 - `HttpServo` (`/http`)
 
 Le backend est en Rust (`esp-idf-svc`) avec:
+
 - point d'accès Wi-Fi (mode AP)
 - serveur HTTP
 - endpoint WebSocket
 - endpoint HTTP POST pour commandes servo
 
 ## Structure des modules
+
 ```text
 src/
 ├── main.rs
@@ -52,6 +57,7 @@ src/
 ```
 
 ## Rôles des composants
+
 - `src/main.rs`
   - initialise ESP-IDF
   - instancie `HardwareManager` (bus PWM)
@@ -99,6 +105,7 @@ src/
   - endpoint `GET /ws` WebSocket
 
 ## Routes exposées
+
 - `GET /` -> UI WebSocket (`main.html`)
 - `GET /http` -> UI HTTP (`http.html`)
 - `GET /style.css` -> Styles CSS (`style.css`)
@@ -111,6 +118,7 @@ src/
 - `POST /api/servo` -> Commande servo (body texte: `bras:25` ou `pince:-40`)
 
 ## Flux d'exécution
+
 ```mermaid
 flowchart TD
     A[main.rs] --> B[HardwareManager::new]
@@ -123,6 +131,7 @@ flowchart TD
 ```
 
 ## Points techniques importants
+
 - WebSocket activé via `sdkconfig.defaults`:
   - `CONFIG_HTTPD_WS_SUPPORT=y`
 - `EspHttpServer::new(...)` avec:

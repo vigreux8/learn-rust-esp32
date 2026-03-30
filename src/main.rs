@@ -11,6 +11,7 @@ use crate::hardware::manager::HardwareDevices;
 use crate::network::NetworkManager;
 
 fn main() -> Result<(), EspError> {
+    /* test */
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
