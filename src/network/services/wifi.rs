@@ -1,7 +1,7 @@
 use core::convert::TryInto;
 
+use esp_idf_hal::modem::Modem;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
-use esp_idf_svc::hal::modem::Modem;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::EspError;
 use esp_idf_svc::wifi::{
@@ -16,12 +16,13 @@ impl WifiService {
     pub const CHANNEL: u8 = 1;
     pub const MAX_CONNECTIONS: u16 = 4;
 
-    pub fn init(
-        modem: Modem,
+    pub fn init<'d>(
+        modem: Modem<'d>,
         sys_loop: EspSystemEventLoop,
         nvs: EspDefaultNvsPartition,
-    ) -> Result<BlockingWifi<EspWifi<'static>>, EspError> {
-        let mut wifi = BlockingWifi::wrap(EspWifi::new(modem, sys_loop.clone(), Some(nvs))?, sys_loop)?;
+    ) -> Result<BlockingWifi<EspWifi<'d>>, EspError> {
+        let mut wifi =
+            BlockingWifi::wrap(EspWifi::new(modem, sys_loop.clone(), Some(nvs))?, sys_loop)?;
 
         let config = Configuration::AccessPoint(AccessPointConfiguration {
             ssid: Self::SSID.try_into().unwrap(),

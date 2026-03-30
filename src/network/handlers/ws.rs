@@ -13,6 +13,7 @@ pub fn register(
 ) -> Result<(), EspError> {
     server.ws_handler(
         "/ws",
+        None,
         move |ws: &mut EspHttpWsConnection| -> Result<(), EspError> {
             if ws.is_new() {
                 log::info!("Nouvelle session WebSocket (fd={})", ws.session());

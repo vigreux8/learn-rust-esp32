@@ -7,48 +7,29 @@ use esp_idf_svc::sys::{EspError, ESP_FAIL};
 
 use crate::network::manager::{parse_speed_command, SharedMotorControllers, WS_MAX_PAYLOAD_LEN};
 
-const INDEX_HTML: &str = include_str!("../site/main.html");
-const HTTP_INDEX_HTML: &str = include_str!("../site/http.html");
-const STYLE_CSS: &str = include_str!("../site/style.css");
-const UI_JS: &str = include_str!("../site/script/ui.js");
-const MAIN_JS: &str = include_str!("../site/script/main.js");
-const HTTP_JS: &str = include_str!("../site/script/http.js");
-const API_NETWORK_JS: &str = include_str!("../site/script/api/network.js");
-const API_SERVO_JS: &str = include_str!("../site/script/api/servo.js");
+/// Sortie Vite (`npm run build` dans `src/network/frontend`, `outDir: ../site_compiled`).
+const INDEX_HTML: &str = include_str!("../site_compiled/index.html");
+const INDEX_JS: &str = include_str!("../site_compiled/assets/index.js");
+const INDEX_CSS: &str = include_str!("../site_compiled/assets/index.css");
+const FAVICON_SVG: &str = include_str!("../site_compiled/favicon.svg");
+const ICONS_SVG: &str = include_str!("../site_compiled/icons.svg");
 
 pub fn register(
     server: &mut EspHttpServer<'static>,
     controllers: SharedMotorControllers,
 ) -> Result<(), EspError> {
-    let static_routes = [
+    // SPA Preact : même `index.html` pour `/` et `/http` (router côté client).
+    let static_routes: [(&str, &str, &str); 6] = [
         ("/", INDEX_HTML, "text/html; charset=utf-8"),
-        ("/http", HTTP_INDEX_HTML, "text/html; charset=utf-8"),
-        ("/style.css", STYLE_CSS, "text/css; charset=utf-8"),
+        ("/http", INDEX_HTML, "text/html; charset=utf-8"),
         (
-            "/script/ui.js",
-            UI_JS,
+            "/assets/index.js",
+            INDEX_JS,
             "application/javascript; charset=utf-8",
         ),
-        (
-            "/script/main.js",
-            MAIN_JS,
-            "application/javascript; charset=utf-8",
-        ),
-        (
-            "/script/http.js",
-            HTTP_JS,
-            "application/javascript; charset=utf-8",
-        ),
-        (
-            "/script/api/network.js",
-            API_NETWORK_JS,
-            "application/javascript; charset=utf-8",
-        ),
-        (
-            "/script/api/servo.js",
-            API_SERVO_JS,
-            "application/javascript; charset=utf-8",
-        ),
+        ("/assets/index.css", INDEX_CSS, "text/css; charset=utf-8"),
+        ("/favicon.svg", FAVICON_SVG, "image/svg+xml"),
+        ("/icons.svg", ICONS_SVG, "image/svg+xml"),
     ];
 
     for (path, content, content_type) in static_routes {
@@ -123,7 +104,8 @@ pub fn register(
                 .map_err(|_| EspIOError(EspError::from_infallible::<ESP_FAIL>()))?;
             motors.apply_speed(target, speed).map_err(EspIOError)?;
 
-            req.into_response(200, None, &API_HEADERS)?.write_all(b"ok")?;
+            req.into_response(200, None, &API_HEADERS)?
+                .write_all(b"ok")?;
             Ok(())
         },
     )?;

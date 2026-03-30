@@ -4,4 +4,4 @@
 /Cargo.lock
 *.DS_Store
 
-*/site_compiled
+**/site_compiled
