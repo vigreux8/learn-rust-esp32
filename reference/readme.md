@@ -1,0 +1,2 @@
+- se site était placée dans network/site
+- sauf que je dois le remplacer par preact et le dossier site se renommerais frontEnd
