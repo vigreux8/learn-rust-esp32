@@ -7,14 +7,16 @@ Ce projet embarqué ESP32 expose une interface web pour piloter deux servomoteur
 - `moteur_bras`
 - `moteur_pince`
 
-Deux modes de pilotage existent côté front:
+Deux modes de pilotage existent côté interface:
 
-- `WebSocketServo` (`/`)
-- `HttpServo` (`/http`)
+- `WebSocketServo` (route cliente `/`)
+- `HttpServo` (route cliente `/http`)
+
+L’interface utilisateur est développée en **Preact** (TypeScript, Vite) sous `src/network/frontend/`. Le comportement réseau et les commandes servo reprennent la même logique que l’ancien site vanilla conservé à titre de référence dans `reference/site/` (sans duplication dans le code de l’app Preact : transport et API dans `src/lib/`).
 
 Le backend est en Rust (`esp-idf-svc`) avec:
 
-- point d'accès Wi-Fi (mode AP)
+- point d’accès Wi-Fi (mode AP)
 - serveur HTTP
 - endpoint WebSocket
 - endpoint HTTP POST pour commandes servo
@@ -43,17 +45,33 @@ src/
     │   ├── mod.rs
     │   ├── http.rs
     │   └── ws.rs
-    └── site/
-        ├── main.html
-        ├── http.html
-        ├── style.css
-        └── script/
-            ├── api/
-            │   ├── network.js
-            │   └── servo.js
-            ├── ui.js
-            ├── main.js
-            └── http.js
+    └── frontend/                   # Application Preact (source + build)
+        ├── package.json
+        ├── vite.config.ts
+        ├── index.html
+        ├── dist/                   # Sortie `npm run build` (bundle déployable)
+        └── src/
+            ├── main.tsx
+            ├── app.tsx             # Router `/` et `/http`
+            ├── index.css
+            ├── lib/                # Logique réseau / servo (équivalent api/*.js)
+            │   ├── types.ts
+            │   ├── transport.ts
+            │   └── servo.ts
+            ├── hooks/
+            │   └── useServoSession.ts
+            └── composant/
+                ├── atomes/
+                │   ├── TitrePrincipal.tsx
+                │   ├── LienMode.tsx
+                │   ├── TexteStatut.tsx
+                │   ├── BoutonStop.tsx
+                │   └── CurseurVitesse.tsx
+                ├── molecules/
+                │   ├── NavigationMode.tsx
+                │   └── CarteMoteur.tsx
+                └── organismes/
+                    └── PanneauControleServo.tsx
 ```
 
 ## Rôles des composants
@@ -98,24 +116,23 @@ src/
   - création via `setup_http_server()`
 
 - `src/network/handlers/http.rs`
-  - routes statiques (HTML/CSS/JS)
+  - sert les fichiers statiques embarqués .. a mettre a jour
   - endpoint `POST /api/servo`
 
 - `src/network/handlers/ws.rs`
   - endpoint `GET /ws` WebSocket
 
-## Routes exposées
+### Frontend Preact (`src/network/frontend/src/`)
 
-- `GET /` -> UI WebSocket (`main.html`)
-- `GET /http` -> UI HTTP (`http.html`)
-- `GET /style.css` -> Styles CSS (`style.css`)
-- `GET /script/main.js` -> bootstrap front WebSocket
-- `GET /script/http.js` -> bootstrap front HTTP
-- `GET /script/ui.js` -> binding UI
-- `GET /script/api/network.js` -> transport WS/HTTP
-- `GET /script/api/servo.js` -> API métier servo
-- `GET /ws` -> Upgrade WebSocket
-- `POST /api/servo` -> Commande servo (body texte: `bras:25` ou `pince:-40`)
+- `lib/transport.ts` : WebSocket (reconnexion, file d’attente) et HTTP POST `/api/servo`.
+- `lib/servo.ts` : équivalent de `servo.js` — `move` / `stop` au-dessus du transport.
+- `hooks/useServoSession.ts` : cycle de vie du transport (démarrage, `beforeunload` / `pagehide` / `pageshow`).
+- `composant/` : UI découpée type atomique — **atomes** (contrôles de base), **molécules** (carte moteur, navigation), **organismes** (`PanneauControleServo`).
+- `app.tsx` : `preact-router`, routes `/` (mode WS) et `/http` (mode HTTP).
+
+## Routes exposées (firmware)
+
+- a mettre a jour
 
 ## Flux d'exécution
 
@@ -137,7 +154,7 @@ flowchart TD
 - `EspHttpServer::new(...)` avec:
   - `stack_size: 8192`
   - `max_open_sockets: 3`
-- mDNS publie l'ESP32 sous `http://servo.local` (fallback IP: `http://192.168.71.1`)
+- mDNS publie l’ESP32 sous `http://servo.local` (fallback IP: `http://192.168.71.1`)
 - taille max de payload bornée (`WS_MAX_PAYLOAD_LEN = 32`)
 - partage des contrôleurs via `Arc<Mutex<MotorControllers>>`
 - gestion des erreurs: UTF-8, taille payload, format commande
