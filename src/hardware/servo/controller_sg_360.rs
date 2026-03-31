@@ -1,4 +1,4 @@
-use esp_idf_svc::hal::ledc::*;
+use esp_idf_hal::ledc::LedcDriver;
 use esp_idf_svc::sys::EspError;
 
 const SPEED_MIN: i32 = -100;

@@ -1,5 +1,5 @@
+use esp_idf_hal::modem::Modem;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
-use esp_idf_svc::hal::modem::Modem;
 use esp_idf_svc::http::server::EspHttpServer;
 use esp_idf_svc::mdns::EspMdns;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
@@ -10,15 +10,13 @@ use std::sync::{Arc, Mutex};
 use crate::hardware::servo::controller_sg_360::ServoController;
 
 use super::{
-    handlers,
-    services::dns::DnsService,
-    services::http::HttpServerService,
+    handlers, services::dns::DnsService, services::http::HttpServerService,
     services::wifi::WifiService,
 };
 pub(crate) const WS_MAX_PAYLOAD_LEN: usize = 32;
 
-pub struct NetworkManager {
-    _wifi: BlockingWifi<EspWifi<'static>>,
+pub struct NetworkManager<'d> {
+    _wifi: BlockingWifi<EspWifi<'d>>,
     _server: EspHttpServer<'static>,
     _mdns: EspMdns,
 }
@@ -52,9 +50,9 @@ impl MotorControllers {
     }
 }
 
-impl NetworkManager {
+impl<'d> NetworkManager<'d> {
     pub fn start(
-        modem: Modem,
+        modem: Modem<'d>,
         sys_loop: EspSystemEventLoop,
         nvs: EspDefaultNvsPartition,
         moteur_bras: ServoController<'static>,

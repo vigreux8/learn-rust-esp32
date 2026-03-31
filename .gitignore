@@ -2,3 +2,6 @@
 /.embuild
 /target
 /Cargo.lock
+*.DS_Store
+
+**/site_compiled

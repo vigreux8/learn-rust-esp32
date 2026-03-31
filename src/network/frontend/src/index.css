@@ -26,7 +26,16 @@ body {
     radial-gradient(circle at 88% 86%, rgba(194, 65, 12, 0.12) 0%, transparent 30%),
     linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
   color: var(--text);
-  font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+  font-family: 'Avenir Next', 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
+
+#app {
+  width: 100%;
+  max-width: min(1126px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: inherit;
 }
 
 h1 {
@@ -56,6 +65,8 @@ h1 {
   color: var(--accent-strong);
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 8px 18px rgba(17, 34, 45, 0.08);
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .mode-button.active {
@@ -105,6 +116,11 @@ h1 {
   cursor: pointer;
 }
 
+.speed-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .stop-button {
   border: 0;
   border-radius: 10px;
@@ -114,9 +130,15 @@ h1 {
   color: #fff;
   background: linear-gradient(145deg, var(--danger), #9a3412);
   cursor: pointer;
+  font-family: inherit;
 }
 
-.stop-button:active {
+.stop-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.stop-button:active:not(:disabled) {
   transform: translateY(1px);
 }
 
