@@ -12,7 +12,10 @@ Deux modes de pilotage existent côté interface:
 - `WebSocketServo` (route cliente `/`)
 - `HttpServo` (route cliente `/http`)
 
-L’interface utilisateur est développée en **Preact** (TypeScript, Vite) sous `src/network/frontend/`. Le comportement réseau et les commandes servo reprennent la même logique que l’ancien site vanilla conservé à titre de référence dans `reference/site/` (sans duplication dans le code de l’app Preact : transport et API dans `src/lib/`).
+Les interfaces utilisateur sont développées en **Preact** (TypeScript, Vite) avec deux frontends:
+
+- `src/network/frontend-servo/` : interface de pilotage des servomoteurs
+- `src/network/frontend-quizz/` : interface quizz
 
 Le backend est en Rust (`esp-idf-svc`) avec:
 
@@ -45,33 +48,36 @@ src/
     │   ├── mod.rs
     │   ├── http.rs
     │   └── ws.rs
-    └── frontend/                   # Application Preact (source + build)
+    ├── frontend-servo/              # Application Preact de pilotage servo
+    │   ├── package.json
+    │   ├── vite.config.ts
+    │   ├── index.html
+    │   ├── dist/                    # Sortie `npm run build` (bundle déployable)
+    │   └── src/
+    │       ├── main.tsx
+    │       ├── app.tsx              # Router `/` et `/http`
+    │       ├── index.css
+    │       ├── lib/                 # Logique réseau / servo (equivalent api/*.js)
+    │       │   ├── types.ts
+    │       │   ├── transport.ts
+    │       │   └── servo.ts
+    │       ├── hooks/
+    │       │   └── useServoSession.ts
+    │       └── composant/
+    │           ├── atomes/
+    │           ├── molecules/
+    │           └── organismes/
+    └── frontend-quizz/              # Application Preact quizz
         ├── package.json
         ├── vite.config.ts
         ├── index.html
-        ├── dist/                   # Sortie `npm run build` (bundle déployable)
+        ├── dist/
         └── src/
             ├── main.tsx
-            ├── app.tsx             # Router `/` et `/http`
+            ├── app.tsx
+            ├── app.css
             ├── index.css
-            ├── lib/                # Logique réseau / servo (équivalent api/*.js)
-            │   ├── types.ts
-            │   ├── transport.ts
-            │   └── servo.ts
-            ├── hooks/
-            │   └── useServoSession.ts
-            └── composant/
-                ├── atomes/
-                │   ├── TitrePrincipal.tsx
-                │   ├── LienMode.tsx
-                │   ├── TexteStatut.tsx
-                │   ├── BoutonStop.tsx
-                │   └── CurseurVitesse.tsx
-                ├── molecules/
-                │   ├── NavigationMode.tsx
-                │   └── CarteMoteur.tsx
-                └── organismes/
-                    └── PanneauControleServo.tsx
+            └── assets/
 ```
 
 ## Rôles des composants
@@ -122,13 +128,19 @@ src/
 - `src/network/handlers/ws.rs`
   - endpoint `GET /ws` WebSocket
 
-### Frontend Preact (`src/network/frontend/src/`)
+### Frontend servo (`src/network/frontend-servo/src/`)
 
 - `lib/transport.ts` : WebSocket (reconnexion, file d’attente) et HTTP POST `/api/servo`.
 - `lib/servo.ts` : équivalent de `servo.js` — `move` / `stop` au-dessus du transport.
 - `hooks/useServoSession.ts` : cycle de vie du transport (démarrage, `beforeunload` / `pagehide` / `pageshow`).
 - `composant/` : UI découpée type atomique — **atomes** (contrôles de base), **molécules** (carte moteur, navigation), **organismes** (`PanneauControleServo`).
 - `app.tsx` : `preact-router`, routes `/` (mode WS) et `/http` (mode HTTP).
+
+### Frontend quizz (`src/network/frontend-quizz/src/`)
+
+- `app.tsx` : point d’entrée UI de l’expérience quizz.
+- `main.tsx` : bootstrap de l’application Preact.
+- `app.css` / `index.css` : styles de l’interface quizz.
 
 ## Routes exposées (firmware)
 

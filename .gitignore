@@ -5,3 +5,9 @@
 *.DS_Store
 
 **/site_compiled
+
+# Frontend bouton (artefacts locaux/build)
+**/node_modules/
+**/dist/
+**/vite/
+**/tsbuildinfo
