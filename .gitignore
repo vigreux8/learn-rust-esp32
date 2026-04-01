@@ -4,6 +4,8 @@
 /Cargo.lock
 *.DS_Store
 
+**/.DS_Store
+
 **/site_compiled
 
 # Frontend bouton (artefacts locaux/build)
