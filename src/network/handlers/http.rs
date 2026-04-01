@@ -5,7 +5,10 @@ use esp_idf_svc::http::Method;
 use esp_idf_svc::io::{EspIOError, Write};
 use esp_idf_svc::sys::{EspError, ESP_FAIL};
 
-use crate::network::manager::{parse_speed_command, SharedMotorControllers, WS_MAX_PAYLOAD_LEN};
+use crate::network::manager::{
+    apply_speed_with_duration_sync, parse_speed_command, MotorTarget, SharedMotorControllers,
+    WS_MAX_PAYLOAD_LEN,
+};
 
 /// Sortie Vite (`npm run build` dans `src/network/frontend`, `outDir: ../site_compiled`).
 const INDEX_HTML: &str = include_str!("../site_compiled/index.html");
@@ -13,6 +16,26 @@ const INDEX_JS: &str = include_str!("../site_compiled/assets/index.js");
 const INDEX_CSS: &str = include_str!("../site_compiled/assets/index.css");
 const FAVICON_SVG: &str = include_str!("../site_compiled/favicon.svg");
 const ICONS_SVG: &str = include_str!("../site_compiled/icons.svg");
+
+fn parse_speed_with_optional_duration(payload: &str) -> Option<(MotorTarget, i32, Option<u32>)> {
+    let payload = payload.trim_matches(|c: char| c.is_ascii_control() || c.is_whitespace());
+    let parts: Vec<&str> = payload.split(':').collect();
+
+    if parts.len() == 2 {
+        let (target, speed) = parse_speed_command(payload)?;
+        return Some((target, speed, None));
+    }
+
+    if parts.len() != 3 {
+        return None;
+    }
+
+    let speed_payload = format!("{}:{}", parts[0], parts[1]);
+    let (target, speed) = parse_speed_command(&speed_payload)?;
+    let duration_ms = parts[2].trim().parse::<u32>().ok()?;
+
+    Some((target, speed, Some(duration_ms)))
+}
 
 pub fn register(
     server: &mut EspHttpServer<'static>,
@@ -91,18 +114,29 @@ pub fn register(
                 }
             };
 
-            let Some((target, speed)) = parse_speed_command(payload) else {
+            let Some((target, speed, duration_ms)) = parse_speed_with_optional_duration(payload) else {
                 req.into_response(400, None, &API_HEADERS)?
                     .write_all(b"invalid_command")?;
                 return Ok(());
             };
 
-            log::info!("Commande HTTP reçue: `{}` -> speed={}", payload, speed);
+            log::info!(
+                "Commande HTTP reçue: `{}` -> speed={}, duration_ms={:?}",
+                payload,
+                speed,
+                duration_ms
+            );
 
-            let mut motors = controllers
-                .lock()
-                .map_err(|_| EspIOError(EspError::from_infallible::<ESP_FAIL>()))?;
-            motors.apply_speed(target, speed).map_err(EspIOError)?;
+            if let Some(duration_ms) = duration_ms {
+                apply_speed_with_duration_sync(&controllers, target, speed, Some(duration_ms))
+                    .map_err(EspIOError)?;
+            } else {
+                let mut motors = controllers
+                    .lock()
+                    .map_err(|_| EspIOError(EspError::from_infallible::<ESP_FAIL>()))?;
+                motors.clear_duration_for_target(target);
+                motors.apply_speed(target, speed).map_err(EspIOError)?;
+            }
 
             req.into_response(200, None, &API_HEADERS)?
                 .write_all(b"ok")?;
