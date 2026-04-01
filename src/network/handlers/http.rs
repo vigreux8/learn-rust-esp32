@@ -37,6 +37,35 @@ fn parse_speed_with_optional_duration(payload: &str) -> Option<(MotorTarget, i32
     Some((target, speed, Some(duration_ms)))
 }
 
+fn parse_calibration_json(payload: &str) -> Option<(i32, u32)> {
+    let payload = payload.trim();
+    if !(payload.starts_with('{') && payload.ends_with('}')) {
+        return None;
+    }
+
+    let mut vitesse_moteur = None;
+    let mut temp_360 = None;
+
+    let inner = &payload[1..payload.len() - 1];
+    for entry in inner.split(',') {
+        let (key_raw, value_raw) = entry.split_once(':')?;
+        let key = key_raw.trim().trim_matches('"');
+        let value = value_raw.trim();
+
+        match key {
+            "vitesse_moteur" => {
+                vitesse_moteur = value.parse::<i32>().ok();
+            }
+            "temp_360" => {
+                temp_360 = value.parse::<u32>().ok();
+            }
+            _ => {}
+        }
+    }
+
+    Some((vitesse_moteur?, temp_360?))
+}
+
 pub fn register(
     server: &mut EspHttpServer<'static>,
     controllers: SharedMotorControllers,
@@ -69,6 +98,68 @@ pub fn register(
             Ok(())
         })?;
     }
+
+    server.fn_handler(
+        "/api/calibration",
+        Method::Post,
+        move |mut req| -> Result<(), EspIOError> {
+            const API_HEADERS: [(&str, &str); 2] = [
+                ("Content-Type", "text/plain; charset=utf-8"),
+                ("Connection", "close"),
+            ];
+
+            let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
+            let mut len = 0_usize;
+
+            while len < WS_MAX_PAYLOAD_LEN {
+                let read = req.read(&mut buffer[len..])?;
+                if read == 0 {
+                    break;
+                }
+                len += read;
+            }
+
+            if len == WS_MAX_PAYLOAD_LEN {
+                let mut extra = [0_u8; 1];
+                if req.read(&mut extra)? > 0 {
+                    req.into_response(413, None, &API_HEADERS)?
+                        .write_all(b"payload_too_large")?;
+                    return Ok(());
+                }
+            }
+
+            if len == 0 {
+                req.into_response(400, None, &API_HEADERS)?
+                    .write_all(b"empty_payload")?;
+                return Ok(());
+            }
+
+            let payload = match str::from_utf8(&buffer[..len]) {
+                Ok(value) => value,
+                Err(_) => {
+                    req.into_response(400, None, &API_HEADERS)?
+                        .write_all(b"invalid_utf8")?;
+                    return Ok(());
+                }
+            };
+
+            let Some((vitesse_moteur, temp_360)) = parse_calibration_json(payload) else {
+                req.into_response(400, None, &API_HEADERS)?
+                    .write_all(b"invalid_json")?;
+                return Ok(());
+            };
+
+            log::info!(
+                "CALIBRATION: {{vitesse_moteur : {} , temp_360 : {}}}",
+                vitesse_moteur,
+                temp_360
+            );
+
+            req.into_response(200, None, &API_HEADERS)?
+                .write_all(b"calibration_logged")?;
+            Ok(())
+        },
+    )?;
 
     server.fn_handler(
         "/api/servo",

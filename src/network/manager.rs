@@ -15,7 +15,7 @@ use super::{
     handlers, services::dns::DnsService, services::http::HttpServerService,
     services::wifi::WifiService,
 };
-pub(crate) const WS_MAX_PAYLOAD_LEN: usize = 32;
+pub(crate) const WS_MAX_PAYLOAD_LEN: usize = 128;
 pub const DEFAULT_APPLY_SPEED_DURATION_MS: u32 = 1_000;
 
 pub struct NetworkManager<'d> {
