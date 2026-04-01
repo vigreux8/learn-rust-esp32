@@ -37,7 +37,7 @@ fn parse_speed_with_optional_duration(payload: &str) -> Option<(MotorTarget, i32
     Some((target, speed, Some(duration_ms)))
 }
 
-fn parse_calibration_json(payload: &str) -> Option<(i32, u32)> {
+fn parse_calibration_json(payload: &str) -> Option<(i32, u32, Option<u32>, Option<u32>)> {
     let payload = payload.trim();
     if !(payload.starts_with('{') && payload.ends_with('}')) {
         return None;
@@ -45,6 +45,8 @@ fn parse_calibration_json(payload: &str) -> Option<(i32, u32)> {
 
     let mut vitesse_moteur = None;
     let mut temp_360 = None;
+    let mut vitesse_min = None;
+    let mut vitesse_max = None;
 
     let inner = &payload[1..payload.len() - 1];
     for entry in inner.split(',') {
@@ -59,11 +61,17 @@ fn parse_calibration_json(payload: &str) -> Option<(i32, u32)> {
             "temp_360" => {
                 temp_360 = value.parse::<u32>().ok();
             }
+            "vitesse_min" => {
+                vitesse_min = value.parse::<u32>().ok();
+            }
+            "vitesse_max" => {
+                vitesse_max = value.parse::<u32>().ok();
+            }
             _ => {}
         }
     }
 
-    Some((vitesse_moteur?, temp_360?))
+    Some((vitesse_moteur?, temp_360?, vitesse_min, vitesse_max))
 }
 
 pub fn register(
@@ -143,17 +151,27 @@ pub fn register(
                 }
             };
 
-            let Some((vitesse_moteur, temp_360)) = parse_calibration_json(payload) else {
+            let Some((vitesse_moteur, temp_360, vitesse_min, vitesse_max)) = parse_calibration_json(payload) else {
                 req.into_response(400, None, &API_HEADERS)?
                     .write_all(b"invalid_json")?;
                 return Ok(());
             };
 
-            log::info!(
-                "CALIBRATION: {{vitesse_moteur : {} , temp_360 : {}}}",
-                vitesse_moteur,
-                temp_360
-            );
+            if let (Some(vitesse_min), Some(vitesse_max)) = (vitesse_min, vitesse_max) {
+                log::info!(
+                    "CALIBRATION(ms): {{vitesse_moteur : {} , temp_360 : {} , vitesse_min : {} , vitesse_max : {}}}",
+                    vitesse_moteur,
+                    temp_360,
+                    vitesse_min,
+                    vitesse_max
+                );
+            } else {
+                log::info!(
+                    "CALIBRATION(ms): {{vitesse_moteur : {} , temp_360 : {}}}",
+                    vitesse_moteur,
+                    temp_360
+                );
+            }
 
             req.into_response(200, None, &API_HEADERS)?
                 .write_all(b"calibration_logged")?;
