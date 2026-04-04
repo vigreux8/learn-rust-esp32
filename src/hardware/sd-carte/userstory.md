@@ -48,15 +48,6 @@ En tant que : utilisateurs
 
 - crée un pseudot et l'associé a l'adresse mac de mon appareille
 
-## premier connexion :
-
-### 2. La Description\*\*
-
-En tant que : utilisateurs
-
-**Je veux :**
-
-- associé un autre appareille a un pseudot
 
 ## connexion :
 
