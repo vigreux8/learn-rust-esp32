@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [preact(), tailwindcss()],
   build: {
     // Destination des fichiers pour le NetworkManager
     outDir: '../site_compiled', 
