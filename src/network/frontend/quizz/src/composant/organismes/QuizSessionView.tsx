@@ -1,7 +1,8 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { ArrowLeft } from "lucide-preact";
-import { fetchCollection, fetchRandomQuiz } from "../../lib/api";
+import { fetchCollection, fetchRandomQuiz, postQuizKpi } from "../../lib/api";
+import { useUserSession } from "../../lib/userSession";
 import type { QuestionUi } from "../../types/quizz";
 import { saveLastQuizResult } from "../../lib/lastQuizResult";
 import { AppHeader } from "../molecules/AppHeader";
@@ -29,6 +30,9 @@ function isPickedCorrect(questions: QuestionUi[], qIndex: number, reponseId: num
 }
 
 export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
+  const { userId } = useUserSession();
+  const questionStartedAtMs = useRef(0);
+
   const [data, setData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -95,6 +99,11 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
     setGood(0);
   }, [data]);
 
+  useLayoutEffect(() => {
+    if (data == null) return;
+    questionStartedAtMs.current = performance.now();
+  }, [data, index]);
+
   if (loading) {
     return (
       <div class="flex min-h-dvh flex-col">
@@ -134,6 +143,15 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
 
   const handlePick = (reponseId: number) => {
     if (pickedId != null) return;
+    const dureeSecondes = (performance.now() - questionStartedAtMs.current) / 1000;
+    void postQuizKpi({
+      userId,
+      questionId: q.id,
+      reponseId,
+      dureeSecondes,
+    }).catch(() => {
+      /* KPI optionnel : ne pas bloquer le jeu */
+    });
     setPickedId(reponseId);
   };
 

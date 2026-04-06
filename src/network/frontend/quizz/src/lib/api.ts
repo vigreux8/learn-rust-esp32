@@ -110,6 +110,26 @@ export async function fetchKpis(userId: number): Promise<UserKpiRow[]> {
   return res.json() as Promise<UserKpiRow[]>;
 }
 
+export async function postQuizKpi(params: {
+  userId: number;
+  questionId: number;
+  reponseId: number;
+  dureeSecondes: number;
+}): Promise<UserKpiRow> {
+  const res = await fetch(apiUrl("/stats/kpi"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: params.userId,
+      questionId: params.questionId,
+      reponseId: params.reponseId,
+      dureeSecondes: params.dureeSecondes,
+    }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json() as Promise<UserKpiRow>;
+}
+
 export async function fetchSessionSummaries(userId: number): Promise<SessionSummary[]> {
   const res = await fetch(apiUrl(`/stats/sessions?userId=${userId}`));
   if (!res.ok) throw new Error(await readError(res));

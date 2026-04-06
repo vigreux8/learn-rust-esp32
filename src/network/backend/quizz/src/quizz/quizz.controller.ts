@@ -90,6 +90,32 @@ export class QuizzController {
     return this.quizz.listKpis(userId);
   }
 
+  @Post('stats/kpi')
+  createKpi(
+    @Body()
+    body: {
+      userId?: number;
+      questionId?: number;
+      reponseId?: number;
+      dureeSecondes?: number;
+    },
+  ) {
+    const { userId, questionId, reponseId, dureeSecondes } = body ?? {};
+    if (typeof userId !== 'number' || !Number.isInteger(userId)) {
+      throw new BadRequestException('Champ "userId" (entier) requis');
+    }
+    if (typeof questionId !== 'number' || !Number.isInteger(questionId)) {
+      throw new BadRequestException('Champ "questionId" (entier) requis');
+    }
+    if (typeof reponseId !== 'number' || !Number.isInteger(reponseId)) {
+      throw new BadRequestException('Champ "reponseId" (entier) requis');
+    }
+    if (typeof dureeSecondes !== 'number' || !Number.isFinite(dureeSecondes)) {
+      throw new BadRequestException('Champ "dureeSecondes" (nombre) requis');
+    }
+    return this.quizz.createUserKpi(userId, questionId, reponseId, dureeSecondes);
+  }
+
   @Get('stats/sessions')
   listSessions(@Query('userId', ParseIntPipe) userId: number) {
     return this.quizz.listSessionSummaries(userId);
