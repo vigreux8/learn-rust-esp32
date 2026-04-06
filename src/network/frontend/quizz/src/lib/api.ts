@@ -38,20 +38,44 @@ export async function fetchRandomQuiz(): Promise<QuestionUi[]> {
   return res.json() as Promise<QuestionUi[]>;
 }
 
-export async function fetchQuestions(): Promise<QuizzQuestionRow[]> {
-  const res = await fetch(apiUrl("/questions"));
+export async function fetchQuestions(
+  collectionId?: number | "none",
+): Promise<QuizzQuestionRow[]> {
+  const suffix =
+    collectionId === "none"
+      ? "?collectionId=none"
+      : collectionId !== undefined
+        ? `?collectionId=${collectionId}`
+        : "";
+  const res = await fetch(apiUrl(`/questions${suffix}`));
   if (!res.ok) throw new Error(await readError(res));
   return res.json() as Promise<QuizzQuestionRow[]>;
 }
 
-export async function patchQuestion(id: number, question: string): Promise<QuizzQuestionRow> {
+export async function patchQuestion(
+  id: number,
+  body: { question?: string; commentaire?: string },
+): Promise<QuizzQuestionRow> {
   const res = await fetch(apiUrl(`/questions/${id}`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await readError(res));
   return res.json() as Promise<QuizzQuestionRow>;
+}
+
+export async function importQuestionsJson(body: unknown): Promise<{
+  createdQuestions: number;
+  createdCollections: number;
+}> {
+  const res = await fetch(apiUrl("/questions/import"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json() as Promise<{ createdQuestions: number; createdCollections: number }>;
 }
 
 export async function deleteQuestion(id: number): Promise<void> {

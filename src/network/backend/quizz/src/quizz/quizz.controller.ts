@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import { QuizzService } from './quizz.service';
@@ -32,19 +33,36 @@ export class QuizzController {
   }
 
   @Get('questions')
-  listQuestions() {
-    return this.quizz.listQuestions();
+  listQuestions(@Query('collectionId') collectionId?: string) {
+    if (collectionId === undefined || collectionId === '') {
+      return this.quizz.listQuestions();
+    }
+    if (collectionId === 'none') {
+      return this.quizz.listQuestions('none');
+    }
+    const n = Number(collectionId);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      throw new BadRequestException(
+        'Query collectionId : nombre entier ou la valeur "none"',
+      );
+    }
+    return this.quizz.listQuestions(n);
+  }
+
+  @Post('questions/import')
+  importQuestions(@Body() body: unknown) {
+    return this.quizz.importQuestionsFromLlmJson(body);
   }
 
   @Patch('questions/:id')
   updateQuestion(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { question?: string },
+    @Body() body: { question?: string; commentaire?: string },
   ) {
-    if (typeof body?.question !== 'string') {
-      throw new BadRequestException('Champ "question" (string) requis');
-    }
-    return this.quizz.updateQuestion(id, body.question);
+    return this.quizz.updateQuestion(id, {
+      question: body?.question,
+      commentaire: body?.commentaire,
+    });
   }
 
   @Delete('questions/:id')

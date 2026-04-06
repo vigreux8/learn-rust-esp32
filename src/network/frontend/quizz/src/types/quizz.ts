@@ -11,6 +11,8 @@ export interface QuestionUi {
   user_id: number;
   create_at: string;
   question: string;
+  /** Anecdote pédagogique (sans recopier mot pour mot la bonne réponse). */
+  commentaire: string;
   reponses: ReponseUi[];
 }
 
@@ -24,11 +26,18 @@ export interface CollectionUi {
   createur_pseudot: string;
 }
 
+export interface QuizzCollectionRef {
+  id: number;
+  nom: string;
+}
+
 export interface QuizzQuestionRow {
   id: number;
   user_id: number;
   create_at: string;
   question: string;
+  commentaire: string;
+  collections: QuizzCollectionRef[];
 }
 
 export interface UserKpiRow {

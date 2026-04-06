@@ -130,7 +130,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   const progressValue = pickedId != null ? index + 1 : index;
   const revealed = pickedId != null;
   const correct = revealed && pickedId != null && isPickedCorrect(data.questions, index, pickedId);
-  const bonneReponseLabel = q.reponses.find((r) => r.bonne_reponse)?.reponse;
+  const anecdote = (q.commentaire ?? "").trim();
 
   const handlePick = (reponseId: number) => {
     if (pickedId != null) return;
@@ -198,15 +198,14 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           {revealed ? (
             <div class="fl-reveal-enter mt-8 space-y-5 rounded-[1.75rem] border border-base-content/8 bg-gradient-to-b from-base-100/95 to-base-200/40 p-6 shadow-inner">
               <p class="text-center text-base leading-relaxed text-base-content/85">
-                {correct ? (
+                {anecdote ? (
+                  <span class="block">{anecdote}</span>
+                ) : correct ? (
                   <>
                     Bien vu — <span class="font-semibold text-flow">c’est la bonne réponse</span>.
                   </>
                 ) : (
-                  <>
-                    Ce n’était pas la bonne proposition. La réponse attendue :{" "}
-                    <span class="font-semibold text-flow">{bonneReponseLabel ?? "—"}</span>.
-                  </>
+                  <>Ce n’était pas la bonne proposition.</>
                 )}
               </p>
               <div class="flex justify-center">
