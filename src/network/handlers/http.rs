@@ -1,13 +1,15 @@
 use core::str;
+use std::net::Ipv4Addr;
+use std::sync::Arc;
 
-use esp_idf_svc::http::server::EspHttpServer;
+use esp_idf_svc::http::server::{EspHttpConnection, EspHttpServer, Request};
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::{EspIOError, Write};
 use esp_idf_svc::sys::{EspError, ESP_FAIL};
 
 use crate::network::manager::{
-    apply_speed_with_duration_sync, parse_speed_command, MotorTarget, SharedMotorControllers,
-    WS_MAX_PAYLOAD_LEN,
+    apply_speed_with_duration_sync, format_mac, parse_speed_command, ClientSession, MotorTarget,
+    SharedClientSessions, SharedMotorControllers, WS_MAX_PAYLOAD_LEN,
 };
 
 /// Sortie Vite (`npm run build` dans `src/network/frontend`, `outDir: ../site_compiled`).
@@ -74,9 +76,49 @@ fn parse_calibration_json(payload: &str) -> Option<(i32, u32, Option<u32>, Optio
     Some((vitesse_moteur?, temp_360?, vitesse_min, vitesse_max))
 }
 
+fn resolve_client_session(sessions: &SharedClientSessions, ip: Ipv4Addr) -> Option<ClientSession> {
+    let store = sessions.lock().ok()?;
+    store.find_session_by_ip(ip)
+}
+
+fn log_request_identity(
+    context: &str,
+    source_ip: Option<Ipv4Addr>,
+    session: Option<ClientSession>,
+) {
+    match (source_ip, session) {
+        (Some(ip), Some(session)) => {
+            let session_label = session
+                .slot
+                .map(|slot| slot.to_string())
+                .unwrap_or_else(|| "inconnue".to_string());
+            log::info!(
+                "{} ip={} mac={} session={}",
+                context,
+                ip,
+                format_mac(&session.mac),
+                session_label
+            );
+        }
+        (Some(ip), None) => {
+            log::warn!("{} ip={} mac=inconnue", context, ip);
+        }
+        (None, _) => {
+            log::warn!("{} ip=inconnue", context);
+        }
+    }
+}
+
+fn request_source_ipv4(req: &mut Request<&mut EspHttpConnection<'_>>) -> Option<Ipv4Addr> {
+    let connection = req.connection();
+    let raw_connection = connection.raw_connection().ok()?;
+    raw_connection.source_ipv4().ok()
+}
+
 pub fn register(
     server: &mut EspHttpServer<'static>,
     controllers: SharedMotorControllers,
+    sessions: SharedClientSessions,
 ) -> Result<(), EspError> {
     // SPA Preact : même `index.html` pour `/` et `/http` (router côté client).
     let static_routes: [(&str, &str, &str); 6] = [
@@ -107,6 +149,7 @@ pub fn register(
         })?;
     }
 
+    let calibration_sessions = Arc::clone(&sessions);
     server.fn_handler(
         "/api/calibration",
         Method::Post,
@@ -115,6 +158,10 @@ pub fn register(
                 ("Content-Type", "text/plain; charset=utf-8"),
                 ("Connection", "close"),
             ];
+            let source_ip = request_source_ipv4(&mut req);
+            let client_session =
+                source_ip.and_then(|ip| resolve_client_session(&calibration_sessions, ip));
+            log_request_identity("HTTP /api/calibration", source_ip, client_session);
 
             let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
             let mut len = 0_usize;
@@ -179,6 +226,7 @@ pub fn register(
         },
     )?;
 
+    let servo_sessions = Arc::clone(&sessions);
     server.fn_handler(
         "/api/servo",
         Method::Post,
@@ -187,6 +235,10 @@ pub fn register(
                 ("Content-Type", "text/plain; charset=utf-8"),
                 ("Connection", "close"),
             ];
+            let source_ip = request_source_ipv4(&mut req);
+            let client_session =
+                source_ip.and_then(|ip| resolve_client_session(&servo_sessions, ip));
+            log_request_identity("HTTP /api/servo", source_ip, client_session);
 
             let mut buffer = [0_u8; WS_MAX_PAYLOAD_LEN];
             let mut len = 0_usize;
@@ -223,7 +275,8 @@ pub fn register(
                 }
             };
 
-            let Some((target, speed, duration_ms)) = parse_speed_with_optional_duration(payload) else {
+            let Some((target, speed, duration_ms)) = parse_speed_with_optional_duration(payload)
+            else {
                 req.into_response(400, None, &API_HEADERS)?
                     .write_all(b"invalid_command")?;
                 return Ok(());
