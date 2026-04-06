@@ -1,8 +1,20 @@
-export function App() {
+import Router, { Route } from "preact-router";
+import { AdminPanel } from "./composant/organismes/AdminPanel";
+import { HomeView } from "./composant/organismes/HomeView";
+import { QuizResultsView } from "./composant/organismes/QuizResultsView";
+import { QuizSessionView } from "./composant/organismes/QuizSessionView";
+import { SessionDetailsView } from "./composant/organismes/SessionDetailsView";
+import { StatsDashboard } from "./composant/organismes/StatsDashboard";
 
+export function App() {
   return (
-    <div class="flex flex-col items-center justify-center h-screen">
-      <button class="btn">Default</button>
-    </div>
-  )
+    <Router>
+      <Route path="/" component={HomeView} />
+      <Route path="/play/:collectionId" component={QuizSessionView} />
+      <Route path="/results" component={QuizResultsView} />
+      <Route path="/admin" component={AdminPanel} />
+      <Route path="/stats" component={StatsDashboard} />
+      <Route path="/stats/session/:sessionId" component={SessionDetailsView} />
+    </Router>
+  );
 }

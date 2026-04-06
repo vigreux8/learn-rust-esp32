@@ -1,2 +1,52 @@
 @import "tailwindcss";
-@plugin "daisyui";
+
+@plugin "daisyui" {
+  themes: light --default;
+}
+
+@theme {
+  --color-flow: #3a86ff;
+  --color-learn: #e94e77;
+  --radius-box: 1.25rem;
+  --radius-field: 0.75rem;
+  --radius-btn: 0.75rem;
+}
+
+@layer base {
+  :root {
+    --flow: #3a86ff;
+    --learn: #e94e77;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+  }
+
+  body {
+    @apply min-h-dvh font-sans text-base-content;
+    background: linear-gradient(
+      165deg,
+      color-mix(in oklab, var(--flow) 12%, white) 0%,
+      #f8fafc 45%,
+      color-mix(in oklab, var(--learn) 8%, white) 100%
+    );
+  }
+
+  .flowlearn-progress::-webkit-progress-value {
+    background: linear-gradient(
+      90deg,
+      var(--flow),
+      color-mix(in oklab, var(--learn) 55%, var(--flow))
+    );
+    border-radius: 9999px;
+  }
+
+  .flowlearn-progress::-moz-progress-bar {
+    background: linear-gradient(
+      90deg,
+      var(--flow),
+      color-mix(in oklab, var(--learn) 55%, var(--flow))
+    );
+    border-radius: 9999px;
+  }
+}

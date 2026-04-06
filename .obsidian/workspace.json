@@ -185,6 +185,28 @@
   },
   "active": "d5118ac2cd2f61ab",
   "lastOpenFiles": [
+    "src/network/frontend-quizz/tsconfig.node.tsbuildinfo",
+    "src/network/frontend-quizz/src/composant/organismes/SessionDetailsView.tsx",
+    "src/network/frontend-quizz/src/composant/organismes/StatsDashboard.tsx",
+    "src/network/frontend-quizz/src/composant/organismes/AdminPanel.tsx",
+    "src/network/frontend-quizz/src/composant/organismes/QuizResultsView.tsx",
+    "src/network/frontend-quizz/src/composant/organismes/QuizSessionView.tsx",
+    "src/network/frontend-quizz/src/composant/organismes/HomeView.tsx",
+    "src/network/frontend-quizz/src/composant/molecules/KpiCard.tsx",
+    "src/network/frontend-quizz/src/composant/molecules/FeedbackModal.tsx",
+    "src/network/frontend-quizz/src/composant/molecules/AnswerOption.tsx",
+    "src/network/frontend-quizz/src/composant/molecules/CollectionCard.tsx",
+    "src/network/frontend-quizz/node_modules/@tailwindcss/postcss/README.md",
+    "src/network/frontend-quizz/node_modules/@alloc/quick-lru/readme.md",
+    "src/network/frontend-quizz/node_modules/autoprefixer/README.md",
+    "src/network/frontend-quizz/node_modules/postcss-value-parser/README.md",
+    "src/network/frontend-quizz/node_modules/fraction.js/README.md",
+    "src/network/frontend-quizz/node_modules/fraction.js/CHANGELOG.md",
+    "src/network/frontend-quizz/node_modules/lucide-preact/README.md",
+    "src/network/frontend-quizz/node_modules/tailwind-merge/README.md",
+    "src/network/frontend-quizz/node_modules/tailwind-merge/LICENSE.md",
+    "src/network/frontend-quizz/node_modules/preact-router/README.md",
+    "src/network/frontend-quizz/node_modules/clsx/readme.md",
     "src/network/frontend-quizz/doc/wireframe.md"
   ]
 }
