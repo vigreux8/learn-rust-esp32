@@ -16,8 +16,12 @@ build-servo:
 	@echo "OK: build frontend pilotage_servo_moteur termine."
 
 build-quizz:
-	cd src/network/frontend/quizz/frontend && npm run build
+	cd src/network/frontend/quizz && npm run build
 	@echo "OK: build frontend quizz termine."
+
+build-quizz-backend:
+	cd src/network/backend/quizz && npm run build
+	@echo "OK: build backend Nest quizz termine."
 
 build-bouton:
 	cd src/network/frontend/reglage_bouton && npm run build
@@ -27,10 +31,30 @@ preview-servo:
 	cd src/network/frontend/pilotage_servo_moteur && npm run preview
 
 preview-quizz:
-	cd src/network/frontend/quizz/frontend && npm run preview
+	cd src/network/frontend/quizz && npm run preview
 
 preview-bouton:
 	cd src/network/frontend/reglage_bouton && npm run preview
+
+## Quizz — dépendances, dev (API + Vite), prod
+
+install-quizz:
+	cd src/network/backend/quizz && npm install
+	cd src/network/frontend/quizz && npm install
+	@echo "OK: npm install (backend + frontend quizz)."
+
+dev-quizz-backend:
+	cd src/network/backend/quizz && npm run start:dev
+
+dev-quizz-frontend:
+	cd src/network/frontend/quizz && npm run dev
+
+## Lance Nest (bg) puis Vite au premier plan ; Ctrl+C arrête les deux (trap).
+dev-quizz:
+	trap 'kill $$BACKEND_PID 2>/dev/null' EXIT INT TERM; \
+	cd src/network/backend/quizz && npm run start:dev & \
+	BACKEND_PID=$$!; \
+	cd src/network/frontend/quizz && npm run dev
 
 ## Backend quizz (SQLite)
 

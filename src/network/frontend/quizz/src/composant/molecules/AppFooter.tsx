@@ -1,5 +1,5 @@
 import { Wifi } from "lucide-preact";
-import { APP_VERSION } from "../../mocks";
+import { APP_VERSION } from "../../lib/config";
 
 export function AppFooter() {
   return (

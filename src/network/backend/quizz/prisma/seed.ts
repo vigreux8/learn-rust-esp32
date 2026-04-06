@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { resolve } from 'node:path';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
-import { PrismaClient } from '../generated/prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 function sqliteUrlFromEnv(): string {
   const raw = process.env.DATABASE_URL ?? 'file:quizz.db';
@@ -88,169 +88,122 @@ async function main(): Promise<void> {
   try {
     await clearAll(prisma);
 
-    const u1 = await prisma.user.create({ data: { pseudot: 'alice_cap' } });
-    const u2 = await prisma.user.create({ data: { pseudot: 'bob_stats' } });
-    const u3 = await prisma.user.create({ data: { pseudot: 'clara_ml' } });
-
-    const d1 = await prisma.device.create({
-      data: { adresse_mac: '00:1A:2B:3C:4D:01' },
-    });
-    const d2 = await prisma.device.create({
-      data: { adresse_mac: '00:1A:2B:3C:4D:02' },
-    });
-    const d3 = await prisma.device.create({
-      data: { adresse_mac: '00:1A:2B:3C:4D:03' },
-    });
-
-    await prisma.user_device.create({
-      data: { user_id: u1.id, device_id: d1.id },
-    });
-    await prisma.user_device.create({
-      data: { user_id: u1.id, device_id: d2.id },
-    });
-    await prisma.user_device.create({
-      data: { user_id: u2.id, device_id: d3.id },
-    });
-
+    const u1 = await prisma.user.create({ data: { pseudot: 'maitre_quizz' } });
     const t = nowIso();
+
+    // --- COLLECTIONS ---
     const colCasquette = await prisma.ref_collection.create({
       data: {
         user_id: u1.id,
         create_at: t,
         update_at: t,
-        nom: 'Histoire de la casquette',
+        nom: 'Sociologie de la Casquette',
       },
     });
 
-    const colStatsIA = await prisma.ref_collection.create({
+    const colOrthographe = await prisma.ref_collection.create({
       data: {
         user_id: u1.id,
         create_at: t,
         update_at: t,
-        nom: 'Origine de la statistique et de l’IA',
+        nom: 'Les Mystères de l’Orthographe',
       },
     });
 
-    await addQuestion(prisma, {
-      userId: u1.id,
-      collectionId: colCasquette.id,
-      question:
-        'À partir de quelle période la casquette de baseball s’impose comme accessoire courant du jeu aux États-Unis ?',
-      commentaire: 'Fin XIXe siècle.',
-      reponses: [
-        { texte: 'Fin du XIXe siècle', correcte: true },
-        { texte: 'Renaissance italienne', correcte: false },
-        { texte: 'Années 1960 uniquement', correcte: false },
-        { texte: 'Première Guerre mondiale', correcte: false },
-      ],
+    const colIA = await prisma.ref_collection.create({
+      data: {
+        user_id: u1.id,
+        create_at: t,
+        update_at: t,
+        nom: 'Intelligence Artificielle',
+      },
     });
+
+    // --- QUESTIONS : SOCIOLOGIE DE LA CASQUETTE ---
 
     await addQuestion(prisma, {
       userId: u1.id,
       collectionId: colCasquette.id,
-      question:
-        'Comment appelle-t-on la partie rigide qui protège les yeux du soleil sur une casquette ?',
-      commentaire: 'La visière.',
+      question: "Pourquoi est-il traditionnellement jugé impoli de garder sa casquette à l'intérieur ?",
+      commentaire: "Anecdote : Cela remonte à l'époque des chevaliers. Relever sa visière ou retirer son casque servait à montrer son visage pour prouver que l'on n'avait pas d'intentions hostiles. Garder son couvre-chef signifie que l'on reste 'sur ses gardes'.",
       reponses: [
-        { texte: 'La visière', correcte: true },
-        { texte: 'Le bonnet', correcte: false },
-        { texte: 'Le calot', correcte: false },
-        { texte: 'La jugulaire', correcte: false },
+        { texte: "C'est un héritage des chevaliers (signe de paix)", correcte: true },
+        { texte: "Pour ne pas salir les fauteuils", correcte: false },
+        { texte: "C'était une loi sous Napoléon", correcte: false },
+        { texte: "Pour éviter de perdre ses cheveux", correcte: false },
       ],
     });
 
     await addQuestion(prisma, {
       userId: u1.id,
       collectionId: colCasquette.id,
-      question:
-        'Dans quelle culture urbaine la casquette devient un marqueur de style très visible dans les années 1990 ?',
-      commentaire: 'Scène hip-hop.',
+      question: "Comment la casquette a-t-elle servi historiquement à séparer les classes sociales ?",
+      commentaire: "Au XIXe siècle, la 'casquette plate' était l'uniforme de l'ouvrier et du paysan, tandis que le 'haut-de-forme' symbolisait la bourgeoisie. La casquette était un marqueur visuel immédiat de la classe laborieuse par opposition à l'élite.",
       reponses: [
-        { texte: 'Hip-hop', correcte: true },
-        { texte: 'Punk des années 1970', correcte: false },
-        { texte: 'Metal progressif', correcte: false },
-        { texte: 'Disco italien', correcte: false },
+        { texte: "Elle était le symbole de la classe ouvrière", correcte: true },
+        { texte: "Elle était réservée aux nobles", correcte: false },
+        { texte: "Seuls les prêtres y avaient droit", correcte: false },
+        { texte: "Elle servait à cacher les visages des pauvres", correcte: false },
+      ],
+    });
+
+    // --- QUESTIONS : ORTHOGRAPHE FRANÇAISE ---
+
+    await addQuestion(prisma, {
+      userId: u1.id,
+      collectionId: colOrthographe.id,
+      question: "Pourquoi l'orthographe française contient-elle tant de lettres muettes (comme dans 'sept' ou 'temps') ?",
+      commentaire: "Les savants de la Renaissance ont ajouté des lettres 'étymologiques' pour rappeler les racines latines et grecques des mots. Par exemple, le 'p' de 'sept' (septem) a été ajouté pour que le mot ressemble visuellement à son origine latine.",
+      reponses: [
+        { texte: "Pour rappeler les origines latines et grecques", correcte: true },
+        { texte: "Pour rallonger les lignes dans les livres", correcte: false },
+        { texte: "C'est une erreur des premiers imprimeurs", correcte: false },
+        { texte: "Pour rendre la lecture plus lente", correcte: false },
       ],
     });
 
     await addQuestion(prisma, {
       userId: u1.id,
-      collectionId: colCasquette.id,
-      question:
-        'Quel type de casquette est souvent associé aux chauffeurs routiers américains, avec une partie arrière en maille filet ?',
-      commentaire: 'Casquette trucker.',
+      collectionId: colOrthographe.id,
+      question: "Quelle était l'une des raisons pour lesquelles l'Académie française a refusé de simplifier l'orthographe au XVIIIe siècle ?",
+      commentaire: "L'Académie a écrit en 1740 qu'elle voulait que l'orthographe 'distingue les gens de lettres d'avec les ignorants'. Une orthographe difficile était donc un outil pour séparer l'élite instruite du peuple.",
       reponses: [
-        { texte: 'Casquette trucker', correcte: true },
-        { texte: 'Casquette plate anglaise', correcte: false },
-        { texte: 'Béret basque', correcte: false },
-        { texte: 'Casquette de marin', correcte: false },
+        { texte: "Pour distinguer l'élite instruite du peuple", correcte: true },
+        { texte: "Par manque de budget pour réimprimer les livres", correcte: false },
+        { texte: "Parce que le Roi aimait les lettres muettes", correcte: false },
+        { texte: "Parce que le papier coûtait trop cher", correcte: false },
+      ],
+    });
+
+    // --- QUESTIONS : INTELLIGENCE ARTIFICIELLE ---
+
+    await addQuestion(prisma, {
+      userId: u1.id,
+      collectionId: colIA.id,
+      question: "Quel événement de 2011 a prouvé que l'IA Watson d'IBM pouvait comprendre le langage humain complexe ?",
+      commentaire: "Watson a battu les plus grands champions du jeu télévisé 'Jeopardy!'. Contrairement aux échecs, ce jeu nécessite de comprendre les jeux de mots, les métaphores et l'ironie.",
+      reponses: [
+        { texte: "Sa victoire au jeu Jeopardy!", correcte: true },
+        { texte: "Son élection au Sénat américain", correcte: false },
+        { texte: "Sa réussite au test du permis de conduire", correcte: false },
+        { texte: "Sa création d'une symphonie originale", correcte: false },
       ],
     });
 
     await addQuestion(prisma, {
-      userId: u2.id,
-      collectionId: colStatsIA.id,
-      question:
-        'Quels mathématiciens du XVIIe siècle sont associés aux premiers travaux formalisés sur les probabilités et les jeux de hasard ?',
-      commentaire: 'Pascal et Fermat.',
+      userId: u1.id,
+      collectionId: colIA.id,
+      question: "Que signifie le 'P' dans le nom du modèle 'ChatGPT' ?",
+      commentaire: "Il signifie 'Pre-trained' (Pré-entraîné). Cela veut dire que l'IA a ingéré des milliards de textes AVANT d'être capable de discuter avec vous.",
       reponses: [
-        { texte: 'Pascal et Fermat', correcte: true },
-        { texte: 'Newton et Leibniz', correcte: false },
-        { texte: 'Gauss et Euler', correcte: false },
-        { texte: 'Bourbaki', correcte: false },
+        { texte: "Pre-trained (Pré-entraîné)", correcte: true },
+        { texte: "Powerful (Puissant)", correcte: false },
+        { texte: "Programmed (Programmé)", correcte: false },
+        { texte: "Predictive (Prédictif)", correcte: false },
       ],
     });
 
-    await addQuestion(prisma, {
-      userId: u2.id,
-      collectionId: colStatsIA.id,
-      question:
-        'Quel article d’Alan Turing (1950) pose la question : « Can machines think ? »',
-      commentaire: 'Computing Machinery and Intelligence.',
-      reponses: [
-        {
-          texte: 'Computing Machinery and Intelligence',
-          correcte: true,
-        },
-        { texte: 'A Logical Calculus of Ideas', correcte: false },
-        { texte: 'On Computable Numbers', correcte: false },
-        { texte: 'The Perceptron', correcte: false },
-      ],
-    });
-
-    await addQuestion(prisma, {
-      userId: u2.id,
-      collectionId: colStatsIA.id,
-      question:
-        'En apprentissage automatique supervisé, quel est l’objectif principal à partir d’exemples étiquetés ?',
-      commentaire: 'Généraliser pour prédire sur de nouvelles données.',
-      reponses: [
-        {
-          texte: 'Apprendre une règle qui généralise aux nouveaux cas',
-          correcte: true,
-        },
-        { texte: 'Compresser la base sans perte', correcte: false },
-        { texte: 'Maximiser le nombre de paramètres', correcte: false },
-        { texte: 'Éliminer toute incertitude', correcte: false },
-      ],
-    });
-
-    await addQuestion(prisma, {
-      userId: u3.id,
-      collectionId: colStatsIA.id,
-      question:
-        'Une corrélation statistique forte entre deux variables suffit-elle à prouver une relation causale ?',
-      commentaire: 'Non : corrélation ≠ causalité.',
-      reponses: [
-        {
-          texte: 'Non, la causalité demande d’autres arguments',
-          correcte: true,
-        },
-        { texte: 'Oui, toujours', correcte: false },
-        { texte: 'Oui si r > 0,9', correcte: false },
-        { texte: 'Uniquement en régression linéaire', correcte: false },
-      ],
-    });
+    console.log("Seed complété : 6 questions thématiques ajoutées avec anecdotes.");
   } finally {
     await prisma.$disconnect();
   }

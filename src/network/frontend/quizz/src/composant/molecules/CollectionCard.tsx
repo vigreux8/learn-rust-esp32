@@ -3,7 +3,7 @@ import { route } from "preact-router";
 import { Card } from "../atomes/Card";
 import { Badge } from "../atomes/Badge";
 import { Button } from "../atomes/Button";
-import type { CollectionUi } from "../../mocks";
+import type { CollectionUi } from "../../types/quizz";
 
 export type CollectionCardProps = {
   collection: CollectionUi;

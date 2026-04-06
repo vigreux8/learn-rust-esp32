@@ -1,7 +1,8 @@
-import { useMemo, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { ArrowLeft } from "lucide-preact";
-import { buildRandomQuizOrder, getCollectionUi, isCorrectAnswer, type QuestionUi } from "../../mocks";
+import { fetchCollection, fetchRandomQuiz } from "../../lib/api";
+import type { QuestionUi } from "../../types/quizz";
 import { saveLastQuizResult } from "../../lib/lastQuizResult";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
@@ -22,42 +23,99 @@ type SessionData = {
   questions: QuestionUi[];
 };
 
-function useSessionData(collectionId: string | undefined): SessionData | undefined {
-  return useMemo(() => {
-    if (collectionId === "random") {
-      return {
-        mode: "random",
-        collectionId: null,
-        nom: "Mélange aléatoire",
-        questions: buildRandomQuizOrder(),
-      };
-    }
-    const cid = Number(collectionId);
-    if (!Number.isFinite(cid)) return undefined;
-    const col = getCollectionUi(cid);
-    if (!col || col.questions.length === 0) return undefined;
-    return {
-      mode: "collection",
-      collectionId: cid,
-      nom: col.nom,
-      questions: col.questions,
-    };
-  }, [collectionId]);
+function isPickedCorrect(questions: QuestionUi[], qIndex: number, reponseId: number): boolean {
+  const q = questions[qIndex];
+  return q?.reponses.some((r) => r.id === reponseId && r.bonne_reponse) ?? false;
 }
 
 export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
-  const data = useSessionData(collectionId);
+  const [data, setData] = useState<SessionData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [index, setIndex] = useState(0);
   const [pickedId, setPickedId] = useState<number | null>(null);
   const [good, setGood] = useState(0);
 
-  if (!data) {
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    setData(null);
+
+    (async () => {
+      try {
+        if (collectionId === "random") {
+          const questions = await fetchRandomQuiz();
+          if (cancelled) return;
+          if (questions.length === 0) {
+            setLoadError("empty");
+            return;
+          }
+          setData({
+            mode: "random",
+            collectionId: null,
+            nom: "Mélange aléatoire",
+            questions,
+          });
+          return;
+        }
+        const cid = Number(collectionId);
+        if (!Number.isFinite(cid)) {
+          setLoadError("bad");
+          return;
+        }
+        const col = await fetchCollection(cid);
+        if (cancelled) return;
+        if (col.questions.length === 0) {
+          setLoadError("empty");
+          return;
+        }
+        setData({
+          mode: "collection",
+          collectionId: cid,
+          nom: col.nom,
+          questions: col.questions,
+        });
+      } catch {
+        if (!cancelled) setLoadError("fetch");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [collectionId]);
+
+  useEffect(() => {
+    setIndex(0);
+    setPickedId(null);
+    setGood(0);
+  }, [data]);
+
+  if (loading) {
+    return (
+      <div class="flex min-h-dvh flex-col">
+        <AppHeader />
+        <main class="fl-page-enter mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
+          <p class="text-base text-base-content/70">Chargement du quiz…</p>
+        </main>
+        <AppFooter />
+      </div>
+    );
+  }
+
+  if (loadError != null || !data) {
     return (
       <div class="flex min-h-dvh flex-col">
         <AppHeader />
         <main class="fl-page-enter mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <p class="text-lg font-medium text-base-content">Parcours introuvable</p>
+          {loadError === "fetch" ? (
+            <p class="text-sm text-base-content/60">Impossible de joindre l’API. Le backend est-il démarré ?</p>
+          ) : null}
           <Button variant="flow" onClick={() => route("/")}>
             Accueil
           </Button>
@@ -71,7 +129,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   const total = data.questions.length;
   const progressValue = pickedId != null ? index + 1 : index;
   const revealed = pickedId != null;
-  const correct = revealed && isCorrectAnswer(pickedId);
+  const correct = revealed && pickedId != null && isPickedCorrect(data.questions, index, pickedId);
   const bonneReponseLabel = q.reponses.find((r) => r.bonne_reponse)?.reponse;
 
   const handlePick = (reponseId: number) => {
@@ -80,7 +138,8 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   };
 
   const handleNext = () => {
-    const delta = pickedId != null && isCorrectAnswer(pickedId) ? 1 : 0;
+    const delta =
+      pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
     const nextGood = good + delta;
 
     if (index + 1 >= total) {

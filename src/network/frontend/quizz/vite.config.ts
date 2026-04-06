@@ -4,6 +4,14 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [preact(), tailwindcss()],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     // `src/network/site_compiled` (relatif : quizz/frontend → ../../../)
     outDir: '../../../site_compiled', 
