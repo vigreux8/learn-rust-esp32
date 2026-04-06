@@ -47,11 +47,10 @@ export function AppHeader() {
                 type="button"
                 onClick={() => route(href)}
                 class={cn(
-                  "rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ease-out",
-                  "hover:bg-base-200/80 active:scale-[0.97]",
+                  "rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ease-out active:scale-[0.97]",
                   active
-                    ? "bg-flow text-white shadow-md shadow-flow/25"
-                    : "text-base-content/70 hover:text-base-content",
+                    ? "bg-flow text-white shadow-xl shadow-flow/25 hover:scale-[1.03] hover:brightness-110 hover:shadow-xl hover:shadow-flow/35"
+                    : "text-base-content/70 hover:bg-learn/14 hover:text-learn hover:scale-[1.02]",
                 )}
               >
                 {label}
