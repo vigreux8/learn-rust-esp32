@@ -185,6 +185,7 @@
   },
   "active": "d5118ac2cd2f61ab",
   "lastOpenFiles": [
+    "src/network/frontend-quizz/doc/wireframe.html",
     "src/network/frontend-quizz/src/composant/organismes/QuestionsView.tsx",
     "src/network/frontend-quizz/src/composant/organismes/CollectionsView.tsx",
     "src/network/frontend-quizz/src/composant/molecules/PageMain.tsx",
@@ -195,7 +196,6 @@
     "src/network/frontend-quizz/src/composant/organismes/AdminPanel.tsx",
     "src/network/frontend-quizz/src/composant/organismes/QuizResultsView.tsx",
     "src/network/frontend-quizz/src/composant/organismes/QuizSessionView.tsx",
-    "src/network/frontend-quizz/src/composant/organismes/HomeView.tsx",
     "src/network/frontend-quizz/node_modules/@tailwindcss/postcss/README.md",
     "src/network/frontend-quizz/node_modules/@alloc/quick-lru/readme.md",
     "src/network/frontend-quizz/node_modules/autoprefixer/README.md",
