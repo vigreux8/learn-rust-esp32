@@ -11,14 +11,10 @@
             "id": "d5118ac2cd2f61ab",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "src/network/frontend-quizz/doc/wireframe.md",
-                "mode": "preview",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "wireframe"
+              "title": "Nouvel onglet"
             }
           }
         ]
@@ -94,7 +90,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "src/network/frontend-quizz/doc/wireframe.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +99,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Rétrolien pour wireframe"
+              "title": "Rétroliens"
             }
           },
           {
@@ -113,12 +108,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "src/network/frontend-quizz/doc/wireframe.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Liens sortants de wireframe"
+              "title": "Liens sortants"
             }
           },
           {
@@ -156,13 +150,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "src/network/frontend-quizz/doc/wireframe.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Plan de wireframe"
+              "title": "Plan"
             }
           }
         ]
@@ -185,28 +178,51 @@
   },
   "active": "d5118ac2cd2f61ab",
   "lastOpenFiles": [
-    "src/network/frontend-quizz/doc/wireframe.html",
-    "src/network/frontend-quizz/src/composant/organismes/QuestionsView.tsx",
-    "src/network/frontend-quizz/src/composant/organismes/CollectionsView.tsx",
-    "src/network/frontend-quizz/src/composant/molecules/PageMain.tsx",
-    "src/network/frontend-quizz/src/lib/routePathContext.tsx",
-    "src/network/frontend-quizz/tsconfig.node.tsbuildinfo",
-    "src/network/frontend-quizz/src/composant/organismes/SessionDetailsView.tsx",
-    "src/network/frontend-quizz/src/composant/organismes/StatsDashboard.tsx",
-    "src/network/frontend-quizz/src/composant/organismes/AdminPanel.tsx",
-    "src/network/frontend-quizz/src/composant/organismes/QuizResultsView.tsx",
-    "src/network/frontend-quizz/src/composant/organismes/QuizSessionView.tsx",
-    "src/network/frontend-quizz/node_modules/@tailwindcss/postcss/README.md",
-    "src/network/frontend-quizz/node_modules/@alloc/quick-lru/readme.md",
-    "src/network/frontend-quizz/node_modules/autoprefixer/README.md",
-    "src/network/frontend-quizz/node_modules/postcss-value-parser/README.md",
-    "src/network/frontend-quizz/node_modules/fraction.js/README.md",
-    "src/network/frontend-quizz/node_modules/fraction.js/CHANGELOG.md",
-    "src/network/frontend-quizz/node_modules/lucide-preact/README.md",
-    "src/network/frontend-quizz/node_modules/tailwind-merge/README.md",
-    "src/network/frontend-quizz/node_modules/tailwind-merge/LICENSE.md",
-    "src/network/frontend-quizz/node_modules/preact-router/README.md",
-    "src/network/frontend-quizz/node_modules/clsx/readme.md",
-    "src/network/frontend-quizz/doc/wireframe.md"
+    "src/network/quizz/doc/ddb/v1.sql",
+    "src/network/quizz/doc/ddb/v1",
+    "src/network/quizz/doc/wireframe.md",
+    "src/network/quizz/doc/userstory.md",
+    "src/network/quizz/doc/ddb",
+    "src/network/quizz/doc",
+    "src/network/quizz/frontend/src/composant/molecules/PageMain.tsx",
+    "src/network/quizz/frontend/src/composant/molecules/KpiCard.tsx",
+    "src/network/quizz/frontend/src/composant/molecules/CollectionCard.tsx",
+    "src/network/quizz/frontend/src/composant/molecules/AppHeader.tsx",
+    "src/network/quizz/frontend/src/composant/molecules/AppFooter.tsx",
+    "src/network/quizz/frontend/src/composant/molecules/AnswerOption.tsx",
+    "src/network/quizz/frontend/src/composant/organismes/StatsDashboard.tsx",
+    "src/network/quizz/frontend/src/assets/vite.svg",
+    "src/network/quizz/frontend/src/assets/preact.svg",
+    "src/network/quizz/frontend/src/assets/hero.png",
+    "src/network/quizz/frontend/public/icons.svg",
+    "src/network/quizz/frontend/public/favicon.svg",
+    "src/network/quizz/frontend/doc/wireframe.md",
+    "src/network/quizz/frontend/doc/userstory.md",
+    "src/network/quizz/frontend-quizz/src/assets/vite.svg",
+    "src/network/quizz/frontend-quizz/src/assets/preact.svg",
+    "src/network/quizz/frontend-quizz/src/assets/hero.png",
+    "src/network/quizz/frontend-quizz/public/icons.svg",
+    "src/network/quizz/frontend-quizz/public/favicon.svg",
+    "src/network/quizz/frontend-quizz/doc/userstory.md",
+    "src/network/quizz/frontend-quizz/doc/wireframe.md",
+    "src/network/frontend-quizz/doc/wireframe.md",
+    "src/network/frontend-quizz/doc/userstory.md",
+    "src/hardware/sd-carte/userstory.md",
+    "src/network/quizz/frontend/node_modules/@prefresh/vite/node_modules/@rollup/pluginutils/README.md",
+    "src/network/quizz/frontend/node_modules/@prefresh/vite/node_modules/@rollup/pluginutils/CHANGELOG.md",
+    "src/network/quizz/frontend/node_modules/@prefresh/vite/node_modules/picomatch/README.md",
+    "src/network/quizz/frontend/node_modules/@types/node/README.md",
+    "src/network/quizz/frontend/node_modules/@types/estree/README.md",
+    "src/network/quizz/frontend/node_modules/@tybys/wasm-util/README.md",
+    "src/network/quizz/frontend/node_modules/@tailwindcss/vite/README.md",
+    "src/network/quizz/frontend/node_modules/@tailwindcss/oxide-darwin-arm64/README.md",
+    "src/network/quizz/frontend/node_modules/@tailwindcss/node/README.md",
+    "src/network/quizz/frontend/node_modules/@rollup/pluginutils/README.md",
+    "src/network/quizz/frontend/node_modules/@rolldown/pluginutils/README.md",
+    "src/network/quizz/frontend/node_modules/@rolldown/binding-darwin-arm64/README.md",
+    "src/network/quizz/frontend/node_modules/@prefresh/vite/README.md",
+    "src/network/quizz/frontend/node_modules/@prefresh/utils/README.md",
+    "src/network/quizz/frontend/node_modules/@prefresh/utils/CHANGELOG.md",
+    "src/network/quizz/frontend/node_modules/@prefresh/core/README.md"
   ]
 }
