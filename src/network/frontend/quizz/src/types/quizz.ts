@@ -1,5 +1,9 @@
 /** Types alignés sur l’API Nest `/api` et le schéma Prisma. */
 
+export type DeviceLookupResult =
+  | { known: true; user: { id: number; pseudot: string } }
+  | { known: false };
+
 export interface ReponseUi {
   id: number;
   reponse: string;

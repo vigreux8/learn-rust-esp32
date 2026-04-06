@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import Router, { Route } from "preact-router";
+import { DeviceAuthGate } from "./composant/organismes/DeviceAuthGate";
 import { RoutePathContext } from "./lib/routePathContext";
 import { CollectionsView } from "./composant/organismes/CollectionsView";
 import { HomeView } from "./composant/organismes/HomeView";
@@ -18,20 +19,22 @@ export function App() {
   const [path, setPath] = useState(readPathname);
 
   return (
-    <RoutePathContext.Provider value={path}>
-      <Router
-        onChange={() => {
-          setPath(readPathname());
-        }}
-      >
-        <Route path="/" component={HomeView} />
-        <Route path="/collections" component={CollectionsView} />
-        <Route path="/questions" component={QuestionsView} />
-        <Route path="/dashboard/session/:sessionId" component={SessionDetailsView} />
-        <Route path="/dashboard" component={StatsDashboard} />
-        <Route path="/play/:collectionId" component={QuizSessionView} />
-        <Route path="/results" component={QuizResultsView} />
-      </Router>
-    </RoutePathContext.Provider>
+    <DeviceAuthGate>
+      <RoutePathContext.Provider value={path}>
+        <Router
+          onChange={() => {
+            setPath(readPathname());
+          }}
+        >
+          <Route path="/" component={HomeView} />
+          <Route path="/collections" component={CollectionsView} />
+          <Route path="/questions" component={QuestionsView} />
+          <Route path="/dashboard/session/:sessionId" component={SessionDetailsView} />
+          <Route path="/dashboard" component={StatsDashboard} />
+          <Route path="/play/:collectionId" component={QuizSessionView} />
+          <Route path="/results" component={QuizResultsView} />
+        </Router>
+      </RoutePathContext.Provider>
+    </DeviceAuthGate>
   );
 }

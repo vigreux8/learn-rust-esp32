@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { Clock, Target, TrendingUp } from "lucide-preact";
 import { fetchKpis, fetchSessionSummaries } from "../../lib/api";
-import { DEFAULT_USER_ID } from "../../lib/config";
+import { useUserSession } from "../../lib/userSession";
 import type { SessionSummary, UserKpiRow } from "../../types/quizz";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
@@ -20,6 +20,7 @@ function avg(nums: number[]) {
 }
 
 export function StatsDashboard() {
+  const { userId } = useUserSession();
   const [kpis, setKpis] = useState<UserKpiRow[]>([]);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,10 +32,7 @@ export function StatsDashboard() {
       setLoading(true);
       setError(null);
       try {
-        const [k, s] = await Promise.all([
-          fetchKpis(DEFAULT_USER_ID),
-          fetchSessionSummaries(DEFAULT_USER_ID),
-        ]);
+        const [k, s] = await Promise.all([fetchKpis(userId), fetchSessionSummaries(userId)]);
         if (!cancelled) {
           setKpis(k);
           setSessions(s);
@@ -48,7 +46,7 @@ export function StatsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   const kpisAgg = useMemo(() => {
     const total = kpis.length;
@@ -71,7 +69,7 @@ export function StatsDashboard() {
       <PageMain>
         <h1 class="mb-2 text-2xl font-bold tracking-tight text-base-content sm:text-3xl">Dashboard</h1>
         <p class="mb-6 text-sm text-base-content/60">
-          Indicateurs issus de <code class="text-xs">user_kpi</code> (utilisateur {DEFAULT_USER_ID}).
+          Indicateurs issus de <code class="text-xs">user_kpi</code> (utilisateur id {userId}).
         </p>
 
         {loading ? (
@@ -85,7 +83,7 @@ export function StatsDashboard() {
               onClick={() => {
                 setLoading(true);
                 setError(null);
-                Promise.all([fetchKpis(DEFAULT_USER_ID), fetchSessionSummaries(DEFAULT_USER_ID)])
+                Promise.all([fetchKpis(userId), fetchSessionSummaries(userId)])
                   .then(([k, s]) => {
                     setKpis(k);
                     setSessions(s);

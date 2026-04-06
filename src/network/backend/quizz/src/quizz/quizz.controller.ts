@@ -17,6 +17,21 @@ import { QuizzService } from './quizz.service';
 export class QuizzController {
   constructor(private readonly quizz: QuizzService) {}
 
+  @Get('device/lookup')
+  lookupDevice(@Query('adresse_mac') adresse_mac?: string) {
+    return this.quizz.lookupDevice(adresse_mac ?? '');
+  }
+
+  @Post('device/register')
+  registerDevice(
+    @Body() body: { adresse_mac?: string; pseudot?: string },
+  ) {
+    return this.quizz.registerDevice(
+      typeof body?.adresse_mac === 'string' ? body.adresse_mac : '',
+      typeof body?.pseudot === 'string' ? body.pseudot : '',
+    );
+  }
+
   @Get('collections')
   listCollections() {
     return this.quizz.listCollections();

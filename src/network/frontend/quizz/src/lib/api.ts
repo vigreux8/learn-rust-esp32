@@ -1,12 +1,33 @@
 import { apiUrl } from "./config";
 import type {
   CollectionUi,
+  DeviceLookupResult,
   QuestionUi,
   QuizzQuestionRow,
   SessionDetail,
   SessionSummary,
   UserKpiRow,
 } from "../types/quizz";
+
+export async function fetchDeviceLookup(mac: string): Promise<DeviceLookupResult> {
+  const q = encodeURIComponent(mac);
+  const res = await fetch(apiUrl(`/device/lookup?adresse_mac=${q}`));
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json() as Promise<DeviceLookupResult>;
+}
+
+export async function registerDeviceWithPseudot(
+  mac: string,
+  pseudot: string,
+): Promise<{ userId: number; pseudot: string }> {
+  const res = await fetch(apiUrl("/device/register"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ adresse_mac: mac, pseudot }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json() as Promise<{ userId: number; pseudot: string }>;
+}
 
 async function readError(res: Response): Promise<string> {
   const text = await res.text();

@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { ArrowLeft } from "lucide-preact";
 import { fetchSessionDetail } from "../../lib/api";
-import { DEFAULT_USER_ID } from "../../lib/config";
+import { useUserSession } from "../../lib/userSession";
 import type { SessionDetail } from "../../types/quizz";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
@@ -15,6 +15,7 @@ export type SessionDetailsViewProps = {
 };
 
 export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
+  const { userId } = useUserSession();
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -30,7 +31,7 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
       setLoading(true);
       setNotFound(false);
       try {
-        const detail = await fetchSessionDetail(sessionId, DEFAULT_USER_ID);
+        const detail = await fetchSessionDetail(sessionId, userId);
         if (cancelled) return;
         if (detail == null) setNotFound(true);
         else setSession(detail);
@@ -43,7 +44,7 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, userId]);
 
   if (loading) {
     return (

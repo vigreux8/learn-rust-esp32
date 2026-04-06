@@ -25,6 +25,9 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Même valeur que `DEMO_DEVICE_MAC` côté frontend (`src/lib/config.ts`). */
+const SEED_DEMO_DEVICE_MAC = 'DE:AD:BE:EF:00:01';
+
 async function clearAll(prisma: PrismaClient): Promise<void> {
   await prisma.user_kpi.deleteMany();
   await prisma.question_collection.deleteMany();
@@ -89,6 +92,12 @@ async function main(): Promise<void> {
     await clearAll(prisma);
 
     const u1 = await prisma.user.create({ data: { pseudot: 'maitre_quizz' } });
+    const devDemo = await prisma.device.create({
+      data: { adresse_mac: SEED_DEMO_DEVICE_MAC },
+    });
+    await prisma.user_device.create({
+      data: { user_id: u1.id, device_id: devDemo.id },
+    });
     const t = nowIso();
 
     // --- COLLECTIONS ---
@@ -203,7 +212,9 @@ async function main(): Promise<void> {
       ],
     });
 
-    console.log("Seed complété : 6 questions thématiques ajoutées avec anecdotes.");
+    console.log(
+      `Seed complété : appareil démo ${SEED_DEMO_DEVICE_MAC} → user "${u1.pseudot}", 6 questions.`,
+    );
   } finally {
     await prisma.$disconnect();
   }

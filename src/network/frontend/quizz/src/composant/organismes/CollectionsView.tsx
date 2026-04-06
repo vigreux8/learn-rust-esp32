@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { Layers } from "lucide-preact";
 import { fetchCollections } from "../../lib/api";
-import { DEFAULT_USER_ID } from "../../lib/config";
+import { useUserSession } from "../../lib/userSession";
 import type { CollectionUi } from "../../types/quizz";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
@@ -11,9 +11,13 @@ import { Button } from "../atomes/Button";
 
 export type CollectionFilter = "all" | "mine" | `user-${number}`;
 
-function filterCollections(list: CollectionUi[], filter: CollectionFilter): CollectionUi[] {
+function filterCollections(
+  list: CollectionUi[],
+  filter: CollectionFilter,
+  myUserId: number,
+): CollectionUi[] {
   if (filter === "all") return list;
-  if (filter === "mine") return list.filter((c) => c.user_id === DEFAULT_USER_ID);
+  if (filter === "mine") return list.filter((c) => c.user_id === myUserId);
   if (filter.startsWith("user-")) {
     const uid = Number(filter.slice(5));
     if (Number.isFinite(uid)) return list.filter((c) => c.user_id === uid);
@@ -22,6 +26,7 @@ function filterCollections(list: CollectionUi[], filter: CollectionFilter): Coll
 }
 
 export function CollectionsView() {
+  const { userId } = useUserSession();
   const [collections, setCollections] = useState<CollectionUi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,14 +54,17 @@ export function CollectionsView() {
   const autresCreateurs = useMemo(() => {
     const map = new Map<number, string>();
     for (const c of collections) {
-      if (c.user_id !== DEFAULT_USER_ID) {
+      if (c.user_id !== userId) {
         map.set(c.user_id, c.createur_pseudot);
       }
     }
     return [...map.entries()].sort((a, b) => a[0] - b[0]);
-  }, [collections]);
+  }, [collections, userId]);
 
-  const filtered = useMemo(() => filterCollections(collections, filter), [collections, filter]);
+  const filtered = useMemo(
+    () => filterCollections(collections, filter, userId),
+    [collections, filter, userId],
+  );
 
   return (
     <div class="flex min-h-dvh flex-col">
