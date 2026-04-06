@@ -1,0 +1,101 @@
+Table quizz_reponse [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	reponse varchar(1200) [ not null ]
+	bonne_reponse boolean [ not null ]
+}
+
+Table quizz_question_reponse [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	question_id int [ not null ]
+	reponse_id int [ not null ]
+}
+
+Table user_device [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	user_id int [ not null ]
+	device_id int [ not null ]
+}
+
+Table device [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	adresse_mac varchar(12) [ not null ]
+}
+
+Table user [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	pseudot varchar(255) [ not null ]
+}
+
+Table quizz_question [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	user_id int [ not null ]
+	create_at datetime [ not null ]
+	question varchar(1200) [ not null ]
+}
+
+Table ref_collection [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	user_id int [ not null ]
+	create_at datetime [ not null ]
+	update_at datetime [ not null ]
+	nom varchar(255) [ not null ]
+}
+
+Table question_collection [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	collection_id int [ not null ]
+	question_id int [ not null ]
+}
+
+Table user_kpi [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	user_id int [ not null ]
+	create_at datetime [ not null ]
+	question_id int [ not null ]
+	reponse_id int [ not null ]
+	duree_session timestamp [ not null, note: 'le temps que l''utillisateur a mis a repondre' ]
+}
+
+Ref fk_user_id_user_device {
+	user.id < user_device.user_id [ delete: no action, update: no action ]
+}
+
+Ref fk_device_id_user_device {
+	device.id < user_device.device_id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_question_id_quizz_reponse {
+	quizz_question.id < quizz_question_reponse.question_id [ delete: no action, update: no action ]
+}
+
+Ref fk_reponse_id_question_reponse {
+	quizz_reponse.id < quizz_question_reponse.reponse_id [ delete: no action, update: no action ]
+}
+
+Ref fk_user_id_quizz_question {
+	user.id < quizz_question.user_id [ delete: no action, update: no action ]
+}
+
+Ref fk_user_id_ref_collection {
+	user.id < ref_collection.user_id [ delete: no action, update: no action ]
+}
+
+Ref fk_ref_collection_id_question_collection {
+	ref_collection.id < question_collection.collection_id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_question_id_question_collection {
+	quizz_question.id < question_collection.question_id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_question_id_user_question {
+	quizz_question.id < user_kpi.question_id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_reponse_id_user_performence {
+	quizz_reponse.id < user_kpi.reponse_id [ delete: no action, update: no action ]
+}
+
+Ref fk_user_id_user_performence {
+	user.id < user_kpi.user_id [ delete: no action, update: no action ]
+}
