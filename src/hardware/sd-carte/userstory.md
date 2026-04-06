@@ -48,7 +48,6 @@ En tant que : utilisateurs
 
 - crée un pseudot et l'associé a l'adresse mac de mon appareille
 
-
 ## connexion :
 
 ### 2. La Description\*\*
@@ -68,3 +67,23 @@ En tant que : utilisateurs
 **Je veux :**
 
 - comparez mon scores par rapport au autres et avoir un sur le nombre de question répondus par jour et le ratio bonne et mauvaise réponse
+
+## mode-sans-connexion :
+
+### 2. La Description\*\*
+
+En tant que : nouvelle-utilisateur
+
+**Je veux :**
+
+- répondre au questions , mais je ne peut pas en crée
+
+## distributeur m&ms :
+
+### 2. La Description\*\*
+
+En tant que : nouvelle-utilisateur
+
+**Je veux :**
+
+- pouvoir choisir un % de chance quand je répond biens que le programme fais un appelle api a l'esp32 pour actionner le moteur
