@@ -12,12 +12,17 @@ Deux modes de pilotage existent côté interface:
 - `WebSocketServo` (route cliente `/`)
 - `HttpServo` (route cliente `/http`)
 
-Les interfaces utilisateur sont développées en **Preact** (TypeScript, Vite) avec deux frontends:
+Les interfaces utilisateur sont développées en **Preact** (TypeScript, Vite), regroupées sous `src/network/frontend/` :
 
-- `src/network/frontend-servo/` : interface de pilotage des servomoteurs
-- `src/network/frontend-quizz/` : interface quizz
+- `src/network/frontend/pilotage_servo_moteur/` : pilotage des servomoteurs (routes clientes `/` et `/http`)
+- `src/network/frontend/quizz/frontend/` : interface quizz
+- `src/network/frontend/reglage_bouton/` : réglage des moteur (depricier se front-end seras supprimée)
 
-Le backend est en Rust (`esp-idf-svc`) avec:
+Chaque application Vite est compilée vers **`src/network/site_compiled/`** (`outDir` relatif), puis le firmware **embarque** ces fichiers via `include_str!` dans `src/network/handlers/http.rs` (seul cet artefact part sur l’ESP32).
+
+Le dossier **`src/network/backend/`** sert de **laboratoire** pour du code TypeScript (ex. API de développement pour le quizz dans `src/network/backend/quizz/` quand tu en auras besoin). Ce code **n’est pas** compilé ni flashé par Cargo ; la logique métier visée en production reste le **backend Rust** embarqué.
+
+Le backend réseau embarqué est en Rust (`esp-idf-svc`) avec :
 
 - point d’accès Wi-Fi (mode AP)
 - serveur HTTP
@@ -46,38 +51,25 @@ src/
     │   └── http.rs
     ├── handlers/
     │   ├── mod.rs
-    │   ├── http.rs
+    │   ├── http.rs                # Statiques + POST API ; `include_str!(../site_compiled/...)`
     │   └── ws.rs
-    ├── frontend-servo/              # Application Preact de pilotage servo
-    │   ├── package.json
-    │   ├── vite.config.ts
-    │   ├── index.html
-    │   ├── dist/                    # Sortie `npm run build` (bundle déployable)
-    │   └── src/
-    │       ├── main.tsx
-    │       ├── app.tsx              # Router `/` et `/http`
-    │       ├── index.css
-    │       ├── lib/                 # Logique réseau / servo (equivalent api/*.js)
-    │       │   ├── types.ts
-    │       │   ├── transport.ts
-    │       │   └── servo.ts
-    │       ├── hooks/
-    │       │   └── useServoSession.ts
-    │       └── composant/
-    │           ├── atomes/
-    │           ├── molecules/
-    │           └── organismes/
-    └── frontend-quizz/              # Application Preact quizz
-        ├── package.json
-        ├── vite.config.ts
-        ├── index.html
-        ├── dist/
-        └── src/
-            ├── main.tsx
-            ├── app.tsx
-            ├── app.css
-            ├── index.css
-            └── assets/
+    └── frontend/
+        ├── pilotage_servo_moteur/ # Preact pilotage servo
+        │   ├── package.json
+        │   ├── vite.config.ts
+        │   ├── index.html
+        │   └── src/
+        ├── quizz/
+        │   └── frontend/          # Preact quizz
+        │       ├── package.json
+        │       ├── vite.config.ts
+        │       ├── index.html
+        │       └── src/
+        └── reglage_bouton/        # Preact réglage bouton
+            ├── package.json
+            ├── vite.config.ts
+            ├── index.html
+            └── src/
 ```
 
 ## Rôles des composants
@@ -122,29 +114,37 @@ src/
   - création via `setup_http_server()`
 
 - `src/network/handlers/http.rs`
-  - sert les fichiers statiques embarqués .. a mettre a jour
-  - endpoint `POST /api/servo`
+  - sert la SPA et les assets depuis `site_compiled` (contenu inclus à la compilation via `include_str!`)
+  - endpoints `POST /api/servo`, `POST /api/calibration`
 
 - `src/network/handlers/ws.rs`
   - endpoint `GET /ws` WebSocket
 
-### Frontend servo (`src/network/frontend-servo/src/`)
+### Frontend servo (`src/network/frontend/pilotage_servo_moteur/src/`)
 
 - `lib/transport.ts` : WebSocket (reconnexion, file d’attente) et HTTP POST `/api/servo`.
-- `lib/servo.ts` : équivalent de `servo.js` — `move` / `stop` au-dessus du transport.
-- `hooks/useServoSession.ts` : cycle de vie du transport (démarrage, `beforeunload` / `pagehide` / `pageshow`).
-- `composant/` : UI découpée type atomique — **atomes** (contrôles de base), **molécules** (carte moteur, navigation), **organismes** (`PanneauControleServo`).
-- `app.tsx` : `preact-router`, routes `/` (mode WS) et `/http` (mode HTTP).
+- permet de piloter les moteurs
+- techno :
+  - preact
 
-### Frontend quizz (`src/network/frontend-quizz/src/`)
+### Frontend quizz (`src/network/frontend/quizz/frontend/src/`)
 
-- `app.tsx` : point d’entrée UI de l’expérience quizz.
-- `main.tsx` : bootstrap de l’application Preact.
-- `app.css` / `index.css` : styles de l’interface quizz.
+- interface pour jouée au quizz et communiquer avec la base de donnée sqlite quizz
+- techo :
+  - tailwindcss (version vite)
+    - daisyui
+
+### Frontend réglage bouton (`src/network/frontend/reglage_bouton/src/`)
+
+-
 
 ## Routes exposées (firmware)
 
-- a mettre a jour
+- **GET** `/`, `/http` : `index.html` (SPA)
+- **GET** `/assets/index.js`, `/assets/index.css`, `/favicon.svg`, `/icons.svg`
+- **POST** `/api/servo` : commandes moteur
+- **POST** `/api/calibration` : calibration
+- **GET** `/ws` : WebSocket (voir `handlers/ws.rs`)
 
 ## Flux d'exécution
 
