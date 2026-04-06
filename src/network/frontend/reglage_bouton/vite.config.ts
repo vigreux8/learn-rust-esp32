@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [preact(), tailwindcss()],
   build: {
     // Destination des fichiers pour le NetworkManager
-    outDir: '../site_compiled', 
+    outDir: '../../site_compiled', 
     emptyOutDir: true,
     rollupOptions: {
       output: {
