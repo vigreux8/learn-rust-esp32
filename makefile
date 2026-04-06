@@ -35,5 +35,13 @@ preview-bouton:
 ## Backend quizz (SQLite)
 
 inject-quizz-db:
-	cd src/network/backend/quizz && sqlite3 quizz.db < ddb/v1.sql
+	cd src/network/backend/quizz && sqlite3 quizz.db < ddb/last.sql
 	@echo "OK: schéma SQL injecté dans quizz.db (backend quizz)."
+
+seed-quizz-db:
+	cd src/network/backend/quizz && npx prisma generate && npx prisma db seed
+	@echo "OK: données de seed Prisma insérées (backend quizz)."
+
+reset-quizz-db:
+	cd src/network/backend/quizz && rm -f quizz.db && sqlite3 quizz.db < ddb/last.sql && npx prisma generate && npx prisma db seed
+	@echo "OK: quizz.db recréée et seed exécuté (backend quizz)."
