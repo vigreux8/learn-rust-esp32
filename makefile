@@ -31,3 +31,9 @@ preview-quizz:
 
 preview-bouton:
 	cd src/network/frontend/reglage_bouton && npm run preview
+
+## Backend quizz (SQLite)
+
+inject-quizz-db:
+	cd src/network/backend/quizz && sqlite3 quizz.db < ddb/v1.sql
+	@echo "OK: schéma SQL injecté dans quizz.db (backend quizz)."
