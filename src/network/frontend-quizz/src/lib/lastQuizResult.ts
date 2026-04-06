@@ -1,5 +1,6 @@
 export type LastQuizResult = {
-  collectionId: number;
+  mode: "collection" | "random";
+  collectionId: number | null;
   collectionName: string;
   good: number;
   total: number;
@@ -19,7 +20,24 @@ export function readLastQuizResult(): LastQuizResult | null {
   try {
     const raw = sessionStorage.getItem(KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as LastQuizResult;
+    const parsed = JSON.parse(raw) as Partial<LastQuizResult> & { collectionId?: number };
+    if (parsed.mode === "random" || parsed.mode === "collection") {
+      return parsed as LastQuizResult;
+    }
+    if (
+      parsed.collectionName != null &&
+      typeof parsed.good === "number" &&
+      typeof parsed.total === "number"
+    ) {
+      return {
+        mode: "collection",
+        collectionId: parsed.collectionId ?? null,
+        collectionName: parsed.collectionName,
+        good: parsed.good,
+        total: parsed.total,
+      };
+    }
+    return null;
   } catch {
     return null;
   }

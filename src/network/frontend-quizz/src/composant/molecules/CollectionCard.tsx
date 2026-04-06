@@ -13,12 +13,13 @@ export function CollectionCard({ collection }: CollectionCardProps) {
   const n = collection.questions.length;
 
   return (
-    <Card class="group transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-flow/10">
+    <Card class="group transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:shadow-flow/15">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="space-y-2">
           <Badge tone="flow">{n} question{n > 1 ? "s" : ""}</Badge>
           <h2 class="text-xl font-semibold tracking-tight text-base-content">{collection.nom}</h2>
           <p class="text-sm text-base-content/60">Collection · mise à jour {collection.update_at.slice(0, 10)}</p>
+          <p class="text-sm text-base-content/60">crée par {collection.user_id}</p>
         </div>
         <Button
           variant="flow"

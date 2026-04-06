@@ -20,7 +20,9 @@ export function KpiCard({ title, value, hint, icon, accent = "flow" }: KpiCardPr
         )}
       />
       <div class="relative flex items-start gap-3">
-        {icon ? <div class="text-flow">{icon}</div> : null}
+        {icon ? (
+          <div class={accent === "flow" ? "text-flow" : "text-learn"}>{icon}</div>
+        ) : null}
         <div class="min-w-0 flex-1 space-y-1">
           <p class="text-xs font-medium uppercase tracking-wide text-base-content/50">{title}</p>
           <p class={cn("text-2xl font-semibold tracking-tight", accent === "flow" ? "text-flow" : "text-learn")}>

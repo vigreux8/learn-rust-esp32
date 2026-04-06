@@ -1,33 +1,63 @@
 import { route } from "preact-router";
-import { BarChart3, GraduationCap, Settings2 } from "lucide-preact";
-import { Button } from "../atomes/Button";
+import { GraduationCap } from "lucide-preact";
+import { useRoutePath } from "../../lib/routePathContext";
+import { cn } from "../../lib/cn";
+
+const links = [
+  { href: "/", label: "Accueil" },
+  { href: "/collections", label: "Collection" },
+  { href: "/questions", label: "Question" },
+  { href: "/dashboard", label: "Dashboard" },
+] as const;
+
+function isActive(current: string, href: string) {
+  if (href === "/") return current === "/" || current === "";
+  return current === href || current.startsWith(`${href}/`);
+}
 
 export function AppHeader() {
+  const path = useRoutePath();
+
   return (
-    <header class="sticky top-0 z-30 border-b border-base-content/5 bg-base-100/75 backdrop-blur-md">
-      <div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+    <header class="sticky top-0 z-40 border-b border-base-content/5 bg-base-100/80 backdrop-blur-lg transition-shadow duration-300">
+      <div class="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <button
           type="button"
           onClick={() => route("/")}
-          class="flex items-center gap-2 rounded-xl px-1 py-1 text-left transition hover:opacity-90"
+          class="flex items-center gap-2.5 rounded-full px-1 py-1 text-left transition duration-300 ease-out hover:opacity-90 active:scale-[0.98]"
         >
-          <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-flow to-learn text-white shadow-md shadow-flow/25">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-flow to-learn text-white shadow-lg shadow-flow/20">
             <GraduationCap class="h-5 w-5" aria-hidden />
           </span>
           <div class="leading-tight">
             <p class="text-lg font-semibold tracking-tight text-base-content">FlowLearn</p>
-            <p class="text-xs text-base-content/55">Flow · Learn</p>
+            <p class="text-xs text-base-content/50">Flow · Learn</p>
           </div>
         </button>
-        <nav class="flex shrink-0 items-center gap-2">
-          <Button variant="ghost" class="btn-sm gap-1.5 px-3" onClick={() => route("/stats")}>
-            <BarChart3 class="h-4 w-4" aria-hidden />
-            <span class="hidden sm:inline">Stats</span>
-          </Button>
-          <Button variant="flow" class="btn-sm gap-1.5 px-3" onClick={() => route("/admin")}>
-            <Settings2 class="h-4 w-4" aria-hidden />
-            <span class="hidden sm:inline">Admin</span>
-          </Button>
+
+        <nav
+          class="flex flex-wrap items-center justify-center gap-1.5 sm:justify-end"
+          aria-label="Navigation principale"
+        >
+          {links.map(({ href, label }) => {
+            const active = isActive(path, href);
+            return (
+              <button
+                key={href}
+                type="button"
+                onClick={() => route(href)}
+                class={cn(
+                  "rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ease-out",
+                  "hover:bg-base-200/80 active:scale-[0.97]",
+                  active
+                    ? "bg-flow text-white shadow-md shadow-flow/25"
+                    : "text-base-content/70 hover:text-base-content",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
         </nav>
       </div>
     </header>

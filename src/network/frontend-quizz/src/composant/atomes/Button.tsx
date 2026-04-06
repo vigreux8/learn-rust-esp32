@@ -21,7 +21,7 @@ export function Button({
   onClick,
 }: ButtonProps) {
   const base =
-    "btn border-0 shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
+    "btn rounded-full border-0 shadow-md transition-all duration-300 ease-out hover:shadow-lg active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
   const variants: Record<Variant, string> = {
     flow: "bg-flow text-white hover:brightness-110",
     learn: "bg-learn text-white hover:brightness-110",

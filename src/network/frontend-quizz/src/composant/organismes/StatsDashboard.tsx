@@ -1,10 +1,10 @@
 import { useMemo } from "preact/hooks";
 import { route } from "preact-router";
-import { ArrowLeft, Clock, Target, TrendingUp } from "lucide-preact";
+import { Clock, Target, TrendingUp } from "lucide-preact";
 import { mockUserKpi, mockSessionSummaries, isCorrectAnswer } from "../../mocks";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
-import { Button } from "../atomes/Button";
+import { PageMain } from "../molecules/PageMain";
 import { KpiCard } from "../molecules/KpiCard";
 import { Card } from "../atomes/Card";
 import { Badge } from "../atomes/Badge";
@@ -35,14 +35,8 @@ export function StatsDashboard() {
   return (
     <div class="flex min-h-dvh flex-col">
       <AppHeader />
-      <main class="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
-        <div class="mb-6 flex items-center gap-2">
-          <Button variant="ghost" class="btn-sm gap-1 px-2" onClick={() => route("/")}>
-            <ArrowLeft class="h-4 w-4" aria-hidden />
-            Accueil
-          </Button>
-        </div>
-        <h1 class="mb-2 text-2xl font-bold tracking-tight text-base-content">Statistiques</h1>
+      <PageMain>
+        <h1 class="mb-2 text-2xl font-bold tracking-tight text-base-content sm:text-3xl">Dashboard</h1>
         <p class="mb-6 text-sm text-base-content/60">Indicateurs mock basés sur user_kpi et sessions fictives.</p>
 
         <div class="mb-6 grid gap-3 sm:grid-cols-3">
@@ -69,15 +63,15 @@ export function StatsDashboard() {
           />
         </div>
 
-        <Card class="mb-6">
+        <Card class="mb-6 transition duration-300">
           <p class="mb-4 text-sm font-medium text-base-content">Activité (7 jours — décoratif)</p>
           <div class="flex h-36 items-end justify-between gap-2">
             {weekBars.map((b) => (
               <div key={b.label} class="flex flex-1 flex-col items-center gap-2">
                 <div
-                  class="w-full max-w-10 rounded-t-lg bg-gradient-to-t from-flow to-learn/80 opacity-90 transition hover:opacity-100"
+                  class="w-full max-w-10 rounded-t-full bg-gradient-to-t from-flow to-learn/80 opacity-90 transition-all duration-300 ease-out hover:opacity-100"
                   style={{ height: `${Math.max(b.h, 8)}%` }}
-                  title={`${b.label}`}
+                  title={b.label}
                 />
                 <span class="text-[10px] font-medium text-base-content/50">{b.label}</span>
               </div>
@@ -85,15 +79,15 @@ export function StatsDashboard() {
           </div>
         </Card>
 
-        <Card>
+        <Card class="transition duration-300">
           <p class="mb-4 text-sm font-medium text-base-content">Historique des sessions</p>
           <ul class="space-y-3">
             {mockSessionSummaries.map((s) => (
               <li key={s.id}>
                 <button
                   type="button"
-                  class="flex w-full flex-col gap-2 rounded-[var(--radius-field)] border border-base-content/10 bg-base-200/30 p-4 text-left transition hover:border-flow/30 hover:bg-base-200/50 sm:flex-row sm:items-center sm:justify-between"
-                  onClick={() => route(`/stats/session/${s.id}`)}
+                  class="flex w-full flex-col gap-2 rounded-full border border-base-content/10 bg-base-200/30 px-4 py-4 text-left transition-all duration-300 ease-out hover:border-flow/30 hover:bg-base-200/55 sm:flex-row sm:items-center sm:justify-between"
+                  onClick={() => route(`/dashboard/session/${s.id}`)}
                 >
                   <div>
                     <p class="font-medium text-base-content">{s.collectionName}</p>
@@ -108,7 +102,7 @@ export function StatsDashboard() {
             ))}
           </ul>
         </Card>
-      </main>
+      </PageMain>
       <AppFooter />
     </div>
   );

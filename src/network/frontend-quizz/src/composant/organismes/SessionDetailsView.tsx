@@ -22,10 +22,10 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
     return (
       <div class="flex min-h-dvh flex-col">
         <AppHeader />
-        <main class="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-12">
+        <main class="fl-page-enter mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-12">
           <p class="text-base text-base-content/70">Session introuvable.</p>
-          <Button variant="flow" onClick={() => route("/stats")}>
-            Retour aux stats
+          <Button variant="flow" onClick={() => route("/dashboard")}>
+            Retour au dashboard
           </Button>
         </main>
         <AppFooter />
@@ -38,10 +38,10 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
   return (
     <div class="flex min-h-dvh flex-col">
       <AppHeader />
-      <main class="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-        <Button variant="ghost" class="btn-sm mb-6 gap-1 px-2" onClick={() => route("/stats")}>
+      <main class="fl-page-enter mx-auto w-full max-w-2xl flex-1 px-4 py-6 md:py-8">
+        <Button variant="ghost" class="btn-sm mb-6 gap-1 px-3" onClick={() => route("/dashboard")}>
           <ArrowLeft class="h-4 w-4" aria-hidden />
-          Statistiques
+          Dashboard
         </Button>
         <h1 class="mb-2 text-2xl font-bold tracking-tight text-base-content">Détail de session</h1>
         <p class="mb-6 text-sm text-base-content/60">{session.date}</p>

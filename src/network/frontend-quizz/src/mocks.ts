@@ -264,6 +264,31 @@ export function listCollectionsUi(): CollectionUi[] {
   return mockRefCollections.map((c) => getCollectionUi(c.id)!);
 }
 
+/** Toutes les questions avec leurs réponses (pour le mode aléatoire). */
+export function getAllQuestionsUi(): QuestionUi[] {
+  return mockQuestions.map((q) => {
+    const rids = mockQuizzQuestionReponse
+      .filter((j) => j.question_id === q.id)
+      .sort((a, b) => a.id - b.id)
+      .map((j) => j.reponse_id);
+    const reponses = rids
+      .map((rid) => mockReponses.find((r) => r.id === rid))
+      .filter((r): r is QuizzReponseRow => r != null)
+      .map(toReponseUi);
+    return { ...q, reponses };
+  });
+}
+
+/** Mélange Fisher–Yates — nouvel ordre à chaque appel. */
+export function buildRandomQuizOrder(): QuestionUi[] {
+  const copy = [...getAllQuestionsUi()];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export function isCorrectAnswer(reponseId: number): boolean {
   const r = mockReponses.find((x) => x.id === reponseId);
   return r?.bonne_reponse === 1;

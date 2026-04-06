@@ -13,7 +13,7 @@ export function Card({ children, class: className, padding = "md" }: CardProps) 
   return (
     <div
       class={cn(
-        "rounded-[var(--radius-box)] bg-base-100/90 backdrop-blur-sm shadow-lg shadow-flow/5 border border-base-content/5",
+        "rounded-[var(--radius-box)] bg-base-100/90 backdrop-blur-sm shadow-lg shadow-flow/5 border border-base-content/5 transition-all duration-300 ease-out",
         paddings[padding],
         className,
       )}
