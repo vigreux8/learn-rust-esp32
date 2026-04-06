@@ -46,6 +46,21 @@ export interface UserKpiRow {
 
 export const MOCK_USER_ID = 1;
 
+/** Aligné sur la table `user` (champ `pseudot` dans v1.sql). */
+export interface UserRow {
+  id: number;
+  pseudot: string;
+}
+
+export const mockUsers: UserRow[] = [
+  { id: MOCK_USER_ID, pseudot: "LinaFlow" },
+  { id: 2, pseudot: "TomCaps" },
+];
+
+export function getUserPseudot(userId: number): string | undefined {
+  return mockUsers.find((u) => u.id === userId)?.pseudot;
+}
+
 export const mockRefCollections: RefCollectionRow[] = [
   {
     id: 1,
@@ -56,7 +71,7 @@ export const mockRefCollections: RefCollectionRow[] = [
   },
   {
     id: 2,
-    user_id: MOCK_USER_ID,
+    user_id: 2,
     create_at: "2026-04-02T09:00:00Z",
     update_at: "2026-04-06T08:30:00Z",
     nom: "Histoire de l'IA",
@@ -87,19 +102,19 @@ export const mockQuestions: QuizzQuestionRow[] = [
   },
   {
     id: 201,
-    user_id: MOCK_USER_ID,
+    user_id: 2,
     create_at: "2026-04-02T09:05:00Z",
     question: "Qui a popularisé l'expression « intelligence artificielle » en 1956 ?",
   },
   {
     id: 202,
-    user_id: MOCK_USER_ID,
+    user_id: 2,
     create_at: "2026-04-02T09:10:00Z",
     question: "Le test de Turing vise à évaluer…",
   },
   {
     id: 203,
-    user_id: MOCK_USER_ID,
+    user_id: 2,
     create_at: "2026-04-02T09:15:00Z",
     question: "Quel modèle a fortement popularisé les LLM grand public en 2022-2023 ?",
   },
@@ -224,6 +239,8 @@ export interface QuestionUi extends QuizzQuestionRow {
 
 export interface CollectionUi extends RefCollectionRow {
   questions: QuestionUi[];
+  /** Pseudo créateur (`user.pseudot` pour `user_id`). */
+  createur_pseudot: string;
 }
 
 function toReponseUi(row: QuizzReponseRow): ReponseUi {
@@ -257,7 +274,9 @@ export function getCollectionUi(collectionId: number): CollectionUi | undefined 
     return { ...q, reponses };
   });
 
-  return { ...col, questions };
+  const createur_pseudot = getUserPseudot(col.user_id) ?? `utilisateur #${col.user_id}`;
+
+  return { ...col, questions, createur_pseudot };
 }
 
 export function listCollectionsUi(): CollectionUi[] {

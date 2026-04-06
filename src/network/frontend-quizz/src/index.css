@@ -86,4 +86,17 @@
       animation: none;
     }
   }
+
+  /*
+   * DaisyUI affiche déjà le libellé des `input.btn[type=radio]` via ::after { content: attr(aria-label) }.
+   * Ne pas ajouter de ::before équivalent (texte doublé).
+   */
+  .filter input.btn[type="radio"]:hover {
+    --btn-bg: color-mix(in oklab, var(--learn) 18%, var(--color-base-100));
+    --btn-fg: var(--learn);
+    --btn-border: color-mix(in oklab, var(--learn) 32%, transparent);
+    transition-property: color, background-color, border-color, box-shadow;
+    transition-duration: 0.25s;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
 }

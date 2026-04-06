@@ -19,7 +19,7 @@ export function CollectionCard({ collection }: CollectionCardProps) {
           <Badge tone="flow">{n} question{n > 1 ? "s" : ""}</Badge>
           <h2 class="text-xl font-semibold tracking-tight text-base-content">{collection.nom}</h2>
           <p class="text-sm text-base-content/60">Collection · mise à jour {collection.update_at.slice(0, 10)}</p>
-          <p class="text-sm text-base-content/60">crée par {collection.user_id}</p>
+          <p class="text-sm text-base-content/60">Créé par {collection.createur_pseudot}</p>
         </div>
         <Button
           variant="flow"
