@@ -1,65 +1,69 @@
-# Wireframe - Frontend Quizz
-
-Ce document présente l'enchaînement des écrans et la structure de l'interface utilisateur pour l'application de quizz.
-
-## 🗺️ Flowchart de Navigation
-
 ```mermaid
 flowchart TD
-    Start((Lancement App)) --> Home[Accueil / Sélection Collection]
+    %% Définition des styles
+    classDef page fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px,color:#333,font-weight:bold
+    classDef func fill:#E1F5FE,stroke:#0288D1,stroke-width:1px,color:#0288D1,font-style:italic
+    classDef menu fill:#EDE7F6,stroke:#5E35B1,color:#5E35B1
 
-    subgraph "Expérience de Jeu"
-        Home -->|Choisir Collection| QuizSession[Session de Quizz]
-        QuizSession -->|Répondre| Feedback{Bonne Réponse ?}
-        Feedback -->|Oui| Success[Feedback Succès + M&Ms?]
-        Feedback -->|Non| Failure[Feedback Erreur]
-        Success --> NextQuestion{Reste des questions ?}
-        Failure --> NextQuestion
-        NextQuestion -->|Oui| QuizSession
-        NextQuestion -->|Non| Results[Écran de Fin / Score]
-        Results -->|Retour| Home
+    %% NAVIGATION NIVEAU 0
+    NAV[<b>BARRE DE NAVIGATION GLOBALE</b>]:::menu
+
+    %% CASCADE PRINCIPALE
+    NAV --> P1
+    NAV --> P2
+    NAV --> P3
+    NAV --> P4
+
+    %% PAGE ACCUEIL
+    subgraph P1 [PAGE : ACCUEIL]
+        direction TB
+        ACC_P(( )):::page
+        ACC_F1[Bouton : Commencer le quiz]:::func
     end
 
-    subgraph "Gestion du Contenu"
-        Home -->|Gérer| AdminPanel[Panneau d'Administration]
-        AdminPanel -->|Créer/Editer| QuestionForm[Formulaire Question/Réponses]
-        AdminPanel -->|Organiser| CollectionManager[Gestion des Collections]
-        AdminPanel -->|Import| LLMImport[Import via JSON / LLM]
-        QuestionForm --> AdminPanel
-        CollectionManager --> AdminPanel
-        LLMImport --> AdminPanel
+    %% PAGE COLLECTIONS
+    subgraph P2 [PAGE : COLLECTIONS]
+        direction TB
+        COL_P(( )):::page
+        COL_F1[Filtres : Auteurs / Thèmes]:::func
+        COL_F2[Liste des cartes collections]:::func
+        COL_F3[Bouton : Jouer cette collection]:::func
     end
 
-    subgraph "Statistiques"
-        Home -->|Stats| StatsDashboard[Tableau de bord KPI]
-        StatsDashboard -->|Historique| SessionDetails[Détails par Session]
-        StatsDashboard -->|Retour| Home
+    %% PAGE QUESTIONS
+    subgraph P3 [PAGE : QUESTIONS]
+        direction TB
+        QUE_P(( )):::page
+        QUE_F1[Tableau CRUD : Editer / Suppr]:::func
+        QUE_F2[Zone Importation JSON / LLM]:::func
+    end
+
+    %% PAGE DASHBOARD
+    subgraph P4 [PAGE : DASHBOARD]
+        direction TB
+        DASH_P(( )):::page
+        DASH_F1[Graphiques de progression]:::func
+        DASH_F2[Historique des scores]:::func
+    end
+
+    %% FLUX DE JEU (NIVEAU MACRO SUIVANT)
+    ACC_F1 -.-> SESSION
+    COL_F3 -.-> SESSION
+
+    subgraph SESSION [PAGE : SESSION QUIZZ]
+        direction TB
+        S_P(( )):::page
+        S_F1[Question en cours / Chrono]:::func
+        S_F2[Options de réponses]:::func
+        S_F3[Feedback immédiat]:::func
+    end
+
+    SESSION --> RESULTATS
+
+    subgraph RESULTATS [PAGE : RESULTATS]
+        direction TB
+        R_P(( )):::page
+        R_F1[Score Final / Recap]:::func
+        R_F2[Bouton : Rejouer / Retour]:::func
     end
 ```
-
-## 🖼️ Structure des Écrans (Wireframe Conceptuel)
-
-### 1. Accueil (Home)
-
-- **Header** : Titre "Quizz ESP32" + Bouton Stats + Bouton Admin.
-- **Main** : Liste de cartes (Cards) représentant les collections (`ref_collection`).
-- **Footer** : Version de l'app et statut de connexion ESP32.
-
-### 2. Session de Quizz
-
-- **Progress Bar** : Progression dans la collection.
-- **Question Card** : Texte de la question (`quizz_question`).
-- **Options List** : Boutons pour chaque réponse (`quizz_reponse`).
-- **Feedback Overlay** : S'affiche après le clic (Vert/Rouge) + Bouton "Suivant".
-
-### 3. Administration
-
-- **Tabs** : [Questions] | [Collections] | [Import LLM].
-- **Tableau Questions** : Liste avec actions Modifier/Supprimer.
-- **Formulaire** : Champs texte pour question + 4 champs réponses + Checkbox "Bonne réponse".
-
-### 4. Statistiques
-
-- **KPI Cards** : Ratio global, Temps moyen de réponse, Total questions répondues.
-- **Graphique** : Activité sur les 7 derniers jours.
-- **Liste Sessions** : Historique des dernières parties avec scores.
