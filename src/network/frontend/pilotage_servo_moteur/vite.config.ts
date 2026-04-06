@@ -4,8 +4,8 @@ import preact from '@preact/preset-vite'
 export default defineConfig({
   plugins: [preact()],
   build: {
-    // Destination des fichiers pour le NetworkManager
-    outDir: '../site_compiled', 
+    // `src/network/site_compiled` (relatif à ce dossier : frontend/pilotage_servo_moteur → ../../)
+    outDir: '../../site_compiled', 
     emptyOutDir: true,
     rollupOptions: {
       output: {

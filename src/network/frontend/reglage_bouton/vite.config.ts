@@ -6,8 +6,8 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [preact(), tailwindcss()],
   build: {
-    // Destination des fichiers pour le NetworkManager
-    outDir: '../../site_compiled', 
+    // `src/network/site_compiled` (relatif à ce dossier : frontend/reglage_bouton → ../../)
+    outDir: '../../site_compiled',
     emptyOutDir: true,
     rollupOptions: {
       output: {

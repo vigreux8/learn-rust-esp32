@@ -5,8 +5,8 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [preact(), tailwindcss()],
   build: {
-    // Destination des fichiers pour le NetworkManager
-    outDir: '../site_compiled', 
+    // `src/network/site_compiled` (relatif : quizz/frontend → ../../../)
+    outDir: '../../../site_compiled', 
     emptyOutDir: true,
     rollupOptions: {
       output: {

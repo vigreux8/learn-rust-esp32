@@ -12,22 +12,22 @@ send-esp32:
 	@echo "OK: flash + monitor vers ESP32 termine."
 
 build-servo:
-	cd src/network/frontend-servo && npm run build
-	@echo "OK: build frontend-servo termine."
+	cd src/network/frontend/pilotage_servo_moteur && npm run build
+	@echo "OK: build frontend pilotage_servo_moteur termine."
 
 build-quizz:
-	cd src/network/frontend-quizz && npm run build
-	@echo "OK: build frontend-quizz termine."
+	cd src/network/frontend/quizz/frontend && npm run build
+	@echo "OK: build frontend quizz termine."
 
 build-bouton:
-	cd src/network/frontend-bouton && npm run build
-	@echo "OK: build frontend-bouton termine."
+	cd src/network/frontend/reglage_bouton && npm run build
+	@echo "OK: build frontend reglage_bouton termine."
 
 preview-servo:
-	cd src/network/frontend-servo && npm run preview
+	cd src/network/frontend/pilotage_servo_moteur && npm run preview
 
 preview-quizz:
-	cd src/network/frontend-quizz && npm run preview
+	cd src/network/frontend/quizz/frontend && npm run preview
 
 preview-bouton:
-	cd src/network/frontend-bouton && npm run preview
+	cd src/network/frontend/reglage_bouton && npm run preview

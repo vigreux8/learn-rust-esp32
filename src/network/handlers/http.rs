@@ -12,7 +12,7 @@ use crate::network::manager::{
     SharedClientSessions, SharedMotorControllers, WS_MAX_PAYLOAD_LEN,
 };
 
-/// Sortie Vite (`npm run build` dans `src/network/frontend`, `outDir: ../site_compiled`).
+/// Sortie Vite : chaque app sous `src/network/frontend/**` avec `outDir` vers `src/network/site_compiled`.
 const INDEX_HTML: &str = include_str!("../site_compiled/index.html");
 const INDEX_JS: &str = include_str!("../site_compiled/assets/index.js");
 const INDEX_CSS: &str = include_str!("../site_compiled/assets/index.css");
