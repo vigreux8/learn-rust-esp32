@@ -211,6 +211,22 @@ export class QuizzService {
     }));
   }
 
+  listQuestionsFromQuery(collectionId?: string): Promise<QuizzQuestionRow[]> {
+    if (collectionId === undefined || collectionId === '') {
+      return this.listQuestions();
+    }
+    if (collectionId === 'none') {
+      return this.listQuestions('none');
+    }
+    const n = Number(collectionId);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      throw new BadRequestException(
+        'Query collectionId : nombre entier ou la valeur "none"',
+      );
+    }
+    return this.listQuestions(n);
+  }
+
   async updateQuestion(
     id: number,
     data: { question?: string; commentaire?: string },
