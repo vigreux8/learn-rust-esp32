@@ -9,7 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { QuizzService } from './quizz.service';
+import { QuizzService } from './services';
 import { UpdateQuestionDto } from './dto/quizz.dto';
 
 @Controller('quizz')
