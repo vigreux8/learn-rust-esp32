@@ -33,9 +33,15 @@ src/
 └── stats/
     ├── stats.module.ts
     ├── stats.controller.ts
-    ├── stats.service.ts
-    └── dto/
-        └── stats.dto.ts
+    ├── stats.type.ts
+    ├── dto/
+    │   └── stats.dto.ts
+    └── services/
+        ├── index.ts
+        ├── stats.service.ts
+        ├── stats-kpi-read.service.ts
+        ├── stats-kpi-write.service.ts
+        └── stats-session.service.ts
 ```
 
 ## Module `devices`
@@ -75,10 +81,14 @@ src/
 ## Module `stats`
 
 - `stats.controller.ts`: endpoints KPI et sessions utilisateur.
-- `stats.service.ts`: logique d'analyse:
-  - enregistre une reponse utilisateur dans `user_kpi`
-  - verifie coherence question/reponse
-  - calcule les resumes de session par jour et collection
-  - retourne le detail d'une session (score + questions).
+- `stats.type.ts`: types de sortie API (`UserKpiRow`, `SessionSummary`).
 - `dto/stats.dto.ts`: validation d'entree pour creation de KPI.
-- `stats.module.ts`: compose controller + service statistiques.
+- `stats.module.ts`: compose controller + facade + sous-services.
+
+### Sous-services `stats/services`
+
+- `stats.service.ts` (facade): delegue aux sous-services (meme pattern que `quizz`).
+- `stats-kpi-read.service.ts`: liste les KPI utilisateur (`user_kpi`).
+- `stats-kpi-write.service.ts`: creation KPI avec validations (user, question, reponse, lien).
+- `stats-session.service.ts`: agregations sessions (resume par jour/collection, detail session).
+- `index.ts`: exports des services.

@@ -1,9 +1,19 @@
 import { Module } from '@nestjs/common';
+import {
+  StatsKpiReadService,
+  StatsKpiWriteService,
+  StatsService,
+  StatsSessionService,
+} from './services';
 import { StatsController } from './stats.controller';
-import { StatsService } from './stats.service';
 
 @Module({
   controllers: [StatsController],
-  providers: [StatsService],
+  providers: [
+    StatsKpiReadService,
+    StatsKpiWriteService,
+    StatsSessionService,
+    StatsService,
+  ],
 })
 export class StatsModule {}

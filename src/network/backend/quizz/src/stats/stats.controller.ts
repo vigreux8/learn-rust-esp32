@@ -8,7 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CreateKpiDto } from './dto/stats.dto';
-import { StatsService } from './stats.service';
+import { StatsService } from './services';
 
 @Controller('stats')
 export class StatsController {

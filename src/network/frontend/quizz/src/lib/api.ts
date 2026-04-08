@@ -11,7 +11,7 @@ import type {
 
 export async function fetchDeviceLookup(mac: string): Promise<DeviceLookupResult> {
   const q = encodeURIComponent(mac);
-  const res = await fetch(apiUrl(`/device/lookup?adresse_mac=${q}`));
+  const res = await fetch(apiUrl(`/devices/lookup?adresse_mac=${q}`));
   if (!res.ok) throw new Error(await readError(res));
   return res.json() as Promise<DeviceLookupResult>;
 }
@@ -20,7 +20,7 @@ export async function registerDeviceWithPseudot(
   mac: string,
   pseudot: string,
 ): Promise<{ userId: number; pseudot: string }> {
-  const res = await fetch(apiUrl("/device/register"), {
+  const res = await fetch(apiUrl("/devices/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ adresse_mac: mac, pseudot }),
@@ -42,19 +42,19 @@ async function readError(res: Response): Promise<string> {
 }
 
 export async function fetchCollections(): Promise<CollectionUi[]> {
-  const res = await fetch(apiUrl("/collections"));
+  const res = await fetch(apiUrl("/quizz/collections"));
   if (!res.ok) throw new Error(await readError(res));
   return res.json() as Promise<CollectionUi[]>;
 }
 
 export async function fetchCollection(id: number): Promise<CollectionUi> {
-  const res = await fetch(apiUrl(`/collections/${id}`));
+  const res = await fetch(apiUrl(`/quizz/collections/${id}`));
   if (!res.ok) throw new Error(await readError(res));
   return res.json() as Promise<CollectionUi>;
 }
 
 export async function fetchRandomQuiz(): Promise<QuestionUi[]> {
-  const res = await fetch(apiUrl("/quiz/random"));
+  const res = await fetch(apiUrl("/quizz/random"));
   if (!res.ok) throw new Error(await readError(res));
   return res.json() as Promise<QuestionUi[]>;
 }
@@ -68,7 +68,7 @@ export async function fetchQuestions(
       : collectionId !== undefined
         ? `?collectionId=${collectionId}`
         : "";
-  const res = await fetch(apiUrl(`/questions${suffix}`));
+  const res = await fetch(apiUrl(`/quizz/questions${suffix}`));
   if (!res.ok) throw new Error(await readError(res));
   return res.json() as Promise<QuizzQuestionRow[]>;
 }
@@ -77,7 +77,7 @@ export async function patchQuestion(
   id: number,
   body: { question?: string; commentaire?: string },
 ): Promise<QuizzQuestionRow> {
-  const res = await fetch(apiUrl(`/questions/${id}`), {
+  const res = await fetch(apiUrl(`/quizz/questions/${id}`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -90,7 +90,7 @@ export async function importQuestionsJson(body: unknown): Promise<{
   createdQuestions: number;
   createdCollections: number;
 }> {
-  const res = await fetch(apiUrl("/questions/import"), {
+  const res = await fetch(apiUrl("/quizz/questions/import"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -100,7 +100,7 @@ export async function importQuestionsJson(body: unknown): Promise<{
 }
 
 export async function deleteQuestion(id: number): Promise<void> {
-  const res = await fetch(apiUrl(`/questions/${id}`), { method: "DELETE" });
+  const res = await fetch(apiUrl(`/quizz/questions/${id}`), { method: "DELETE" });
   if (!res.ok) throw new Error(await readError(res));
 }
 
