@@ -6,10 +6,24 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserKpiRow } from '../stats.type';
 
+/**
+ * Création et validation des enregistrements KPI (`user_kpi`).
+ */
 @Injectable()
 export class StatsKpiWriteService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Enregistre une réponse utilisateur pour une question, après contrôles de cohérence.
+   *
+   * @param userId - Utilisateur cible.
+   * @param questionId - Question posée.
+   * @param reponseId - Réponse choisie (doit être liée à la question).
+   * @param dureeSecondes - Temps de réponse en secondes (0–86400).
+   * @returns Ligne KPI créée avec `correct` selon `bonne_reponse`.
+   * @throws {BadRequestException} Durée invalide ou réponse non associée à la question.
+   * @throws {NotFoundException} Utilisateur, question ou réponse introuvable.
+   */
   async createUserKpi(
     userId: number,
     questionId: number,

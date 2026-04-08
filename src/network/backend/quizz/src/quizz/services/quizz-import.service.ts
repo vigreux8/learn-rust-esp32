@@ -5,10 +5,23 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/**
+ * Import transactionnel de questions/réponses au format JSON (LLM ou équivalent).
+ *
+ * Crée collections, questions, réponses et liaisons ; regroupe les questions orphelines
+ * sous `questions_sans_collection`.
+ */
 @Injectable()
 export class QuizzImportService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Détermine l’utilisateur propriétaire de l’import : premier user en base si `user_id` absent.
+   *
+   * @param userIdRaw - `user_id` du JSON ou `undefined` / `null`.
+   * @returns Identifiant utilisateur valide.
+   * @throws {BadRequestException} Aucun user en base, format `user_id` invalide ou user introuvable.
+   */
   private async resolveImportUserId(userIdRaw: unknown): Promise<number> {
     if (userIdRaw === undefined || userIdRaw === null) {
       const first = await this.prisma.prisma.user.findFirst({
@@ -39,6 +52,13 @@ export class QuizzImportService {
     return u.id;
   }
 
+  /**
+   * Valide le tableau `reponses` d’une question : 4 entrées, exactement une correcte.
+   *
+   * @param reponses - Valeur brute du champ `reponses`.
+   * @returns Réponses normalisées `{ texte, correcte }`.
+   * @throws {BadRequestException} Structure ou règle « une bonne réponse » non respectée.
+   */
   private assertImportReponses(
     reponses: unknown,
   ): { texte: string; correcte: boolean }[] {
@@ -70,6 +90,13 @@ export class QuizzImportService {
     return out;
   }
 
+  /**
+   * Parse un corps JSON, valide les collections/questions et persiste tout en une transaction.
+   *
+   * @param body - Objet JSON (souvent `collections`, optionnellement `questions_sans_collection`, `user_id`).
+   * @returns Nombre de questions et de collections créées (collections déjà existantes ne comptent pas comme créées).
+   * @throws {BadRequestException} Corps invalide, tableaux vides après parsing, ou erreur métier durant l’import.
+   */
   async importQuestionsFromLlmJson(body: unknown): Promise<{
     createdQuestions: number;
     createdCollections: number;
