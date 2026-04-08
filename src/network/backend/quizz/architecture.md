@@ -29,6 +29,7 @@ src/
 │       ├── quizz.service.ts
 │       ├── quizz-read.service.ts
 │       ├── quizz-write.service.ts
+│       ├── quizz-import.parser.ts
 │       └── quizz-import.service.ts
 └── stats/
     ├── stats.module.ts
@@ -72,10 +73,8 @@ src/
 - `quizz.service.ts` (facade): point d'entree unique du module, delegue aux sous-services.
 - `quizz-read.service.ts`: lecture + mapping UI depuis les tables `ref_collection`, `quizz_question`, `quizz_reponse`, `question_collection`.
 - `quizz-write.service.ts`: modifications ciblees (`updateQuestion`, `deleteQuestion`) avec validations metier.
-- `quizz-import.service.ts`: import transactionnel du format LLM:
-  - valide la structure d'entree
-  - cree collections/questions/reponses
-  - assure la coherence (4 reponses, 1 seule correcte).
+- `quizz-import.parser.ts`: classe `LlmImportParser` (`@Injectable`) — validation / normalisation du JSON d'import (pas d'acces DB) : forme des collections, questions, 4 reponses, une seule correcte.
+- `quizz-import.service.ts`: resolution `user_id`, transaction Prisma : cree collections/questions/reponses et liaisons.
 - `index.ts`: centralise les exports pour des imports propres.
 
 ## Module `stats`

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import {
+  LlmImportParser,
   QuizzImportService,
   QuizzReadService,
   QuizzService,
@@ -12,6 +13,7 @@ import { QuizzController } from './quizz.controller';
   providers: [
     QuizzReadService,
     QuizzWriteService,
+    LlmImportParser,
     QuizzImportService,
     QuizzService,
   ],
