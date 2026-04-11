@@ -11,6 +11,10 @@ send-esp32:
 	cargo run --release
 	@echo "OK: flash + monitor vers ESP32 termine."
 
+## Logs série ESP32 uniquement (sans reflasher). Port : auto, ou `make see-log ESPFLASH_PORT=/dev/cu.usbserial-XXXX`
+see-log:
+	espflash monitor $(if $(strip $(ESPFLASH_PORT)),-p $(ESPFLASH_PORT),)
+
 build-servo:
 	cd src/network/frontend/pilotage_servo_moteur && npm run build
 	@echo "OK: build frontend pilotage_servo_moteur termine."

@@ -31,16 +31,16 @@ pub struct NetworkManager<'d> {
 }
 
 pub(crate) struct MotorControllers {
-    moteur_bras: ServoController<'static>,
-    moteur_pince: ServoController<'static>,
-    bras_deadline: Option<Instant>,
-    pince_deadline: Option<Instant>,
+    moteur_distributeur: ServoController<'static>,
+    moteur_melange: ServoController<'static>,
+    distributeur_deadline: Option<Instant>,
+    melange_deadline: Option<Instant>,
 }
 
 #[derive(Copy, Clone)]
 pub(crate) enum MotorTarget {
-    Bras,
-    Pince,
+    Distributeur,
+    Melange,
 }
 
 pub(crate) type SharedMotorControllers = Arc<Mutex<MotorControllers>>;
@@ -135,8 +135,8 @@ impl MotorControllers {
         };
 
         match target {
-            MotorTarget::Bras => apply(&mut self.moteur_bras),
-            MotorTarget::Pince => apply(&mut self.moteur_pince),
+            MotorTarget::Distributeur => apply(&mut self.moteur_distributeur),
+            MotorTarget::Melange => apply(&mut self.moteur_melange),
         }
     }
 
@@ -144,8 +144,8 @@ impl MotorControllers {
         let now = Instant::now();
         let extra = Duration::from_millis(duration_ms as u64);
         let slot = match target {
-            MotorTarget::Bras => &mut self.bras_deadline,
-            MotorTarget::Pince => &mut self.pince_deadline,
+            MotorTarget::Distributeur => &mut self.distributeur_deadline,
+            MotorTarget::Melange => &mut self.melange_deadline,
         };
 
         *slot = Some(match *slot {
@@ -156,8 +156,8 @@ impl MotorControllers {
 
     fn remaining_duration_ms(&self, target: MotorTarget) -> Option<u32> {
         let deadline = match target {
-            MotorTarget::Bras => self.bras_deadline,
-            MotorTarget::Pince => self.pince_deadline,
+            MotorTarget::Distributeur => self.distributeur_deadline,
+            MotorTarget::Melange => self.melange_deadline,
         }?;
 
         let now = Instant::now();
@@ -172,8 +172,8 @@ impl MotorControllers {
 
     fn clear_deadline(&mut self, target: MotorTarget) {
         match target {
-            MotorTarget::Bras => self.bras_deadline = None,
-            MotorTarget::Pince => self.pince_deadline = None,
+            MotorTarget::Distributeur => self.distributeur_deadline = None,
+            MotorTarget::Melange => self.melange_deadline = None,
         }
     }
 
@@ -202,8 +202,8 @@ impl MotorControllers {
     }
 
     fn stop_expired_motors(&mut self) -> Result<(), EspError> {
-        self.stop_if_deadline_reached(MotorTarget::Bras)?;
-        self.stop_if_deadline_reached(MotorTarget::Pince)
+        self.stop_if_deadline_reached(MotorTarget::Distributeur)?;
+        self.stop_if_deadline_reached(MotorTarget::Melange)
     }
 }
 
@@ -234,8 +234,8 @@ impl<'d> NetworkManager<'d> {
         modem: Modem<'d>,
         sys_loop: EspSystemEventLoop,
         nvs: EspDefaultNvsPartition,
-        moteur_bras: ServoController<'static>,
-        moteur_pince: ServoController<'static>,
+        moteur_distributeur: ServoController<'static>,
+        moteur_melange: ServoController<'static>,
     ) -> Result<Self, EspError> {
         let sessions = Self::build_client_sessions();
         let wifi_event_subscription =
@@ -256,7 +256,7 @@ impl<'d> NetworkManager<'d> {
         );
 
         let mut server = HttpServerService::init()?;
-        let controllers = Self::build_motor_controllers(moteur_bras, moteur_pince);
+        let controllers = Self::build_motor_controllers(moteur_distributeur, moteur_melange);
         Self::start_motor_scheduler(controllers.clone())?;
 
         Self::register_handlers(&mut server, controllers, Arc::clone(&sessions))?;
@@ -272,14 +272,14 @@ impl<'d> NetworkManager<'d> {
     }
 
     fn build_motor_controllers(
-        moteur_bras: ServoController<'static>,
-        moteur_pince: ServoController<'static>,
+        moteur_distributeur: ServoController<'static>,
+        moteur_melange: ServoController<'static>,
     ) -> SharedMotorControllers {
         Arc::new(Mutex::new(MotorControllers {
-            moteur_bras,
-            moteur_pince,
-            bras_deadline: None,
-            pince_deadline: None,
+            moteur_distributeur,
+            moteur_melange,
+            distributeur_deadline: None,
+            melange_deadline: None,
         }))
     }
 
@@ -409,8 +409,8 @@ pub(crate) fn parse_speed_command(payload: &str) -> Option<(MotorTarget, i32)> {
     let speed = speed.trim().parse::<i32>().ok()?.clamp(-100, 100);
 
     let target = match motor.trim().to_ascii_lowercase().as_str() {
-        "bras" => MotorTarget::Bras,
-        "pince" => MotorTarget::Pince,
+        "distributeur" | "bras" => MotorTarget::Distributeur,
+        "melange" | "pince" => MotorTarget::Melange,
         _ => return None,
     };
 
