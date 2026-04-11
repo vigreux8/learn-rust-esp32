@@ -59,7 +59,9 @@ fn main() -> Result<(), EspError> {
     // SD (doc): CS=5, SCK=18, MOSI=23, MISO=19
     let mut sd_carte =
         hardware.add_sd_carte_default(spi3, pins.gpio5, pins.gpio18, pins.gpio23, pins.gpio19)?;
-    crate::hardware::test_hardware::test_sd_carte(&mut sd_carte)?;
+    if let Err(err) = crate::hardware::test_hardware::test_sd_carte(&mut sd_carte) {
+        log::error!("Test SD initial échoué: {err}. L'application continue.");
+    }
 
     // Test hardware: passage uniquement par références (aucune consommation des objets)
     {

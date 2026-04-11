@@ -10,6 +10,8 @@ const TEST_FILE_WRITE_CONTENT: &str = "hello-world";
 const TEST_FILE_EXPECTED_CONTENT: &str = "coucou";
 const CAPTEUR_TIMEOUT_MS: u32 = 3_000;
 const CAPTEUR_POLL_MS: u32 = 20;
+const SD_READ_TIMEOUT_MS: u32 = 15_000;
+const SD_READ_POLL_MS: u32 = 1_000;
 
 pub fn test_moteur(moteur: &mut ServoController<'_>) -> Result<(), EspError> {
     moteur.set_speed(100)?;
@@ -41,17 +43,20 @@ pub fn test_capteur_fin_course(capteur: &CapteurFinCourse<'_>) -> bool {
 }
 
 pub fn test_sd_carte(sd_carte: &mut SdCarte<'_>) -> Result<(), EspError> {
+    log::info!("Test SD: écriture de '{TEST_FILE_NAME}'");
     sd_carte.write_text_file(TEST_FILE_NAME, TEST_FILE_WRITE_CONTENT)?;
 
-    log::info!("Fichier écrit. Étape 3: Retirez la carte");
+    log::info!("Test SD: fichier écrit. Retirez la carte, modifiez en 'coucou', puis réinsérez-la");
 
+    let mut elapsed_ms = 0;
     loop {
-        FreeRtos::delay_ms(1000);
+        FreeRtos::delay_ms(SD_READ_POLL_MS);
+        elapsed_ms += SD_READ_POLL_MS;
 
         match sd_carte.read_text_file(TEST_FILE_NAME) {
             Ok(contenu) => {
                 let contenu = contenu.trim();
-                log::info!("Contenu lu: {contenu}");
+                log::info!("Test SD: contenu lu: {contenu}");
 
                 if contenu != TEST_FILE_EXPECTED_CONTENT {
                     log::warn!(
@@ -59,15 +64,27 @@ pub fn test_sd_carte(sd_carte: &mut SdCarte<'_>) -> Result<(), EspError> {
                     );
                 }
 
-                break;
+                return Ok(());
             }
             Err(err) => {
-                log::info!("Carte SD non détectée ou lecture impossible... en attente ({err})");
+                log::warn!("Test SD: lecture impossible... ({err})");
             }
         }
-    }
 
-    Ok(())
+        if elapsed_ms >= SD_READ_TIMEOUT_MS {
+            log::error!(
+                "Test SD: timeout après {} ms (test SD sauté, application continue)",
+                SD_READ_TIMEOUT_MS
+            );
+            return Err(EspError::from_infallible::<ESP_FAIL>());
+        } else {
+            log::info!(
+                "Test SD: nouvelle tentative dans {} ms (elapsed={} ms)",
+                SD_READ_POLL_MS,
+                elapsed_ms
+            );
+        }
+    }
 }
 
 pub fn test_hardware_end_to_end<'a>(
@@ -92,7 +109,11 @@ pub fn test_hardware_end_to_end<'a>(
 
     log::info!("Étape 3: Test carte SD");
     let _ = test_capteur_fin_course(capteurs[capteur_validation_sd_index]);
-    test_sd_carte(sd_carte)
+    if let Err(err) = test_sd_carte(sd_carte) {
+        log::error!("Étape SD échouée: {err}. Le test global continue sans arrêter l'application");
+    }
+
+    Ok(())
 }
 
 fn validate_inputs(
