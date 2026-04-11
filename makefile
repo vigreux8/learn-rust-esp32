@@ -43,10 +43,10 @@ install-quizz:
 	cd src/network/frontend/quizz && npm install
 	@echo "OK: npm install (backend + frontend quizz)."
 
-dev-quizz-backend:
+run-quizz-backend:
 	cd src/network/backend/quizz && npm run start:dev
 
-dev-quizz-frontend:
+run-quizz-frontend:
 	cd src/network/frontend/quizz && npm run dev
 
 ## Lance Nest (bg) puis Vite au premier plan ; Ctrl+C arrête les deux (trap).
