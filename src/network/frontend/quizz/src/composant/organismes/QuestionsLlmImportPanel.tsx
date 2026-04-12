@@ -1,7 +1,7 @@
 import { ClipboardCopy } from "lucide-preact";
 import { LLM_QUESTION_COUNT_OPTIONS } from "../../lib/llmImportPrompts";
 import { QUESTION_CATEGORIE_DEFINITIONS } from "../../lib/questionCategories";
-import type { QuestionCategorieKey } from "../../lib/questionCategories";
+import type { RefCategorieRow } from "../../types/quizz";
 import { Button } from "../atomes/Button";
 import { Card } from "../atomes/Card";
 
@@ -10,8 +10,9 @@ export type QuestionsLlmImportPanelProps = {
   targetCollectionNumeric: number | null;
   importDesiredQuestionCount: number;
   setImportDesiredQuestionCount: (n: number) => void;
-  importLlmCategorie: QuestionCategorieKey;
-  setImportLlmCategorie: (c: QuestionCategorieKey) => void;
+  categorieOptions: RefCategorieRow[];
+  importLlmCategorieId: number | null;
+  setImportLlmCategorieId: (id: number) => void;
   importLlmCollectionName: string;
   setImportLlmCollectionName: (s: string) => void;
   importLlmSubject: string;
@@ -32,8 +33,9 @@ export function QuestionsLlmImportPanel({
   targetCollectionNumeric,
   importDesiredQuestionCount,
   setImportDesiredQuestionCount,
-  importLlmCategorie,
-  setImportLlmCategorie,
+  categorieOptions,
+  importLlmCategorieId,
+  setImportLlmCategorieId,
   importLlmCollectionName,
   setImportLlmCollectionName,
   importLlmSubject,
@@ -48,6 +50,12 @@ export function QuestionsLlmImportPanel({
   onCopyPrompt,
   onRunImport,
 }: QuestionsLlmImportPanelProps) {
+  const selectedType = categorieOptions.find((c) => c.id === importLlmCategorieId)?.type;
+  const categorieHelp =
+    selectedType === "histoire" || selectedType === "pratique"
+      ? QUESTION_CATEGORIE_DEFINITIONS[selectedType]
+      : null;
+
   return (
     <Card class="fl-reveal-enter mb-6 border-learn/15 bg-learn/[0.06]">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-stretch">
@@ -55,23 +63,31 @@ export function QuestionsLlmImportPanel({
           <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-base-content/45">Options</p>
           <div>
             <label class="mb-1 block text-xs font-medium text-base-content/70" for="import-llm-categorie">
-              Type (import)
+              Catégorie (enregistrée en base)
             </label>
             <select
               id="import-llm-categorie"
               class="select select-bordered select-sm w-full rounded-lg border-base-content/15 bg-base-100 text-sm"
-              value={importLlmCategorie}
+              value={importLlmCategorieId ?? ""}
+              disabled={categorieOptions.length === 0}
               onChange={(e) => {
-                const v = (e.target as HTMLSelectElement).value;
-                setImportLlmCategorie(v === "pratique" ? "pratique" : "histoire");
+                const v = Number((e.target as HTMLSelectElement).value);
+                if (Number.isFinite(v)) setImportLlmCategorieId(v);
               }}
             >
-              <option value="histoire">histoire — information</option>
-              <option value="pratique">pratique — application</option>
+              {categorieOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.type}
+                </option>
+              ))}
             </select>
-            <p class="mt-1 text-[0.65rem] leading-snug text-base-content/50">
-              {QUESTION_CATEGORIE_DEFINITIONS[importLlmCategorie]}
-            </p>
+            {categorieHelp ? (
+              <p class="mt-1 text-[0.65rem] leading-snug text-base-content/50">{categorieHelp}</p>
+            ) : categorieOptions.length === 0 ? (
+              <p class="mt-1 text-[0.65rem] leading-snug text-base-content/50">
+                Chargement des catégories…
+              </p>
+            ) : null}
           </div>
           <div>
             <label class="mb-1 block text-xs font-medium text-base-content/70" for="import-llm-question-count">
@@ -138,7 +154,8 @@ export function QuestionsLlmImportPanel({
               onChange={(e) => setImportLlmIncludeExistingStems((e.target as HTMLInputElement).checked)}
             />
             <span>
-              Lister les intitulés déjà en base (sans réponses) pour éviter les répétitions.
+              Lister les intitulés déjà en base pour la catégorie sélectionnée (sans réponses), afin d’éviter les
+              répétitions.
               {targetCollectionNumeric == null ? (
                 <span class="mt-1 block text-[0.65rem] text-base-content/45">
                   Disponible lorsque tu filtres sur une collection.
@@ -188,7 +205,11 @@ export function QuestionsLlmImportPanel({
             onInput={(e) => setImportText((e.target as HTMLTextAreaElement).value)}
           />
           {importMessage ? <p class="mb-3 text-sm text-base-content/80">{importMessage}</p> : null}
-          <Button variant="flow" disabled={importBusy || !importText.trim()} onClick={onRunImport}>
+          <Button
+            variant="flow"
+            disabled={importBusy || !importText.trim() || categorieOptions.length === 0}
+            onClick={onRunImport}
+          >
             {importBusy ? "Import…" : "Importer en base"}
           </Button>
         </div>

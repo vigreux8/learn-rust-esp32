@@ -23,10 +23,7 @@ import {
   LLM_PROMPT_BASE,
   LLM_PROMPT_COLLECTION,
 } from "../../lib/llmImportPrompts";
-import {
-  QUESTION_CATEGORIE_DEFINITIONS,
-  type QuestionCategorieKey,
-} from "../../lib/questionCategories";
+import { QUESTION_CATEGORIE_DEFINITIONS } from "../../lib/questionCategories";
 import { QuestionsCollectionContextBar } from "./QuestionsCollectionContextBar";
 import { QuestionsLlmImportPanel } from "./QuestionsLlmImportPanel";
 import { QuestionsTable } from "./QuestionsTable";
@@ -80,7 +77,8 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
   const [importLlmCollectionName, setImportLlmCollectionName] = useState("");
   const [importLlmSubject, setImportLlmSubject] = useState("");
   const [importLlmIncludeExistingStems, setImportLlmIncludeExistingStems] = useState(false);
-  const [importLlmCategorie, setImportLlmCategorie] = useState<QuestionCategorieKey>("histoire");
+  /** `ref_categorie.id` — même source que la modal « Modifier la question ». */
+  const [importLlmCategorieId, setImportLlmCategorieId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
   const importLlmLastSyncedCollectionId = useRef<number | null>(null);
@@ -111,6 +109,14 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     }
   }, [targetCollectionNumeric, collections]);
 
+  useEffect(() => {
+    if (refCategories.length === 0) return;
+    setImportLlmCategorieId((prev) => {
+      if (prev != null && refCategories.some((c) => c.id === prev)) return prev;
+      return refCategories.find((c) => c.type === "histoire")?.id ?? refCategories[0]!.id;
+    });
+  }, [refCategories]);
+
   const llmPromptFull = useMemo(() => {
     const n = importDesiredQuestionCount;
     const countBlock =
@@ -132,14 +138,23 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
         ? `\n\n— Sujet / thème des nouvelles questions à rédiger :\n${subjectTrim}`
         : "";
 
+    const selectedCat = refCategories.find((c) => c.id === importLlmCategorieId);
+    const catKey =
+      selectedCat?.type === "histoire" || selectedCat?.type === "pratique"
+        ? selectedCat.type
+        : "histoire";
+    const categorieBlock = `\n\n— Catégorie enregistrée pour chaque question importée (ref_categorie) : « ${catKey} » — ${QUESTION_CATEGORIE_DEFINITIONS[catKey]}`;
+
+    const questionsStemsSameCategorie =
+      importLlmCategorieId == null
+        ? []
+        : questions.filter((q) => q.categorie_id === importLlmCategorieId);
     const existingBlock =
       importLlmIncludeExistingStems &&
       targetCollectionNumeric != null &&
-      questions.length > 0
-        ? `\n\n— Questions déjà présentes dans cette collection (intitulés seuls, sans réponses) — évite les doublons et les paraphrases trop proches :\n${formatExistingQuestionStemsForPrompt(questions)}`
+      questionsStemsSameCategorie.length > 0
+        ? `\n\n— Questions déjà présentes dans cette collection pour la catégorie « ${catKey} » uniquement (intitulés seuls, sans réponses) — évite les doublons et les paraphrases trop proches :\n${formatExistingQuestionStemsForPrompt(questionsStemsSameCategorie)}`
         : "";
-
-    const categorieBlock = `\n\n— Type des questions à générer (enregistrement en base) : « ${importLlmCategorie} » — ${QUESTION_CATEGORIE_DEFINITIONS[importLlmCategorie]}`;
 
     if (targetCollectionNumeric == null) {
       return LLM_PROMPT_BASE + countBlock + nameBlock + subjectBlock + categorieBlock;
@@ -172,7 +187,8 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     importLlmCollectionName,
     importLlmSubject,
     importLlmIncludeExistingStems,
-    importLlmCategorie,
+    importLlmCategorieId,
+    refCategories,
     questions,
   ]);
 
@@ -324,10 +340,13 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
         cid != null && importTargetModuleId != null
           ? importTargetModuleId
           : undefined;
+      const row = refCategories.find((c) => c.id === importLlmCategorieId);
+      const categorieApi =
+        row?.type === "pratique" ? "pratique" : row?.type === "histoire" ? "histoire" : "histoire";
       const res = await importQuestionsJson(data, {
         collectionId: cid,
         moduleId: mid,
-        categorie: importLlmCategorie,
+        categorie: categorieApi,
       });
       const baseMsg = `Import réussi : ${res.createdQuestions} question(s) créée(s)`;
       const tail =
@@ -387,8 +406,9 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
             targetCollectionNumeric={targetCollectionNumeric}
             importDesiredQuestionCount={importDesiredQuestionCount}
             setImportDesiredQuestionCount={setImportDesiredQuestionCount}
-            importLlmCategorie={importLlmCategorie}
-            setImportLlmCategorie={setImportLlmCategorie}
+            categorieOptions={refCategories}
+            importLlmCategorieId={importLlmCategorieId}
+            setImportLlmCategorieId={setImportLlmCategorieId}
             importLlmCollectionName={importLlmCollectionName}
             setImportLlmCollectionName={setImportLlmCollectionName}
             importLlmSubject={importLlmSubject}
