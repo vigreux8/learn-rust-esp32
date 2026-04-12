@@ -36,3 +36,10 @@ export type QuizzQuestionRow = {
   commentaire: string;
   collections: QuizzCollectionRef[];
 };
+
+export type QuizzModuleRow = {
+  id: number;
+  nom: string;
+  create_at: string;
+  update_at: string;
+};

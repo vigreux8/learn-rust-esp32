@@ -37,6 +37,8 @@ preview-bouton:
 	cd src/network/frontend/reglage_bouton && npm run preview
 
 ## Quizz — dépendances, dev (API + Vite), prod
+# Port d’écoute Nest (aligné sur src/network/backend/quizz/src/main.ts). Ex. : QUIZZ_BACKEND_PORT=4000 make run-quizz-backend
+QUIZZ_BACKEND_PORT ?= 3001
 
 install-quizz:
 	cd src/network/backend/quizz && npm install
@@ -44,7 +46,7 @@ install-quizz:
 	@echo "OK: npm install (backend + frontend quizz)."
 
 run-quizz-backend:
-	cd src/network/backend/quizz && npm run start:dev
+	cd src/network/backend/quizz && PORT=$(QUIZZ_BACKEND_PORT) npm run start:dev
 
 run-quizz-frontend:
 	cd src/network/frontend/quizz && npm run dev
@@ -52,7 +54,7 @@ run-quizz-frontend:
 ## Lance Nest (bg) puis Vite au premier plan ; Ctrl+C arrête les deux (trap).
 dev-quizz:
 	trap 'kill $$BACKEND_PID 2>/dev/null' EXIT INT TERM; \
-	cd src/network/backend/quizz && npm run start:dev & \
+	cd src/network/backend/quizz && PORT=$(QUIZZ_BACKEND_PORT) npm run start:dev & \
 	BACKEND_PID=$$!; \
 	cd src/network/frontend/quizz && npm run dev
 
@@ -81,11 +83,16 @@ inject-quizz-db:
 	cd $(QUIZZ_DIR) && npx prisma db pull --schema=$(SCHEMA_PATH)
 	cd $(QUIZZ_DIR) && npx prisma generate --schema=$(SCHEMA_PATH)
 	
-	@echo "✅ Terminé : La base est prête et le code est synchronisé."
+	@echo "--- 4. Données démo (MAC simulée + questions) ---"
+	cd $(QUIZZ_DIR) && npx prisma db seed
+	
+	@echo "✅ Terminé : La base est prête, le schéma synchronisé, le seed démo exécuté."
+
+	
 seed-quizz-db:
 	cd src/network/backend/quizz && npx prisma generate && npx prisma db seed
 	@echo "OK: données de seed Prisma insérées (backend quizz)."
 
 reset-quizz-db:
-	cd src/network/backend/quizz && rm -f quizz.db && sqlite3 quizz.db < ddb/last.sql && npx prisma generate && npx prisma db seed
+	cd src/network/backend/quizz && rm -f quizz.db && sqlite3 quizz.db < ddb/inject.sql && npx prisma generate && npx prisma db seed
 	@echo "OK: quizz.db recréée et seed exécuté (backend quizz)."

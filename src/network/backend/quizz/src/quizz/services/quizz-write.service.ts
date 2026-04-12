@@ -28,7 +28,7 @@ export class QuizzWriteService {
         data: patch,
         include: {
           question_collection: {
-            include: { ref_collection: true },
+            include: { quizz_collection: true },
             orderBy: { id: 'asc' },
           },
         },
@@ -40,8 +40,8 @@ export class QuizzWriteService {
         question: row.question,
         commentaire: row.commentaire ?? '',
         collections: row.question_collection.map((qc) => ({
-          id: qc.ref_collection.id,
-          nom: qc.ref_collection.nom,
+          id: qc.quizz_collection.id,
+          nom: qc.quizz_collection.nom,
         })),
       };
     } catch {

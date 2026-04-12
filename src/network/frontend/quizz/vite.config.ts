@@ -2,15 +2,21 @@ import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
 import tailwindcss from '@tailwindcss/vite'
 
+/** Cible Nest (127.0.0.1 évite les ambiguïtés ::1 / localhost). */
+const quizzApiProxy = {
+  '/api': {
+    target: 'http://127.0.0.1:3001',
+    changeOrigin: true,
+  },
+} as const
+
 export default defineConfig({
   plugins: [preact(), tailwindcss()],
   server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:3000",
-        changeOrigin: true,
-      },
-    },
+    proxy: quizzApiProxy,
+  },
+  preview: {
+    proxy: quizzApiProxy,
   },
   build: {
     // `src/network/site_compiled` (relatif : quizz/frontend → ../../../)

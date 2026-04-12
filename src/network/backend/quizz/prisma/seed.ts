@@ -33,8 +33,11 @@ async function clearAll(prisma: PrismaClient): Promise<void> {
   await prisma.question_collection.deleteMany();
   await prisma.quizz_question_reponse.deleteMany();
   await prisma.quizz_question.deleteMany();
+  await prisma.quizz_module_collection.deleteMany();
+  await prisma.quizz_collection.deleteMany();
+  await prisma.quizz_module.deleteMany();
   await prisma.quizz_reponse.deleteMany();
-  await prisma.ref_collection.deleteMany();
+  await prisma.ref_categorie.deleteMany();
   await prisma.user_device.deleteMany();
   await prisma.device.deleteMany();
   await prisma.user.deleteMany();
@@ -46,16 +49,19 @@ async function addQuestion(
   prisma: PrismaClient,
   params: {
     userId: number;
+    categorieId: number;
     collectionId: number;
     question: string;
     commentaire: string;
     reponses: AnswerSeed[];
   },
 ): Promise<void> {
-  const { userId, collectionId, question, commentaire, reponses } = params;
+  const { userId, categorieId, collectionId, question, commentaire, reponses } =
+    params;
   const q = await prisma.quizz_question.create({
     data: {
       user_id: userId,
+      categorie_id: categorieId,
       create_at: nowIso(),
       question,
       commentaire,
@@ -91,6 +97,13 @@ async function main(): Promise<void> {
   try {
     await clearAll(prisma);
 
+    const catHistoire = await prisma.ref_categorie.create({
+      data: { type: 'histoire' },
+    });
+    await prisma.ref_categorie.create({
+      data: { type: 'pratique' },
+    });
+
     const u1 = await prisma.user.create({ data: { pseudot: 'maitre_quizz' } });
     const devDemo = await prisma.device.create({
       data: { adresse_mac: SEED_DEMO_DEVICE_MAC },
@@ -100,8 +113,16 @@ async function main(): Promise<void> {
     });
     const t = nowIso();
 
-    // --- COLLECTIONS ---
-    const colCasquette = await prisma.ref_collection.create({
+    const modDemo = await prisma.quizz_module.create({
+      data: {
+        nom: 'demo-thematique',
+        create_at: t,
+        update_at: t,
+      },
+    });
+
+    // --- COLLECTIONS (quizz_collection) ---
+    const colCasquette = await prisma.quizz_collection.create({
       data: {
         user_id: u1.id,
         create_at: t,
@@ -110,7 +131,7 @@ async function main(): Promise<void> {
       },
     });
 
-    const colOrthographe = await prisma.ref_collection.create({
+    const colOrthographe = await prisma.quizz_collection.create({
       data: {
         user_id: u1.id,
         create_at: t,
@@ -119,7 +140,7 @@ async function main(): Promise<void> {
       },
     });
 
-    const colIA = await prisma.ref_collection.create({
+    const colIA = await prisma.quizz_collection.create({
       data: {
         user_id: u1.id,
         create_at: t,
@@ -128,10 +149,17 @@ async function main(): Promise<void> {
       },
     });
 
+    for (const col of [colCasquette, colOrthographe, colIA]) {
+      await prisma.quizz_module_collection.create({
+        data: { module_id: modDemo.id, collection_id: col.id },
+      });
+    }
+
     // --- QUESTIONS : SOCIOLOGIE DE LA CASQUETTE ---
 
     await addQuestion(prisma, {
       userId: u1.id,
+      categorieId: catHistoire.id,
       collectionId: colCasquette.id,
       question: "Pourquoi est-il traditionnellement jugé impoli de garder sa casquette à l'intérieur ?",
       commentaire: "Anecdote : Cela remonte à l'époque des chevaliers. Relever sa visière ou retirer son casque servait à montrer son visage pour prouver que l'on n'avait pas d'intentions hostiles. Garder son couvre-chef signifie que l'on reste 'sur ses gardes'.",
@@ -145,6 +173,7 @@ async function main(): Promise<void> {
 
     await addQuestion(prisma, {
       userId: u1.id,
+      categorieId: catHistoire.id,
       collectionId: colCasquette.id,
       question: "Comment la casquette a-t-elle servi historiquement à séparer les classes sociales ?",
       commentaire: "Au XIXe siècle, la 'casquette plate' était l'uniforme de l'ouvrier et du paysan, tandis que le 'haut-de-forme' symbolisait la bourgeoisie. La casquette était un marqueur visuel immédiat de la classe laborieuse par opposition à l'élite.",
@@ -160,6 +189,7 @@ async function main(): Promise<void> {
 
     await addQuestion(prisma, {
       userId: u1.id,
+      categorieId: catHistoire.id,
       collectionId: colOrthographe.id,
       question: "Pourquoi l'orthographe française contient-elle tant de lettres muettes (comme dans 'sept' ou 'temps') ?",
       commentaire: "Les savants de la Renaissance ont ajouté des lettres 'étymologiques' pour rappeler les racines latines et grecques des mots. Par exemple, le 'p' de 'sept' (septem) a été ajouté pour que le mot ressemble visuellement à son origine latine.",
@@ -173,6 +203,7 @@ async function main(): Promise<void> {
 
     await addQuestion(prisma, {
       userId: u1.id,
+      categorieId: catHistoire.id,
       collectionId: colOrthographe.id,
       question: "Quelle était l'une des raisons pour lesquelles l'Académie française a refusé de simplifier l'orthographe au XVIIIe siècle ?",
       commentaire: "L'Académie a écrit en 1740 qu'elle voulait que l'orthographe 'distingue les gens de lettres d'avec les ignorants'. Une orthographe difficile était donc un outil pour séparer l'élite instruite du peuple.",
@@ -188,6 +219,7 @@ async function main(): Promise<void> {
 
     await addQuestion(prisma, {
       userId: u1.id,
+      categorieId: catHistoire.id,
       collectionId: colIA.id,
       question: "Quel événement de 2011 a prouvé que l'IA Watson d'IBM pouvait comprendre le langage humain complexe ?",
       commentaire: "Watson a battu les plus grands champions du jeu télévisé 'Jeopardy!'. Contrairement aux échecs, ce jeu nécessite de comprendre les jeux de mots, les métaphores et l'ironie.",
@@ -201,6 +233,7 @@ async function main(): Promise<void> {
 
     await addQuestion(prisma, {
       userId: u1.id,
+      categorieId: catHistoire.id,
       collectionId: colIA.id,
       question: "Que signifie le 'P' dans le nom du modèle 'ChatGPT' ?",
       commentaire: "Il signifie 'Pre-trained' (Pré-entraîné). Cela veut dire que l'IA a ingéré des milliards de textes AVANT d'être capable de discuter avec vous.",

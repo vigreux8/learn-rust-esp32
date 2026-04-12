@@ -5,12 +5,17 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+/** Même format que le seed (`DE:AD:BE:EF:00:01`) : trim, majuscules, tirets → deux-points. */
+function normalizeMac(adresse_mac: string): string {
+  return adresse_mac.trim().toUpperCase().replace(/-/g, ':');
+}
+
 @Injectable()
 export class DevicesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async lookupDevice(adresse_mac: string) {
-    const mac = adresse_mac.trim();
+    const mac = normalizeMac(adresse_mac);
     if (!mac) {
       throw new BadRequestException('Query "adresse_mac" (string) requise');
     }
@@ -37,7 +42,7 @@ export class DevicesService {
     adresse_mac: string,
     pseudot: string,
   ): Promise<{ userId: number; pseudot: string }> {
-    const mac = adresse_mac.trim();
+    const mac = normalizeMac(adresse_mac);
     const pseudo = pseudot.trim();
     if (!mac) {
       throw new BadRequestException('Champ "adresse_mac" (string) requis');

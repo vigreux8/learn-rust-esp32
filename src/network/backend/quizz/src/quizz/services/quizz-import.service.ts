@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   LlmImportCollectionBlock,
@@ -61,6 +62,22 @@ export class QuizzImportService {
   }
 
   /**
+   * Catégorie par défaut pour les questions importées (créée si absente).
+   */
+  private async resolveDefaultCategorieId(
+    tx: Prisma.TransactionClient,
+  ): Promise<number> {
+    const existing = await tx.ref_categorie.findFirst({
+      where: { type: 'import' },
+    });
+    if (existing) return existing.id;
+    const created = await tx.ref_categorie.create({
+      data: { type: 'import' },
+    });
+    return created.id;
+  }
+
+  /**
    * Importe les questions après parsing ; toute la validation de forme est déjà faite.
    */
   private async persistImportPlan(
@@ -73,6 +90,8 @@ export class QuizzImportService {
     const t = nowIso();
 
     await this.prisma.prisma.$transaction(async (tx) => {
+      const categorieId = await this.resolveDefaultCategorieId(tx);
+
       const addQuestion = async (
         qin: LlmImportQuestion,
         collectionId: number | null,
@@ -80,6 +99,7 @@ export class QuizzImportService {
         const qRow = await tx.quizz_question.create({
           data: {
             user_id: userId,
+            categorie_id: categorieId,
             create_at: t,
             question: qin.question,
             commentaire: qin.commentaire,
@@ -111,11 +131,11 @@ export class QuizzImportService {
       };
 
       for (const block of collections) {
-        let col = await tx.ref_collection.findFirst({
+        let col = await tx.quizz_collection.findFirst({
           where: { user_id: userId, nom: block.nom },
         });
         if (!col) {
-          col = await tx.ref_collection.create({
+          col = await tx.quizz_collection.create({
             data: {
               user_id: userId,
               create_at: t,

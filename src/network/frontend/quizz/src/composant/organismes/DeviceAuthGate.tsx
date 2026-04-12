@@ -6,7 +6,7 @@ import { UserSessionContext, type UserSession } from "../../lib/userSession";
 import { Button } from "../atomes/Button";
 import { Card } from "../atomes/Card";
 
-type Phase = "checking" | "need-pseudot" | "welcome" | "ready";
+type Phase = "checking" | "api-error" | "need-pseudot" | "welcome" | "ready";
 
 function WelcomeOverlay({
   pseudot,
@@ -67,9 +67,12 @@ function PseudotScreen({
       <Card class="w-full max-w-md border-base-content/10 shadow-xl shadow-flow/5">
         <h1 class="mb-1 text-xl font-bold text-base-content">Première visite</h1>
         <p class="mb-4 text-sm text-base-content/65">
-          Cet appareil n’est pas reconnu. Indique ton pseudonyme pour créer ton profil (démo : MAC
-          simulée <code class="rounded bg-base-200 px-1.5 py-0.5 text-xs">{DEMO_DEVICE_MAC}</code>
-          ).
+          Cet appareil n’est pas reconnu en base (ou la base est vide). Indique ton pseudonyme pour
+          créer ton profil (démo : MAC simulée{' '}
+          <code class="rounded bg-base-200 px-1.5 py-0.5 text-xs">{DEMO_DEVICE_MAC}</code>
+          ). En local, si tu viens de créer la DB sans seed, lance{' '}
+          <code class="rounded bg-base-200 px-1 py-0.5 text-xs">make seed-quizz-db</code> à la racine
+          du dépôt puis recharge la page.
         </p>
         <label class="mb-2 block text-sm font-medium text-base-content/80" for="gate-pseudot">
           Pseudonyme
@@ -107,14 +110,42 @@ function CheckingScreen() {
   );
 }
 
+function ApiErrorScreen({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div class="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-b from-base-100 via-base-100/95 to-base-200/80 p-4">
+      <Card class="w-full max-w-md border-base-content/10 shadow-xl shadow-flow/5">
+        <h1 class="mb-1 text-xl font-bold text-base-content">Connexion au serveur</h1>
+        <p class="mb-4 text-sm text-base-content/65">{message}</p>
+        <p class="mb-4 text-xs text-base-content/50">
+          Tant que l’API ne répond pas, le site ne peut pas savoir si ta MAC simulée (
+          <code class="rounded bg-base-200 px-1 py-0.5">{DEMO_DEVICE_MAC}</code>) est déjà
+          enregistrée — ce n’est pas une « première visite » côté données.
+        </p>
+        <Button variant="flow" class="w-full" onClick={onRetry}>
+          Réessayer
+        </Button>
+      </Card>
+    </div>
+  );
+}
+
 export function DeviceAuthGate({ children }: { children: ComponentChildren }) {
   const [session, setSession] = useState<UserSession | null>(null);
   const [phase, setPhase] = useState<Phase>("checking");
   const [formError, setFormError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [registerBusy, setRegisterBusy] = useState(false);
+  const [lookupToken, setLookupToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setApiError(null);
     (async () => {
       try {
         const res = await fetchDeviceLookup(DEMO_DEVICE_MAC);
@@ -125,17 +156,23 @@ export function DeviceAuthGate({ children }: { children: ComponentChildren }) {
         } else {
           setPhase("need-pseudot");
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) {
-          setFormError("Impossible de joindre l’API. Le backend est-il démarré ?");
-          setPhase("need-pseudot");
+          const msg =
+            e instanceof TypeError
+              ? "Impossible de contacter le serveur (réseau). Vérifie que Nest tourne (ex. http://127.0.0.1:3001/api) et que le port correspond à `main.ts` / `make run-quizz-backend`."
+              : e instanceof Error
+                ? e.message
+                : "Erreur inconnue.";
+          setApiError(msg);
+          setPhase("api-error");
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [lookupToken]);
 
   const submitPseudot = async (pseudot: string) => {
     setFormError(null);
@@ -153,9 +190,18 @@ export function DeviceAuthGate({ children }: { children: ComponentChildren }) {
 
   const finishWelcome = () => setPhase("ready");
 
+  const retryLookup = () => {
+    setPhase("checking");
+    setApiError(null);
+    setLookupToken((n) => n + 1);
+  };
+
   return (
     <UserSessionContext.Provider value={phase === "ready" ? session : null}>
       {phase === "checking" ? <CheckingScreen /> : null}
+      {phase === "api-error" && apiError ? (
+        <ApiErrorScreen message={apiError} onRetry={retryLookup} />
+      ) : null}
       {phase === "need-pseudot" ? (
         <PseudotScreen onSubmit={submitPseudot} busy={registerBusy} error={formError} />
       ) : null}

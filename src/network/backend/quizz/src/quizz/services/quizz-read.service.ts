@@ -46,7 +46,7 @@ export class QuizzReadService {
   }
 
   async buildCollectionUi(collectionId: number): Promise<CollectionUi | null> {
-    const col = await this.prisma.prisma.ref_collection.findUnique({
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
       where: { id: collectionId },
       include: { user: true },
     });
@@ -80,7 +80,7 @@ export class QuizzReadService {
   }
 
   async listCollections(): Promise<CollectionUi[]> {
-    const cols = await this.prisma.prisma.ref_collection.findMany({
+    const cols = await this.prisma.prisma.quizz_collection.findMany({
       orderBy: { id: 'asc' },
     });
     const out: CollectionUi[] = [];
@@ -130,7 +130,7 @@ export class QuizzReadService {
       orderBy: { id: 'asc' },
       include: {
         question_collection: {
-          include: { ref_collection: true },
+          include: { quizz_collection: true },
           orderBy: { id: 'asc' },
         },
       },
@@ -143,8 +143,8 @@ export class QuizzReadService {
       question: r.question,
       commentaire: r.commentaire ?? '',
       collections: r.question_collection.map((qc) => ({
-        id: qc.ref_collection.id,
-        nom: qc.ref_collection.nom,
+        id: qc.quizz_collection.id,
+        nom: qc.quizz_collection.nom,
       })),
     }));
   }

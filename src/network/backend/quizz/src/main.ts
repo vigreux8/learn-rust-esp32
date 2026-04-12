@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -12,6 +12,8 @@ async function bootstrap() {
     }),
   );
   app.setGlobalPrefix('api');
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3001;
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`API prête : ${await app.getUrl()}`);
 }
 bootstrap();

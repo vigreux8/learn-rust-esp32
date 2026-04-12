@@ -3,6 +3,7 @@ import {
   LlmImportParser,
   QuizzImportService,
   QuizzReadService,
+  QuizzStructureService,
   QuizzService,
   QuizzWriteService,
 } from './services';
@@ -13,6 +14,7 @@ import { QuizzController } from './quizz.controller';
   providers: [
     QuizzReadService,
     QuizzWriteService,
+    QuizzStructureService,
     LlmImportParser,
     QuizzImportService,
     QuizzService,

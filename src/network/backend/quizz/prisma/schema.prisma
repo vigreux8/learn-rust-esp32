@@ -33,7 +33,7 @@ model quizz_collection {
 
 model quizz_module {
   id                      Int                       @id @unique(map: "sqlite_autoindex_quizz_module_1") @default(autoincrement())
-  nom                     Int
+  nom                     String
   create_at               String
   update_at               String
   quizz_module_collection quizz_module_collection[]
@@ -55,7 +55,7 @@ model quizz_question {
   question               String
   commentaire            String
   question_collection    question_collection[]
-  ref_categorie          ref_categorie            @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ref_categorie          ref_categorie            @relation(fields: [categorie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user                   user                     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   quizz_question_reponse quizz_question_reponse[]
   user_kpi               user_kpi[]

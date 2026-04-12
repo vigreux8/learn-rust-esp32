@@ -21,10 +21,10 @@ export class StatsSessionService {
     const qc = await this.prisma.prisma.question_collection.findFirst({
       where: { question_id: questionId },
       orderBy: { id: 'asc' },
-      include: { ref_collection: true },
+      include: { quizz_collection: true },
     });
     if (!qc) return null;
-    return { collectionId: qc.collection_id, collectionName: qc.ref_collection.nom };
+    return { collectionId: qc.collection_id, collectionName: qc.quizz_collection.nom };
   }
 
   /**
@@ -125,7 +125,7 @@ export class StatsSessionService {
     if (dayKpis.length === 0) return null;
 
     const good = dayKpis.filter((k) => k.quizz_reponse.bonne_reponse === 1).length;
-    const col = await this.prisma.prisma.ref_collection.findUnique({
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
       where: { id: collectionId },
     });
     const collectionName = col?.nom ?? `Collection #${collectionId}`;

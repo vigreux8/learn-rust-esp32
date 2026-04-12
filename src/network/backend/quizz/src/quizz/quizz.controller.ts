@@ -10,11 +10,36 @@ import {
   Query,
 } from '@nestjs/common';
 import { QuizzService } from './services';
-import { UpdateQuestionDto } from './dto/quizz.dto';
+import {
+  CreateCollectionInModuleDto,
+  CreateQuizzModuleDto,
+  UpdateQuestionDto,
+} from './dto/quizz.dto';
 
 @Controller('quizz')
 export class QuizzController {
   constructor(private readonly quizz: QuizzService) {}
+
+  @Get('modules')
+  listModules() {
+    return this.quizz.listModules();
+  }
+
+  @Post('modules')
+  createModule(@Body() body: CreateQuizzModuleDto) {
+    return this.quizz.createModule(body.nom);
+  }
+
+  @Post('modules/:moduleId/collections')
+  createCollectionInModule(
+    @Param('moduleId', ParseIntPipe) moduleId: number,
+    @Body() body: CreateCollectionInModuleDto,
+  ) {
+    return this.quizz.createCollectionInModule(moduleId, {
+      userId: body.userId,
+      nom: body.nom,
+    });
+  }
 
   @Get('collections')
   listCollections() {

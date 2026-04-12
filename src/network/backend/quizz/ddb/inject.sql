@@ -1,7 +1,7 @@
 /* un module ces par exemple : "histoire-france" */
 CREATE TABLE IF NOT EXISTS "quizz_module" (
 	"id" INTEGER NOT NULL UNIQUE,
-	"nom" INTEGER NOT NULL,
+	"nom" TEXT NOT NULL,
 	"create_at" TEXT NOT NULL,
 	"update_at" TEXT NOT NULL,
 	PRIMARY KEY("id")
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS "quizz_question" (
 	PRIMARY KEY("id"),
 	FOREIGN KEY ("user_id") REFERENCES "user"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,
-	FOREIGN KEY ("user_id") REFERENCES "ref_categorie"("id")
+	FOREIGN KEY ("categorie_id") REFERENCES "ref_categorie"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
