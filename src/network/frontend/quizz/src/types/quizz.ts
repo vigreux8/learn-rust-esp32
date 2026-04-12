@@ -50,7 +50,18 @@ export interface QuizzQuestionRow {
   create_at: string;
   question: string;
   commentaire: string;
+  categorie_id: number;
+  categorie_type: string;
   collections: QuizzCollectionRef[];
+}
+
+export interface QuizzQuestionDetail extends QuizzQuestionRow {
+  reponses: ReponseUi[];
+}
+
+export interface RefCategorieRow {
+  id: number;
+  type: string;
 }
 
 export interface UserKpiRow {

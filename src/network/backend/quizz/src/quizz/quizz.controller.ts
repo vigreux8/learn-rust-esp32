@@ -29,6 +29,12 @@ function parsePlayOrderQuery(orderRaw?: string): 'random' | 'linear' {
   );
 }
 
+function parseImportCategorie(raw?: string): 'histoire' | 'pratique' {
+  if (raw === undefined || raw === '') return 'histoire';
+  if (raw === 'histoire' || raw === 'pratique') return raw;
+  throw new BadRequestException('Query categorie : "histoire" (défaut) ou "pratique"');
+}
+
 @Controller('quizz')
 export class QuizzController {
   constructor(private readonly quizz: QuizzService) {}
@@ -106,11 +112,22 @@ export class QuizzController {
     return this.quizz.listQuestionsFromQuery(collectionId);
   }
 
+  @Get('questions/:id')
+  getQuestionDetail(@Param('id', ParseIntPipe) id: number) {
+    return this.quizz.getQuestionDetail(id);
+  }
+
+  @Get('categories')
+  listRefCategories() {
+    return this.quizz.listRefCategories();
+  }
+
   @Post('questions/import')
   importQuestions(
     @Body() body: unknown,
     @Query('collectionId') collectionIdStr?: string,
     @Query('moduleId') moduleIdStr?: string,
+    @Query('categorie') categorieRaw?: string,
   ) {
     const parseOptInt = (label: string, s?: string): number | undefined => {
       if (s === undefined || s === '') return undefined;
@@ -129,9 +146,11 @@ export class QuizzController {
         'Query moduleId sans collectionId : indique collectionId pour rattacher l’import.',
       );
     }
+    const categorie = parseImportCategorie(categorieRaw);
     return this.quizz.importQuestionsFromLlmJson(body, {
       collectionId,
       moduleId,
+      categorie,
     });
   }
 
@@ -143,6 +162,7 @@ export class QuizzController {
     return this.quizz.updateQuestion(id, {
       question: body?.question,
       commentaire: body?.commentaire,
+      categorie_id: body?.categorie_id,
     });
   }
 

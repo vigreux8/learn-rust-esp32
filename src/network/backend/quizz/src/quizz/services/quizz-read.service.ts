@@ -4,7 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CollectionUi, QuestionUi, QuizzQuestionRow } from '../quizz.type';
+import {
+  CollectionUi,
+  QuestionUi,
+  QuizzQuestionDetail,
+  QuizzQuestionRow,
+  RefCategorieRow,
+} from '../quizz.type';
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -127,6 +133,53 @@ export class QuizzReadService {
     return order === 'linear' ? mapped : shuffle(mapped);
   }
 
+  async listRefCategories(): Promise<RefCategorieRow[]> {
+    return this.prisma.prisma.ref_categorie.findMany({
+      orderBy: { id: 'asc' },
+      select: { id: true, type: true },
+    });
+  }
+
+  async getQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
+    const r = await this.prisma.prisma.quizz_question.findUnique({
+      where: { id },
+      include: {
+        ref_categorie: true,
+        quizz_question_reponse: {
+          include: { quizz_reponse: true },
+          orderBy: { id: 'asc' },
+        },
+        question_collection: {
+          include: { quizz_collection: true },
+          orderBy: { id: 'asc' },
+        },
+      },
+    });
+    if (!r) {
+      throw new NotFoundException(`Question ${id} introuvable`);
+    }
+    const ordered = [...r.quizz_question_reponse].sort((a, b) => a.id - b.id);
+    const reponses = ordered.map((j) => ({
+      id: j.quizz_reponse.id,
+      reponse: j.quizz_reponse.reponse,
+      bonne_reponse: j.quizz_reponse.bonne_reponse === 1,
+    }));
+    return {
+      id: r.id,
+      user_id: r.user_id,
+      create_at: r.create_at,
+      question: r.question,
+      commentaire: r.commentaire ?? '',
+      categorie_id: r.categorie_id,
+      categorie_type: r.ref_categorie.type,
+      collections: r.question_collection.map((qc) => ({
+        id: qc.quizz_collection.id,
+        nom: qc.quizz_collection.nom,
+      })),
+      reponses,
+    };
+  }
+
   async listQuestions(
     collectionFilter?: number | 'none',
   ): Promise<QuizzQuestionRow[]> {
@@ -145,6 +198,7 @@ export class QuizzReadService {
       where,
       orderBy: { id: 'asc' },
       include: {
+        ref_categorie: true,
         question_collection: {
           include: { quizz_collection: true },
           orderBy: { id: 'asc' },
@@ -158,6 +212,8 @@ export class QuizzReadService {
       create_at: r.create_at,
       question: r.question,
       commentaire: r.commentaire ?? '',
+      categorie_id: r.categorie_id,
+      categorie_type: r.ref_categorie.type,
       collections: r.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,

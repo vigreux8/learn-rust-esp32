@@ -97,10 +97,15 @@ async function main(): Promise<void> {
   try {
     await clearAll(prisma);
 
+    /**
+     * Types de question (ref_categorie), alignés sur inject.sql :
+     * - histoire : questions plutôt « information » (contexte, repères, culture).
+     * - pratique : questions sur comment appliquer l’information et dans quels cas l’utiliser.
+     */
     const catHistoire = await prisma.ref_categorie.create({
       data: { type: 'histoire' },
     });
-    await prisma.ref_categorie.create({
+    const catPratique = await prisma.ref_categorie.create({
       data: { type: 'pratique' },
     });
 
@@ -233,15 +238,20 @@ async function main(): Promise<void> {
 
     await addQuestion(prisma, {
       userId: u1.id,
-      categorieId: catHistoire.id,
+      categorieId: catPratique.id,
       collectionId: colIA.id,
-      question: "Que signifie le 'P' dans le nom du modèle 'ChatGPT' ?",
-      commentaire: "Il signifie 'Pre-trained' (Pré-entraîné). Cela veut dire que l'IA a ingéré des milliards de textes AVANT d'être capable de discuter avec vous.",
+      question:
+        "Tu rédiges un mail professionnel : dans quel cas utiliser plutôt un modèle génératif type ChatGPT pour un premier jet, sans le copier-coller tel quel ?",
+      commentaire:
+        "Cas pratique : le bon usage est le brouillon assisté puis relecture humaine (ton, exactitude, confidentialité). Copier-coller aveugle risque erreurs et fuites.",
       reponses: [
-        { texte: "Pre-trained (Pré-entraîné)", correcte: true },
-        { texte: "Powerful (Puissant)", correcte: false },
-        { texte: "Programmed (Programmé)", correcte: false },
-        { texte: "Predictive (Prédictif)", correcte: false },
+        {
+          texte: "Pour un brouillon à retravailler soi-même (ton, faits, confident)",
+          correcte: true,
+        },
+        { texte: "Pour envoyer tel quel sans relecture si le mail est court", correcte: false },
+        { texte: "Uniquement si le destinataire utilise aussi l’IA", correcte: false },
+        { texte: "Jamais : l’IA est interdite en entreprise", correcte: false },
       ],
     });
 

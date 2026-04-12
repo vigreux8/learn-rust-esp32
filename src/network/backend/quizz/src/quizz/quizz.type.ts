@@ -41,7 +41,20 @@ export type QuizzQuestionRow = {
   create_at: string;
   question: string;
   commentaire: string;
+  /** `ref_categorie.id` */
+  categorie_id: number;
+  /** `ref_categorie.type` (ex. histoire, pratique) */
+  categorie_type: string;
   collections: QuizzCollectionRef[];
+};
+
+export type QuizzQuestionDetail = QuizzQuestionRow & {
+  reponses: ReponseUi[];
+};
+
+export type RefCategorieRow = {
+  id: number;
+  type: string;
 };
 
 export type QuizzModuleRow = {

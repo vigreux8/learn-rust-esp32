@@ -111,17 +111,20 @@ export class QuizzImportService {
     }
   }
 
-  private async resolveDefaultCategorieId(
+  private async resolveImportCategorieId(
     tx: Prisma.TransactionClient,
+    kind: 'histoire' | 'pratique',
   ): Promise<number> {
-    const existing = await tx.ref_categorie.findFirst({
-      where: { type: 'import' },
+    const row = await tx.ref_categorie.findFirst({
+      where: { type: kind },
+      orderBy: { id: 'asc' },
     });
-    if (existing) return existing.id;
-    const created = await tx.ref_categorie.create({
-      data: { type: 'import' },
-    });
-    return created.id;
+    if (!row) {
+      throw new BadRequestException(
+        `Catégorie "${kind}" introuvable dans ref_categorie — exécute le seed Prisma.`,
+      );
+    }
+    return row.id;
   }
 
   /**
@@ -131,13 +134,14 @@ export class QuizzImportService {
     userId: number,
     collections: LlmImportCollectionBlock[],
     questionsSansCollection: LlmImportQuestion[],
+    categorieKind: 'histoire' | 'pratique',
   ): Promise<{ createdQuestions: number; createdCollections: number }> {
     let createdQuestions = 0;
     let createdCollections = 0;
     const t = nowIso();
 
     await this.prisma.prisma.$transaction(async (tx) => {
-      const categorieId = await this.resolveDefaultCategorieId(tx);
+      const categorieId = await this.resolveImportCategorieId(tx, categorieKind);
 
       const addQuestion = async (
         qin: LlmImportQuestion,
@@ -199,6 +203,7 @@ export class QuizzImportService {
     userId: number,
     targetCollectionId: number,
     questions: LlmImportQuestion[],
+    categorieKind: 'histoire' | 'pratique',
   ): Promise<{ createdQuestions: number }> {
     const col = await this.prisma.prisma.quizz_collection.findUnique({
       where: { id: targetCollectionId },
@@ -219,7 +224,7 @@ export class QuizzImportService {
     let createdQuestions = 0;
     const t = nowIso();
     await this.prisma.prisma.$transaction(async (tx) => {
-      const categorieId = await this.resolveDefaultCategorieId(tx);
+      const categorieId = await this.resolveImportCategorieId(tx, categorieKind);
       for (const qin of questions) {
         await this.insertOneQuestion(
           tx,
@@ -248,13 +253,18 @@ export class QuizzImportService {
    */
   async importQuestionsFromLlmJson(
     body: unknown,
-    opts?: { collectionId?: number; moduleId?: number },
+    opts?: {
+      collectionId?: number;
+      moduleId?: number;
+      categorie?: 'histoire' | 'pratique';
+    },
   ): Promise<{
     createdQuestions: number;
     createdCollections: number;
   }> {
     const parsed = this.llmImportParser.parse(body);
     const userId = await this.resolveImportUserId(parsed.userIdRaw);
+    const categorieKind = opts?.categorie ?? 'histoire';
 
     if (opts?.collectionId != null) {
       const flat = this.flattenParsedQuestions(
@@ -265,6 +275,7 @@ export class QuizzImportService {
         userId,
         opts.collectionId,
         flat,
+        categorieKind,
       );
       if (opts.moduleId != null) {
         await this.structure.assignCollectionToModule(
@@ -279,6 +290,7 @@ export class QuizzImportService {
       userId,
       parsed.collections,
       parsed.questionsSansCollection,
+      categorieKind,
     );
 
     if (createdQuestions === 0) {

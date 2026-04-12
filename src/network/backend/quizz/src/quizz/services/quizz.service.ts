@@ -3,7 +3,9 @@ import {
   CollectionUi,
   QuestionUi,
   QuizzModuleRow,
+  QuizzQuestionDetail,
   QuizzQuestionRow,
+  RefCategorieRow,
 } from '../quizz.type';
 import { QuizzImportService } from './quizz-import.service';
 import { QuizzReadService } from './quizz-read.service';
@@ -46,10 +48,22 @@ export class QuizzService {
     return this.read.listQuestionsFromQuery(collectionId);
   }
 
+  listRefCategories(): Promise<RefCategorieRow[]> {
+    return this.read.listRefCategories();
+  }
+
+  getQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
+    return this.read.getQuestionDetail(id);
+  }
+
   // Delegation: QuizzWriteService
   updateQuestion(
     id: number,
-    data: { question?: string; commentaire?: string },
+    data: {
+      question?: string;
+      commentaire?: string;
+      categorie_id?: number;
+    },
   ): Promise<QuizzQuestionRow> {
     return this.write.updateQuestion(id, data);
   }
@@ -130,7 +144,11 @@ export class QuizzService {
   // Delegation: QuizzImportService
   importQuestionsFromLlmJson(
     body: unknown,
-    opts?: { collectionId?: number; moduleId?: number },
+    opts?: {
+      collectionId?: number;
+      moduleId?: number;
+      categorie?: 'histoire' | 'pratique';
+    },
   ): Promise<{
     createdQuestions: number;
     createdCollections: number;

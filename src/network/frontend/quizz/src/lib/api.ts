@@ -4,7 +4,9 @@ import type {
   DeviceLookupResult,
   QuestionUi,
   QuizzModuleRow,
+  QuizzQuestionDetail,
   QuizzQuestionRow,
+  RefCategorieRow,
   SessionDetail,
   SessionSummary,
   UserKpiRow,
@@ -117,6 +119,18 @@ export async function fetchRandomQuiz(opts?: {
   return res.json() as Promise<QuestionUi[]>;
 }
 
+export async function fetchRefCategories(): Promise<RefCategorieRow[]> {
+  const res = await fetch(apiUrl("/quizz/categories"));
+  await assertResponseOk(res);
+  return res.json() as Promise<RefCategorieRow[]>;
+}
+
+export async function fetchQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
+  const res = await fetch(apiUrl(`/quizz/questions/${id}`));
+  await assertResponseOk(res);
+  return res.json() as Promise<QuizzQuestionDetail>;
+}
+
 export async function fetchQuestions(
   collectionId?: number | "none",
 ): Promise<QuizzQuestionRow[]> {
@@ -133,7 +147,7 @@ export async function fetchQuestions(
 
 export async function patchQuestion(
   id: number,
-  body: { question?: string; commentaire?: string },
+  body: { question?: string; commentaire?: string; categorie_id?: number },
 ): Promise<QuizzQuestionRow> {
   const res = await fetch(apiUrl(`/quizz/questions/${id}`), {
     method: "PATCH",
@@ -160,7 +174,7 @@ export async function createEmptyCollection(body: {
 
 export async function importQuestionsJson(
   body: unknown,
-  options?: { collectionId?: number; moduleId?: number },
+  options?: { collectionId?: number; moduleId?: number; categorie?: "histoire" | "pratique" },
 ): Promise<{
   createdQuestions: number;
   createdCollections: number;
@@ -171,6 +185,9 @@ export async function importQuestionsJson(
   }
   if (options?.moduleId != null) {
     q.set("moduleId", String(options.moduleId));
+  }
+  if (options?.categorie != null) {
+    q.set("categorie", options.categorie);
   }
   const suffix = q.size > 0 ? `?${q.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/questions/import${suffix}`), {

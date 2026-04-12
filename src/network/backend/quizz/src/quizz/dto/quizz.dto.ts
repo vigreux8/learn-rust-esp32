@@ -8,6 +8,11 @@ export class UpdateQuestionDto {
   @IsOptional()
   @IsString()
   commentaire?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  categorie_id?: number;
 }
 
 export class CreateQuizzModuleDto {
