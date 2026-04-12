@@ -28,6 +28,7 @@ export function App() {
         >
           <Route path="/" component={HomeView} />
           <Route path="/collections" component={CollectionsView} />
+          <Route path="/questions/:collectionId" component={QuestionsView} />
           <Route path="/questions" component={QuestionsView} />
           <Route path="/dashboard/session/:sessionId" component={SessionDetailsView} />
           <Route path="/dashboard" component={StatsDashboard} />

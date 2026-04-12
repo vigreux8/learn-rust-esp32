@@ -113,11 +113,28 @@ export class QuizzService {
     return ui;
   }
 
+  async createStandaloneCollection(body: {
+    userId: number;
+    nom: string;
+    moduleId?: number;
+  }): Promise<CollectionUi> {
+    const { collectionId } =
+      await this.structure.createStandaloneCollection(body);
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable après création`);
+    }
+    return ui;
+  }
+
   // Delegation: QuizzImportService
-  importQuestionsFromLlmJson(body: unknown): Promise<{
+  importQuestionsFromLlmJson(
+    body: unknown,
+    opts?: { collectionId?: number; moduleId?: number },
+  ): Promise<{
     createdQuestions: number;
     createdCollections: number;
   }> {
-    return this.importSvc.importQuestionsFromLlmJson(body);
+    return this.importSvc.importQuestionsFromLlmJson(body, opts);
   }
 }

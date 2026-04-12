@@ -1,4 +1,4 @@
-import { ChevronRight, FolderTree, X } from "lucide-preact";
+import { ChevronRight, FolderTree, ListTree, X } from "lucide-preact";
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
 import { Card } from "../atomes/Card";
@@ -116,14 +116,28 @@ export function CollectionCard({
             </p>
           ) : null}
         </div>
-        <Button
-          variant="flow"
-          class="btn-sm gap-1 self-start sm:self-center"
-          onClick={() => route(`/play/${collection.id}`)}
-        >
-          Jouer
-          <ChevronRight class="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
-        </Button>
+        <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
+          <Button
+            variant="outline"
+            class="btn-sm gap-1"
+            onClick={() => {
+              const first = linkedModules[0];
+              const q = first != null ? `?module=${first.id}` : "";
+              route(`/questions/${collection.id}${q}`);
+            }}
+          >
+            <ListTree class="h-4 w-4" aria-hidden />
+            Questions
+          </Button>
+          <Button
+            variant="flow"
+            class="btn-sm gap-1"
+            onClick={() => route(`/play/${collection.id}`)}
+          >
+            Jouer
+            <ChevronRight class="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
+          </Button>
+        </div>
       </div>
     </Card>
   );

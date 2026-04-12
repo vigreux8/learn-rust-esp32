@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import { route } from "preact-router";
 import { Layers, Trash2 } from "lucide-preact";
 import {
   assignCollectionToModule,
+  createEmptyCollection,
   createQuizzModule,
   deleteQuizzModule,
   fetchCollections,
@@ -56,6 +58,10 @@ export function CollectionsView() {
   const [assignError, setAssignError] = useState<string | null>(null);
   const [deleteModuleBusyId, setDeleteModuleBusyId] = useState<number | null>(null);
   const [deleteModuleError, setDeleteModuleError] = useState<string | null>(null);
+  const [newCollName, setNewCollName] = useState("");
+  const [newCollModuleId, setNewCollModuleId] = useState<number | "">("");
+  const [createCollBusy, setCreateCollBusy] = useState(false);
+  const [createCollError, setCreateCollError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const [list, mods] = await Promise.all([fetchCollections(), fetchModules()]);
@@ -132,6 +138,30 @@ export function CollectionsView() {
       setAssignError(e instanceof Error ? e.message : "Retrait impossible.");
     } finally {
       setAssignBusyCollectionId(null);
+    }
+  };
+
+  const handleCreateCollection = async () => {
+    const nom = newCollName.trim();
+    if (!nom) return;
+    setCreateCollBusy(true);
+    setCreateCollError(null);
+    try {
+      const body: { userId: number; nom: string; moduleId?: number } = {
+        userId,
+        nom,
+      };
+      if (newCollModuleId !== "") body.moduleId = Number(newCollModuleId);
+      const ui = await createEmptyCollection(body);
+      setCollections((prev) => [...prev, ui].sort((a, b) => a.id - b.id));
+      setNewCollName("");
+      setNewCollModuleId("");
+      const modQ = body.moduleId != null ? `?module=${body.moduleId}` : "";
+      route(`/questions/${ui.id}${modQ}`);
+    } catch (e) {
+      setCreateCollError(e instanceof Error ? e.message : "Création impossible.");
+    } finally {
+      setCreateCollBusy(false);
     }
   };
 
@@ -272,6 +302,61 @@ export function CollectionsView() {
                 </Button>
               </div>
               {createModuleError ? <p class="mt-2 text-xs text-error">{createModuleError}</p> : null}
+            </section>
+
+            <section class="mb-8 rounded-[var(--radius-box)] border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
+              <h2 class="text-sm font-semibold tracking-tight text-base-content">Nouvelle collection</h2>
+              <p class="mt-1 max-w-2xl text-xs text-base-content/55">
+                Crée une collection vide, éventuellement déjà rattachée à une supercollection, puis ouvre la page
+                Questions pour y importer via le LLM.
+              </p>
+              <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <div class="min-w-0 flex-1 sm:min-w-[12rem]">
+                  <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-name">
+                    Nom
+                  </label>
+                  <input
+                    id="new-collection-name"
+                    class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100"
+                    type="text"
+                    placeholder="ex. Révisions chapitre 3"
+                    value={newCollName}
+                    disabled={createCollBusy}
+                    onInput={(e) => setNewCollName((e.target as HTMLInputElement).value)}
+                  />
+                </div>
+                <div class="w-full sm:w-auto sm:min-w-[10rem]">
+                  <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-module">
+                    Supercollection (optionnel)
+                  </label>
+                  <select
+                    id="new-collection-module"
+                    class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100"
+                    value={newCollModuleId === "" ? "" : String(newCollModuleId)}
+                    disabled={createCollBusy || modules.length === 0}
+                    onChange={(e) => {
+                      const v = (e.target as HTMLSelectElement).value;
+                      setNewCollModuleId(v === "" ? "" : Number(v));
+                    }}
+                  >
+                    <option value="">—</option>
+                    {modules.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  variant="flow"
+                  class="btn-sm shrink-0"
+                  disabled={createCollBusy || !newCollName.trim()}
+                  onClick={() => void handleCreateCollection()}
+                >
+                  {createCollBusy ? "Création…" : "Créer collection"}
+                </Button>
+              </div>
+              {createCollError ? <p class="mt-2 text-xs text-error">{createCollError}</p> : null}
             </section>
 
             {assignError ? (

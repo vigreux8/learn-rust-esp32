@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -6,6 +10,7 @@ import {
   LlmImportParser,
   LlmImportQuestion,
 } from './quizz-import.parser';
+import { QuizzStructureService } from './quizz-structure.service';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -22,6 +27,7 @@ export class QuizzImportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly llmImportParser: LlmImportParser,
+    private readonly structure: QuizzStructureService,
   ) {}
 
   /**
@@ -64,6 +70,47 @@ export class QuizzImportService {
   /**
    * Catégorie par défaut pour les questions importées (créée si absente).
    */
+  private async insertOneQuestion(
+    tx: Prisma.TransactionClient,
+    userId: number,
+    categorieId: number,
+    t: string,
+    qin: LlmImportQuestion,
+    collectionId: number | null,
+  ): Promise<void> {
+    const qRow = await tx.quizz_question.create({
+      data: {
+        user_id: userId,
+        categorie_id: categorieId,
+        create_at: t,
+        question: qin.question,
+        commentaire: qin.commentaire,
+      },
+    });
+    for (const r of qin.reponses) {
+      const rep = await tx.quizz_reponse.create({
+        data: {
+          reponse: r.texte,
+          bonne_reponse: r.correcte ? 1 : 0,
+        },
+      });
+      await tx.quizz_question_reponse.create({
+        data: {
+          question_id: qRow.id,
+          reponse_id: rep.id,
+        },
+      });
+    }
+    if (collectionId != null) {
+      await tx.question_collection.create({
+        data: {
+          collection_id: collectionId,
+          question_id: qRow.id,
+        },
+      });
+    }
+  }
+
   private async resolveDefaultCategorieId(
     tx: Prisma.TransactionClient,
   ): Promise<number> {
@@ -96,37 +143,14 @@ export class QuizzImportService {
         qin: LlmImportQuestion,
         collectionId: number | null,
       ): Promise<void> => {
-        const qRow = await tx.quizz_question.create({
-          data: {
-            user_id: userId,
-            categorie_id: categorieId,
-            create_at: t,
-            question: qin.question,
-            commentaire: qin.commentaire,
-          },
-        });
-        for (const r of qin.reponses) {
-          const rep = await tx.quizz_reponse.create({
-            data: {
-              reponse: r.texte,
-              bonne_reponse: r.correcte ? 1 : 0,
-            },
-          });
-          await tx.quizz_question_reponse.create({
-            data: {
-              question_id: qRow.id,
-              reponse_id: rep.id,
-            },
-          });
-        }
-        if (collectionId != null) {
-          await tx.question_collection.create({
-            data: {
-              collection_id: collectionId,
-              question_id: qRow.id,
-            },
-          });
-        }
+        await this.insertOneQuestion(
+          tx,
+          userId,
+          categorieId,
+          t,
+          qin,
+          collectionId,
+        );
         createdQuestions += 1;
       };
 
@@ -159,6 +183,62 @@ export class QuizzImportService {
     return { createdQuestions, createdCollections };
   }
 
+  private flattenParsedQuestions(
+    collections: LlmImportCollectionBlock[],
+    questionsSansCollection: LlmImportQuestion[],
+  ): LlmImportQuestion[] {
+    const out: LlmImportQuestion[] = [];
+    for (const b of collections) {
+      out.push(...b.questions);
+    }
+    out.push(...questionsSansCollection);
+    return out;
+  }
+
+  private async persistImportIntoExistingCollection(
+    userId: number,
+    targetCollectionId: number,
+    questions: LlmImportQuestion[],
+  ): Promise<{ createdQuestions: number }> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: targetCollectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${targetCollectionId} introuvable`);
+    }
+    if (col.user_id !== userId) {
+      throw new BadRequestException(
+        `La collection ${targetCollectionId} n’appartient pas à l’utilisateur ${userId} (user_id du JSON).`,
+      );
+    }
+    if (questions.length === 0) {
+      throw new BadRequestException(
+        'Aucune question à importer : fusionne tes blocs "collections" et/ou "questions_sans_collection".',
+      );
+    }
+    let createdQuestions = 0;
+    const t = nowIso();
+    await this.prisma.prisma.$transaction(async (tx) => {
+      const categorieId = await this.resolveDefaultCategorieId(tx);
+      for (const qin of questions) {
+        await this.insertOneQuestion(
+          tx,
+          userId,
+          categorieId,
+          t,
+          qin,
+          targetCollectionId,
+        );
+        createdQuestions += 1;
+      }
+      await tx.quizz_collection.update({
+        where: { id: targetCollectionId },
+        data: { update_at: t },
+      });
+    });
+    return { createdQuestions };
+  }
+
   /**
    * Parse un corps JSON puis persiste en transaction.
    *
@@ -166,12 +246,34 @@ export class QuizzImportService {
    * @returns Nombre de questions et de collections créées (collections déjà existantes ne comptent pas comme créées).
    * @throws {BadRequestException} Corps invalide, aucune question importée, ou erreur métier durant l’import.
    */
-  async importQuestionsFromLlmJson(body: unknown): Promise<{
+  async importQuestionsFromLlmJson(
+    body: unknown,
+    opts?: { collectionId?: number; moduleId?: number },
+  ): Promise<{
     createdQuestions: number;
     createdCollections: number;
   }> {
     const parsed = this.llmImportParser.parse(body);
     const userId = await this.resolveImportUserId(parsed.userIdRaw);
+
+    if (opts?.collectionId != null) {
+      const flat = this.flattenParsedQuestions(
+        parsed.collections,
+        parsed.questionsSansCollection,
+      );
+      const { createdQuestions } = await this.persistImportIntoExistingCollection(
+        userId,
+        opts.collectionId,
+        flat,
+      );
+      if (opts.moduleId != null) {
+        await this.structure.assignCollectionToModule(
+          opts.collectionId,
+          opts.moduleId,
+        );
+      }
+      return { createdQuestions, createdCollections: 0 };
+    }
 
     const { createdQuestions, createdCollections } = await this.persistImportPlan(
       userId,

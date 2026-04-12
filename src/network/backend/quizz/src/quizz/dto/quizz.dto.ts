@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
 
 export class UpdateQuestionDto {
   @IsOptional()
@@ -28,4 +28,19 @@ export class AssignCollectionToModuleDto {
   @IsInt()
   @Min(1)
   moduleId!: number;
+}
+
+export class CreateStandaloneCollectionDto {
+  @IsInt()
+  @Min(1)
+  userId!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  moduleId?: number;
 }

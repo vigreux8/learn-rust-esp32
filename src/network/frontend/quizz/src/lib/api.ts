@@ -140,11 +140,36 @@ export async function patchQuestion(
   return res.json() as Promise<QuizzQuestionRow>;
 }
 
-export async function importQuestionsJson(body: unknown): Promise<{
+export async function createEmptyCollection(body: {
+  userId: number;
+  nom: string;
+  moduleId?: number;
+}): Promise<CollectionUi> {
+  const res = await fetch(apiUrl("/quizz/collections"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<CollectionUi>;
+}
+
+export async function importQuestionsJson(
+  body: unknown,
+  options?: { collectionId?: number; moduleId?: number },
+): Promise<{
   createdQuestions: number;
   createdCollections: number;
 }> {
-  const res = await fetch(apiUrl("/quizz/questions/import"), {
+  const q = new URLSearchParams();
+  if (options?.collectionId != null) {
+    q.set("collectionId", String(options.collectionId));
+  }
+  if (options?.moduleId != null) {
+    q.set("moduleId", String(options.moduleId));
+  }
+  const suffix = q.size > 0 ? `?${q.toString()}` : "";
+  const res = await fetch(apiUrl(`/quizz/questions/import${suffix}`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

@@ -170,4 +170,50 @@ export class QuizzStructureService {
       this.prisma.prisma.quizz_module.delete({ where: { id: moduleId } }),
     ]);
   }
+
+  /**
+   * Crée une collection vide (sans questions), optionnellement liée à un module.
+   */
+  async createStandaloneCollection(params: {
+    userId: number;
+    nom: string;
+    moduleId?: number;
+  }): Promise<{ collectionId: number }> {
+    const user = await this.prisma.prisma.user.findUnique({
+      where: { id: params.userId },
+    });
+    if (!user) {
+      throw new NotFoundException(`Utilisateur ${params.userId} introuvable`);
+    }
+    const trimmed = params.nom.trim();
+    if (!trimmed) {
+      throw new BadRequestException('Le nom de la collection ne peut pas être vide');
+    }
+    if (params.moduleId != null) {
+      const mod = await this.prisma.prisma.quizz_module.findUnique({
+        where: { id: params.moduleId },
+      });
+      if (!mod) {
+        throw new NotFoundException(`Module ${params.moduleId} introuvable`);
+      }
+    }
+    const t = nowIso();
+    const col = await this.prisma.prisma.$transaction(async (tx) => {
+      const c = await tx.quizz_collection.create({
+        data: {
+          user_id: params.userId,
+          create_at: t,
+          update_at: t,
+          nom: trimmed,
+        },
+      });
+      if (params.moduleId != null) {
+        await tx.quizz_module_collection.create({
+          data: { module_id: params.moduleId, collection_id: c.id },
+        });
+      }
+      return c;
+    });
+    return { collectionId: col.id };
+  }
 }

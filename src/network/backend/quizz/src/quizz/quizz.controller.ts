@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -16,6 +17,7 @@ import {
   AssignCollectionToModuleDto,
   CreateCollectionInModuleDto,
   CreateQuizzModuleDto,
+  CreateStandaloneCollectionDto,
   UpdateQuestionDto,
 } from './dto/quizz.dto';
 
@@ -55,6 +57,15 @@ export class QuizzController {
     return this.quizz.listCollections();
   }
 
+  @Post('collections')
+  createStandaloneCollection(@Body() body: CreateStandaloneCollectionDto) {
+    return this.quizz.createStandaloneCollection({
+      userId: body.userId,
+      nom: body.nom,
+      moduleId: body.moduleId,
+    });
+  }
+
   @Get('collections/:id')
   getCollection(@Param('id', ParseIntPipe) id: number) {
     return this.quizz.getCollection(id);
@@ -87,8 +98,32 @@ export class QuizzController {
   }
 
   @Post('questions/import')
-  importQuestions(@Body() body: unknown) {
-    return this.quizz.importQuestionsFromLlmJson(body);
+  importQuestions(
+    @Body() body: unknown,
+    @Query('collectionId') collectionIdStr?: string,
+    @Query('moduleId') moduleIdStr?: string,
+  ) {
+    const parseOptInt = (label: string, s?: string): number | undefined => {
+      if (s === undefined || s === '') return undefined;
+      const n = Number(s);
+      if (!Number.isInteger(n) || n < 1) {
+        throw new BadRequestException(
+          `Query ${label} : entier ≥ 1 attendu si le paramètre est fourni`,
+        );
+      }
+      return n;
+    };
+    const collectionId = parseOptInt('collectionId', collectionIdStr);
+    const moduleId = parseOptInt('moduleId', moduleIdStr);
+    if (moduleId != null && collectionId == null) {
+      throw new BadRequestException(
+        'Query moduleId sans collectionId : indique collectionId pour rattacher l’import.',
+      );
+    }
+    return this.quizz.importQuestionsFromLlmJson(body, {
+      collectionId,
+      moduleId,
+    });
   }
 
   @Patch('questions/:id')
