@@ -24,6 +24,7 @@ import {
   LLM_PROMPT_COLLECTION,
 } from "../../lib/llmImportPrompts";
 import { QUESTION_CATEGORIE_DEFINITIONS } from "../../lib/questionCategories";
+import type { PlayQtype } from "../../lib/playOrder";
 import { QuestionsCollectionContextBar } from "./QuestionsCollectionContextBar";
 import { QuestionsLlmImportPanel } from "./QuestionsLlmImportPanel";
 import { QuestionsTable } from "./QuestionsTable";
@@ -82,6 +83,8 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
   const [saving, setSaving] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
   const importLlmLastSyncedCollectionId = useRef<number | null>(null);
+  /** Filtre d’affichage du tableau (sans nouvel appel API). */
+  const [listFilterQtype, setListFilterQtype] = useState<PlayQtype>("melanger");
 
   const targetCollectionNumeric =
     collectionFilter !== "" &&
@@ -89,6 +92,11 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     /^\d+$/.test(collectionFilter)
       ? Number(collectionFilter)
       : null;
+
+  const questionsForTable = useMemo(() => {
+    if (listFilterQtype === "melanger") return questions;
+    return questions.filter((q) => q.categorie_type === listFilterQtype);
+  }, [questions, listFilterQtype]);
 
   useEffect(() => {
     if (targetCollectionNumeric == null) {
@@ -433,24 +441,44 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
           setImportTargetModuleId={setImportTargetModuleId}
         />
 
-        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          <label class="text-sm font-medium text-base-content/80" for="q-collection-filter">
-            Filtrer par collection
-          </label>
-          <select
-            id="q-collection-filter"
-            class="select select-bordered select-sm max-w-full rounded-xl border-base-content/15 bg-base-100 sm:max-w-xs"
-            value={collectionFilter}
-            onChange={(e) => onCollectionFilterChange((e.target as HTMLSelectElement).value)}
-          >
-            <option value="">Toutes les questions</option>
-            <option value="none">Sans collection</option>
-            {collections.map((c) => (
-              <option key={c.id} value={String(c.id)}>
-                {c.nom}
-              </option>
-            ))}
-          </select>
+        <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+          <div class="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-xs">
+            <label class="text-sm font-medium text-base-content/80" for="q-collection-filter">
+              Filtrer par collection
+            </label>
+            <select
+              id="q-collection-filter"
+              class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100"
+              value={collectionFilter}
+              onChange={(e) => onCollectionFilterChange((e.target as HTMLSelectElement).value)}
+            >
+              <option value="">Toutes les questions</option>
+              <option value="none">Sans collection</option>
+              {collections.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="flex min-w-0 flex-col gap-2 sm:w-44">
+            <label class="text-sm font-medium text-base-content/80" for="q-list-qtype-filter">
+              Filtrer par type (affichage)
+            </label>
+            <select
+              id="q-list-qtype-filter"
+              class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100"
+              value={listFilterQtype}
+              onChange={(e) => {
+                const v = (e.target as HTMLSelectElement).value;
+                if (v === "histoire" || v === "pratique" || v === "melanger") setListFilterQtype(v);
+              }}
+            >
+              <option value="melanger">Tout (histoire + pratique)</option>
+              <option value="histoire">Histoire seulement</option>
+              <option value="pratique">Pratique seulement</option>
+            </select>
+          </div>
         </div>
 
         {loading ? (
@@ -464,7 +492,7 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
           </Card>
         ) : (
           <QuestionsTable
-            questions={questions}
+            questions={questionsForTable}
             saving={saving}
             onEdit={openEditModal}
             onRemove={remove}

@@ -115,6 +115,15 @@ export class QuizzController {
     return this.quizz.unassignCollectionFromModule(collectionId, moduleId);
   }
 
+  @Delete('collections/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteCollection(
+    @Param('id', ParseIntPipe) collectionId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.deleteCollection(collectionId, userId);
+  }
+
   @Get('random')
   randomQuiz(
     @Query('order') orderRaw?: string,

@@ -122,6 +122,14 @@ export async function unassignCollectionFromModule(
   return res.json() as Promise<CollectionUi>;
 }
 
+export async function deleteCollection(collectionId: number, userId: number): Promise<void> {
+  const q = new URLSearchParams({ userId: String(userId) });
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}?${q.toString()}`), {
+    method: "DELETE",
+  });
+  await assertResponseOk(res);
+}
+
 export async function fetchRandomQuiz(opts?: {
   order?: "random" | "linear";
   qtype?: "histoire" | "pratique" | "melanger";

@@ -5,6 +5,7 @@ import {
   assignCollectionToModule,
   createEmptyCollection,
   createQuizzModule,
+  deleteCollection,
   deleteQuizzModule,
   fetchCollections,
   fetchModules,
@@ -15,10 +16,38 @@ import type { CollectionUi, QuizzModuleRow } from "../../types/quizz";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
 import { CollectionCard } from "../molecules/CollectionCard";
+import { PopUpInformation } from "../molecules/PopUpInformation";
 import { PageMain } from "../molecules/PageMain";
 import { Button } from "../atomes/Button";
 
 export type CollectionFilter = "all" | "mine" | `user-${number}`;
+
+type PendingDelete =
+  | null
+  | { kind: "collection"; data: CollectionUi }
+  | { kind: "module"; data: QuizzModuleRow };
+
+function pendingDeleteLabels(pending: PendingDelete): { title: string; message: string } | null {
+  if (pending == null) return null;
+  if (pending.kind === "collection") {
+    const c = pending.data;
+    const total = c.questions.length;
+    return {
+      title: `Supprimer la collection « ${c.nom} » ?`,
+      message:
+        `Cette action est définitive :\n` +
+        `· la collection et ses liens vers les supercollections seront supprimés ;\n` +
+        `· les ${total} question${total > 1 ? "s" : ""} qui ne sont liées qu’à cette collection seront supprimées (réponses et scores inclus) ;\n` +
+        `· une question encore présente dans une autre collection sera seulement détachée de celle-ci.`,
+    };
+  }
+  const m = pending.data;
+  return {
+    title: `Supprimer la supercollection « ${m.nom} » ?`,
+    message:
+      "Les liens avec les collections seront retirés. Les collections elles-mêmes ne sont pas supprimées.",
+  };
+}
 
 function filterCollections(
   list: CollectionUi[],
@@ -58,10 +87,13 @@ export function CollectionsView() {
   const [assignError, setAssignError] = useState<string | null>(null);
   const [deleteModuleBusyId, setDeleteModuleBusyId] = useState<number | null>(null);
   const [deleteModuleError, setDeleteModuleError] = useState<string | null>(null);
+  const [deleteCollectionBusyId, setDeleteCollectionBusyId] = useState<number | null>(null);
+  const [deleteCollectionError, setDeleteCollectionError] = useState<string | null>(null);
   const [newCollName, setNewCollName] = useState("");
   const [newCollModuleId, setNewCollModuleId] = useState<number | "">("");
   const [createCollBusy, setCreateCollBusy] = useState(false);
   const [createCollError, setCreateCollError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
 
   const loadData = useCallback(async () => {
     const [list, mods] = await Promise.all([fetchCollections(), fetchModules()]);
@@ -165,11 +197,34 @@ export function CollectionsView() {
     }
   };
 
-  const handleDeleteModule = async (m: QuizzModuleRow) => {
-    const ok = window.confirm(
-      `Supprimer la supercollection « ${m.nom} » ?\n\nLes liens avec les collections seront retirés. Les collections elles-mêmes ne sont pas supprimées.`,
-    );
-    if (!ok) return;
+  const confirmDeleteBusy =
+    pendingDelete?.kind === "collection"
+      ? deleteCollectionBusyId !== null
+      : pendingDelete?.kind === "module"
+        ? deleteModuleBusyId !== null
+        : false;
+
+  const runConfirmedDelete = async () => {
+    if (pendingDelete == null) return;
+    if (pendingDelete.kind === "collection") {
+      const c = pendingDelete.data;
+      setDeleteCollectionBusyId(c.id);
+      setDeleteCollectionError(null);
+      try {
+        await deleteCollection(c.id, userId);
+        setCollections((prev) => prev.filter((x) => x.id !== c.id));
+        setPendingDelete(null);
+      } catch (e) {
+        setDeleteCollectionError(
+          e instanceof Error ? e.message : "Suppression de la collection impossible.",
+        );
+        setPendingDelete(null);
+      } finally {
+        setDeleteCollectionBusyId(null);
+      }
+      return;
+    }
+    const m = pendingDelete.data;
     setDeleteModuleError(null);
     setDeleteModuleBusyId(m.id);
     try {
@@ -181,12 +236,16 @@ export function CollectionsView() {
           modules: (c.modules ?? []).filter((mod) => mod.id !== m.id),
         })),
       );
+      setPendingDelete(null);
     } catch (e) {
       setDeleteModuleError(e instanceof Error ? e.message : "Suppression impossible.");
+      setPendingDelete(null);
     } finally {
       setDeleteModuleBusyId(null);
     }
   };
+
+  const confirmLabels = pendingDeleteLabels(pendingDelete);
 
   const autresCreateurs = useMemo(() => {
     const map = new Map<number, string>();
@@ -261,8 +320,13 @@ export function CollectionsView() {
                         type="button"
                         class="btn btn-ghost btn-xs shrink-0 gap-1 text-error hover:bg-error/10"
                         aria-label={`Supprimer la supercollection ${m.nom}`}
-                        disabled={deleteModuleBusyId !== null || assignBusyCollectionId !== null}
-                        onClick={() => void handleDeleteModule(m)}
+                        disabled={
+                          deleteModuleBusyId !== null ||
+                          assignBusyCollectionId !== null ||
+                          deleteCollectionBusyId !== null ||
+                          pendingDelete !== null
+                        }
+                        onClick={() => setPendingDelete({ kind: "module", data: m })}
                       >
                         {deleteModuleBusyId === m.id ? (
                           <span class="loading loading-spinner loading-xs" aria-hidden />
@@ -362,6 +426,11 @@ export function CollectionsView() {
             {assignError ? (
               <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{assignError}</p>
             ) : null}
+            {deleteCollectionError ? (
+              <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+                {deleteCollectionError}
+              </p>
+            ) : null}
 
             <fieldset class="mb-6">
               <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">
@@ -454,8 +523,11 @@ export function CollectionsView() {
                       myUserId={userId}
                       allModules={modules}
                       assignBusyCollectionId={assignBusyCollectionId}
+                      deleteBusyCollectionId={deleteCollectionBusyId}
                       onAssign={handleAssign}
                       onUnassign={handleUnassign}
+                      interactionLocked={pendingDelete !== null}
+                      onDeleteCollection={(col) => setPendingDelete({ kind: "collection", data: col })}
                     />
                   </li>
                 ))}
@@ -465,6 +537,19 @@ export function CollectionsView() {
         )}
       </PageMain>
       <AppFooter />
+      <PopUpInformation
+        open={pendingDelete != null}
+        title={confirmLabels?.title ?? ""}
+        message={confirmLabels?.message ?? ""}
+        variant="danger"
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        busy={confirmDeleteBusy}
+        onCancel={() => {
+          if (!confirmDeleteBusy) setPendingDelete(null);
+        }}
+        onConfirm={() => void runConfirmedDelete()}
+      />
     </div>
   );
 }

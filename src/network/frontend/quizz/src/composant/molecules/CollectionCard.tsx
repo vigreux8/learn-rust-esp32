@@ -1,4 +1,4 @@
-import { ChevronRight, FolderTree, ListTree, X } from "lucide-preact";
+import { ChevronRight, FolderTree, ListTree, Trash2, X } from "lucide-preact";
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
 import { buildPlaySessionQuery, type PlayOrder, type PlayQtype } from "../../lib/playOrder";
@@ -12,8 +12,12 @@ export type CollectionCardProps = {
   myUserId: number;
   allModules: QuizzModuleRow[];
   assignBusyCollectionId: number | null;
+  deleteBusyCollectionId: number | null;
+  /** Bloque assignation / suppression pendant une boîte de confirmation globale. */
+  interactionLocked?: boolean;
   onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
+  onDeleteCollection?: (collection: CollectionUi) => void;
 };
 
 export function CollectionCard({
@@ -21,10 +25,15 @@ export function CollectionCard({
   myUserId,
   allModules,
   assignBusyCollectionId,
+  deleteBusyCollectionId,
+  interactionLocked = false,
   onAssign,
   onUnassign,
+  onDeleteCollection,
 }: CollectionCardProps) {
   const n = collection.questions.length;
+  const uiLocked =
+    interactionLocked || assignBusyCollectionId !== null || deleteBusyCollectionId !== null;
   const counts = collection.question_counts_by_type;
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
@@ -74,7 +83,7 @@ export function CollectionCard({
                       class="btn btn-ghost btn-xs min-h-0 h-7 w-7 shrink-0 rounded-full p-0 text-base-content/60 hover:bg-error/15 hover:text-error"
                       title={`Retirer « ${m.nom} »`}
                       aria-label={`Retirer la supercollection ${m.nom}`}
-                      disabled={assignBusyCollectionId !== null}
+                      disabled={uiLocked}
                       onClick={() => void onUnassign(collection.id, m.id)}
                     >
                       <X class="h-3.5 w-3.5" aria-hidden />
@@ -94,7 +103,7 @@ export function CollectionCard({
                   <select
                     class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:min-w-[12rem]"
                     value={selectedModuleId === "" ? "" : String(selectedModuleId)}
-                    disabled={assignBusyCollectionId !== null}
+                    disabled={uiLocked}
                     onChange={(e) => {
                       const v = (e.target as HTMLSelectElement).value;
                       setSelectedModuleId(v === "" ? "" : Number(v));
@@ -110,7 +119,7 @@ export function CollectionCard({
                   <Button
                     variant="learn"
                     class="btn-sm shrink-0"
-                    disabled={assignBusyCollectionId !== null || selectedModuleId === ""}
+                    disabled={uiLocked || selectedModuleId === ""}
                     onClick={() => {
                       if (selectedModuleId === "") return;
                       void onAssign(collection.id, selectedModuleId);
@@ -182,6 +191,22 @@ export function CollectionCard({
             Jouer
             <ChevronRight class="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
           </Button>
+          {isMine && onDeleteCollection != null ? (
+            <button
+              type="button"
+              class="btn btn-outline btn-sm gap-1 border-error/40 text-error hover:bg-error/10"
+              aria-label={`Supprimer la collection ${collection.nom}`}
+              disabled={uiLocked}
+              onClick={() => onDeleteCollection(collection)}
+            >
+              {deleteBusyCollectionId === collection.id ? (
+                <span class="loading loading-spinner loading-xs" aria-hidden />
+              ) : (
+                <Trash2 class="h-4 w-4" aria-hidden />
+              )}
+              Supprimer
+            </button>
+          ) : null}
         </div>
       </div>
     </Card>

@@ -88,6 +88,10 @@ export class QuizzService {
     return this.write.deleteQuestion(id);
   }
 
+  deleteCollection(collectionId: number, userId: number): Promise<void> {
+    return this.write.deleteCollection(collectionId, userId);
+  }
+
   listModules(): Promise<QuizzModuleRow[]> {
     return this.structure.listModules();
   }

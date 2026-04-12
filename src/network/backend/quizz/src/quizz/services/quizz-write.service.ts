@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -97,5 +98,52 @@ export class QuizzWriteService {
       this.prisma.prisma.question_collection.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.quizz_question.delete({ where: { id } }),
     ]);
+  }
+
+  /**
+   * Supprime une collection, ses liens supercollections, puis chaque question qui ne reste liée à aucune autre collection.
+   */
+  async deleteCollection(collectionId: number, userId: number): Promise<void> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (col.user_id !== userId) {
+      throw new ForbiddenException(
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${userId}.`,
+      );
+    }
+
+    const links = await this.prisma.prisma.question_collection.findMany({
+      where: { collection_id: collectionId },
+      select: { question_id: true },
+    });
+    const questionIds = [...new Set(links.map((l) => l.question_id))];
+
+    await this.prisma.prisma.$transaction(async (tx) => {
+      await tx.question_collection.deleteMany({
+        where: { collection_id: collectionId },
+      });
+      await tx.quizz_module_collection.deleteMany({
+        where: { collection_id: collectionId },
+      });
+
+      for (const qid of questionIds) {
+        const remaining = await tx.question_collection.count({
+          where: { question_id: qid },
+        });
+        if (remaining === 0) {
+          await tx.user_kpi.deleteMany({ where: { question_id: qid } });
+          await tx.quizz_question_reponse.deleteMany({
+            where: { question_id: qid },
+          });
+          await tx.quizz_question.delete({ where: { id: qid } });
+        }
+      }
+
+      await tx.quizz_collection.delete({ where: { id: collectionId } });
+    });
   }
 }
