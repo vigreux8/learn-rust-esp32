@@ -101,4 +101,33 @@ export class QuizzStructureService {
       };
     });
   }
+
+  /**
+   * Rattache une collection existante à un module (ligne `quizz_module_collection`).
+   * Sans effet si le lien existe déjà.
+   */
+  async assignCollectionToModule(
+    collectionId: number,
+    moduleId: number,
+  ): Promise<void> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    const mod = await this.prisma.prisma.quizz_module.findUnique({
+      where: { id: moduleId },
+    });
+    if (!mod) {
+      throw new NotFoundException(`Module ${moduleId} introuvable`);
+    }
+    const existing = await this.prisma.prisma.quizz_module_collection.findFirst({
+      where: { collection_id: collectionId, module_id: moduleId },
+    });
+    if (existing) return;
+    await this.prisma.prisma.quizz_module_collection.create({
+      data: { module_id: moduleId, collection_id: collectionId },
+    });
+  }
 }

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { QuizzService } from './services';
 import {
+  AssignCollectionToModuleDto,
   CreateCollectionInModuleDto,
   CreateQuizzModuleDto,
   UpdateQuestionDto,
@@ -49,6 +50,14 @@ export class QuizzController {
   @Get('collections/:id')
   getCollection(@Param('id', ParseIntPipe) id: number) {
     return this.quizz.getCollection(id);
+  }
+
+  @Post('collections/:id/modules')
+  assignCollectionToModule(
+    @Param('id', ParseIntPipe) collectionId: number,
+    @Body() body: AssignCollectionToModuleDto,
+  ) {
+    return this.quizz.assignCollectionToModule(collectionId, body.moduleId);
   }
 
   @Get('random')

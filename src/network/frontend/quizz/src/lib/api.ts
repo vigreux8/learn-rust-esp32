@@ -3,6 +3,7 @@ import type {
   CollectionUi,
   DeviceLookupResult,
   QuestionUi,
+  QuizzModuleRow,
   QuizzQuestionRow,
   SessionDetail,
   SessionSummary,
@@ -56,6 +57,35 @@ export async function fetchCollections(): Promise<CollectionUi[]> {
 
 export async function fetchCollection(id: number): Promise<CollectionUi> {
   const res = await fetch(apiUrl(`/quizz/collections/${id}`));
+  await assertResponseOk(res);
+  return res.json() as Promise<CollectionUi>;
+}
+
+export async function fetchModules(): Promise<QuizzModuleRow[]> {
+  const res = await fetch(apiUrl("/quizz/modules"));
+  await assertResponseOk(res);
+  return res.json() as Promise<QuizzModuleRow[]>;
+}
+
+export async function createQuizzModule(nom: string): Promise<QuizzModuleRow> {
+  const res = await fetch(apiUrl("/quizz/modules"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nom }),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<QuizzModuleRow>;
+}
+
+export async function assignCollectionToModule(
+  collectionId: number,
+  moduleId: number,
+): Promise<CollectionUi> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/modules`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ moduleId }),
+  });
   await assertResponseOk(res);
   return res.json() as Promise<CollectionUi>;
 }

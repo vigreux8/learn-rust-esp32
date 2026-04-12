@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   CollectionUi,
   QuestionUi,
@@ -81,6 +81,18 @@ export class QuizzService {
       userId: body.userId,
       nom: body.nom,
     });
+  }
+
+  async assignCollectionToModule(
+    collectionId: number,
+    moduleId: number,
+  ): Promise<CollectionUi> {
+    await this.structure.assignCollectionToModule(collectionId, moduleId);
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable après assignation`);
+    }
+    return ui;
   }
 
   // Delegation: QuizzImportService

@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { Layers } from "lucide-preact";
-import { fetchCollections } from "../../lib/api";
+import {
+  assignCollectionToModule,
+  createQuizzModule,
+  fetchCollections,
+  fetchModules,
+} from "../../lib/api";
 import { useUserSession } from "../../lib/userSession";
-import type { CollectionUi } from "../../types/quizz";
+import type { CollectionUi, QuizzModuleRow } from "../../types/quizz";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
 import { CollectionCard } from "../molecules/CollectionCard";
@@ -28,9 +33,20 @@ function filterCollections(
 export function CollectionsView() {
   const { userId } = useUserSession();
   const [collections, setCollections] = useState<CollectionUi[]>([]);
+  const [modules, setModules] = useState<QuizzModuleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<CollectionFilter>("all");
+  const [newModuleName, setNewModuleName] = useState("");
+  const [createModuleBusy, setCreateModuleBusy] = useState(false);
+  const [createModuleError, setCreateModuleError] = useState<string | null>(null);
+  const [assignBusyCollectionId, setAssignBusyCollectionId] = useState<number | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    const [list, mods] = await Promise.all([fetchCollections(), fetchModules()]);
+    return { list, mods };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,8 +54,11 @@ export function CollectionsView() {
       setLoading(true);
       setError(null);
       try {
-        const list = await fetchCollections();
-        if (!cancelled) setCollections(list);
+        const { list, mods } = await loadData();
+        if (!cancelled) {
+          setCollections(list);
+          setModules(mods);
+        }
       } catch {
         if (!cancelled) setError("fetch");
       } finally {
@@ -49,7 +68,36 @@ export function CollectionsView() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadData]);
+
+  const handleCreateModule = async () => {
+    const nom = newModuleName.trim();
+    if (!nom) return;
+    setCreateModuleBusy(true);
+    setCreateModuleError(null);
+    try {
+      const row = await createQuizzModule(nom);
+      setModules((prev) => [...prev, row].sort((a, b) => a.id - b.id));
+      setNewModuleName("");
+    } catch (e) {
+      setCreateModuleError(e instanceof Error ? e.message : "Création impossible.");
+    } finally {
+      setCreateModuleBusy(false);
+    }
+  };
+
+  const handleAssign = async (collectionId: number, moduleId: number) => {
+    setAssignBusyCollectionId(collectionId);
+    setAssignError(null);
+    try {
+      const updated = await assignCollectionToModule(collectionId, moduleId);
+      setCollections((prev) => prev.map((c) => (c.id === collectionId ? updated : c)));
+    } catch (e) {
+      setAssignError(e instanceof Error ? e.message : "Assignation impossible.");
+    } finally {
+      setAssignBusyCollectionId(null);
+    }
+  };
 
   const autresCreateurs = useMemo(() => {
     const map = new Map<number, string>();
@@ -92,8 +140,11 @@ export function CollectionsView() {
               onClick={() => {
                 setLoading(true);
                 setError(null);
-                fetchCollections()
-                  .then(setCollections)
+                loadData()
+                  .then(({ list, mods }) => {
+                    setCollections(list);
+                    setModules(mods);
+                  })
                   .catch(() => setError("fetch"))
                   .finally(() => setLoading(false));
               }}
@@ -103,6 +154,57 @@ export function CollectionsView() {
           </div>
         ) : (
           <>
+            <section class="mb-8 rounded-[var(--radius-box)] border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
+              <h2 class="text-sm font-semibold tracking-tight text-base-content">Supercollections</h2>
+              <p class="mt-1 max-w-2xl text-xs text-base-content/55">
+                Une supercollection correspond à un <code class="rounded bg-base-100 px-1 py-0.5">quizz_module</code> en
+                base : tu peux en créer une nouvelle, puis rattacher tes collections ci-dessous.
+              </p>
+              {modules.length > 0 ? (
+                <ul class="mt-3 flex flex-wrap gap-2">
+                  {modules.map((m) => (
+                    <li
+                      key={m.id}
+                      class="rounded-full border border-learn/25 bg-learn/10 px-3 py-1 text-xs font-medium text-learn"
+                    >
+                      {m.nom}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p class="mt-3 text-xs text-base-content/50">Aucune supercollection pour l’instant.</p>
+              )}
+              <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div class="flex-1">
+                  <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-supercollection-name">
+                    Nouvelle supercollection
+                  </label>
+                  <input
+                    id="new-supercollection-name"
+                    class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100"
+                    type="text"
+                    placeholder="ex. Sociologie · Europe"
+                    value={newModuleName}
+                    disabled={createModuleBusy}
+                    onInput={(e) => setNewModuleName((e.target as HTMLInputElement).value)}
+                  />
+                </div>
+                <Button
+                  variant="learn"
+                  class="btn-sm shrink-0"
+                  disabled={createModuleBusy || !newModuleName.trim()}
+                  onClick={() => void handleCreateModule()}
+                >
+                  {createModuleBusy ? "Création…" : "Créer"}
+                </Button>
+              </div>
+              {createModuleError ? <p class="mt-2 text-xs text-error">{createModuleError}</p> : null}
+            </section>
+
+            {assignError ? (
+              <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{assignError}</p>
+            ) : null}
+
             <fieldset class="mb-8">
               <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">Filtrer</legend>
               <div class="filter">
@@ -147,7 +249,13 @@ export function CollectionsView() {
               <ul class="flex flex-col gap-4">
                 {filtered.map((c) => (
                   <li key={c.id}>
-                    <CollectionCard collection={c} />
+                    <CollectionCard
+                      collection={c}
+                      myUserId={userId}
+                      allModules={modules}
+                      assignBusyCollectionId={assignBusyCollectionId}
+                      onAssign={handleAssign}
+                    />
                   </li>
                 ))}
               </ul>

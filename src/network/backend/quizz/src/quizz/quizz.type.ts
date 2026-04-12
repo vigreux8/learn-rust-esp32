@@ -13,6 +13,11 @@ export type QuestionUi = {
   reponses: ReponseUi[];
 };
 
+export type CollectionModuleRef = {
+  id: number;
+  nom: string;
+};
+
 export type CollectionUi = {
   id: number;
   user_id: number;
@@ -21,6 +26,8 @@ export type CollectionUi = {
   nom: string;
   questions: QuestionUi[];
   createur_pseudot: string;
+  /** Super-collections (`quizz_module`) liées via `quizz_module_collection`. */
+  modules: CollectionModuleRef[];
 };
 
 export type QuizzCollectionRef = {

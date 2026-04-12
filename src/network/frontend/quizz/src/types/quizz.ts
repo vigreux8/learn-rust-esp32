@@ -20,6 +20,14 @@ export interface QuestionUi {
   reponses: ReponseUi[];
 }
 
+/** `quizz_module` — supercollection regroupant des collections. */
+export interface QuizzModuleRow {
+  id: number;
+  nom: string;
+  create_at: string;
+  update_at: string;
+}
+
 export interface CollectionUi {
   id: number;
   user_id: number;
@@ -28,6 +36,7 @@ export interface CollectionUi {
   nom: string;
   questions: QuestionUi[];
   createur_pseudot: string;
+  modules: { id: number; nom: string }[];
 }
 
 export interface QuizzCollectionRef {

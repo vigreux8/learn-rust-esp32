@@ -48,7 +48,13 @@ export class QuizzReadService {
   async buildCollectionUi(collectionId: number): Promise<CollectionUi | null> {
     const col = await this.prisma.prisma.quizz_collection.findUnique({
       where: { id: collectionId },
-      include: { user: true },
+      include: {
+        user: true,
+        quizz_module_collection: {
+          orderBy: { id: 'asc' },
+          include: { quizz_module: true },
+        },
+      },
     });
     if (!col) return null;
 
@@ -68,6 +74,11 @@ export class QuizzReadService {
 
     const questions = qcs.map((qc) => this.mapQuestionToUi(qc.quizz_question));
 
+    const modules = col.quizz_module_collection.map((mc) => ({
+      id: mc.quizz_module.id,
+      nom: mc.quizz_module.nom,
+    }));
+
     return {
       id: col.id,
       user_id: col.user_id,
@@ -76,6 +87,7 @@ export class QuizzReadService {
       nom: col.nom,
       questions,
       createur_pseudot: col.user.pseudot,
+      modules,
     };
   }
 

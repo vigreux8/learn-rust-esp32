@@ -23,3 +23,9 @@ export class CreateCollectionInModuleDto {
   @IsString()
   nom!: string;
 }
+
+export class AssignCollectionToModuleDto {
+  @IsInt()
+  @Min(1)
+  moduleId!: number;
+}
