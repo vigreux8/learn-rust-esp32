@@ -6,6 +6,8 @@ export type LastQuizResult = {
   total: number;
   /** Ordre des questions pour Rejouer (défaut : aléatoire). */
   playOrder?: "random" | "linear";
+  /** Filtre type pour Rejouer (défaut : tout mélanger). */
+  playQtype?: "histoire" | "pratique" | "melanger";
 };
 
 const KEY = "flowlearn_last_result";

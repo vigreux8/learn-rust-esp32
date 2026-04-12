@@ -1,7 +1,7 @@
 import { ChevronRight, FolderTree, ListTree, X } from "lucide-preact";
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
-import { playOrderQuerySuffix, type PlayOrder } from "../../lib/playOrder";
+import { buildPlaySessionQuery, type PlayOrder, type PlayQtype } from "../../lib/playOrder";
 import { Card } from "../atomes/Card";
 import { Badge } from "../atomes/Badge";
 import { Button } from "../atomes/Button";
@@ -28,6 +28,7 @@ export function CollectionCard({
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
   const [playOrder, setPlayOrder] = useState<PlayOrder>("random");
+  const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
   const linkedModules = collection.modules ?? [];
 
   const assignable = allModules.filter(
@@ -120,7 +121,7 @@ export function CollectionCard({
         </div>
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
           <label class="w-full text-xs font-medium text-base-content/55 sm:text-end" for={`play-order-${collection.id}`}>
-            Mode de jeu
+            Ordre des questions
           </label>
           <select
             id={`play-order-${collection.id}`}
@@ -133,6 +134,22 @@ export function CollectionCard({
           >
             <option value="random">Aléatoire</option>
             <option value="linear">Linéaire</option>
+          </select>
+          <label class="w-full text-xs font-medium text-base-content/55 sm:text-end" for={`play-qtype-${collection.id}`}>
+            Type de questions
+          </label>
+          <select
+            id={`play-qtype-${collection.id}`}
+            class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:max-w-[11rem]"
+            value={playQtype}
+            onChange={(e) => {
+              const v = (e.target as HTMLSelectElement).value;
+              if (v === "histoire" || v === "pratique" || v === "melanger") setPlayQtype(v);
+            }}
+          >
+            <option value="melanger">Mélanger</option>
+            <option value="histoire">Histoire</option>
+            <option value="pratique">Pratique</option>
           </select>
           <Button
             variant="outline"
@@ -149,7 +166,9 @@ export function CollectionCard({
           <Button
             variant="flow"
             class="btn-sm gap-1"
-            onClick={() => route(`/play/${collection.id}${playOrderQuerySuffix(playOrder)}`)}
+            onClick={() =>
+              route(`/play/${collection.id}${buildPlaySessionQuery({ order: playOrder, qtype: playQtype })}`)
+            }
           >
             Jouer
             <ChevronRight class="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />

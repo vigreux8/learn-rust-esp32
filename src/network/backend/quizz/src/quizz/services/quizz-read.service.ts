@@ -51,7 +51,10 @@ export class QuizzReadService {
     };
   }
 
-  async buildCollectionUi(collectionId: number): Promise<CollectionUi | null> {
+  async buildCollectionUi(
+    collectionId: number,
+    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+  ): Promise<CollectionUi | null> {
     const col = await this.prisma.prisma.quizz_collection.findUnique({
       where: { id: collectionId },
       include: {
@@ -70,6 +73,7 @@ export class QuizzReadService {
       include: {
         quizz_question: {
           include: {
+            ref_categorie: true,
             quizz_question_reponse: {
               include: { quizz_reponse: true },
             },
@@ -78,7 +82,12 @@ export class QuizzReadService {
       },
     });
 
-    const questions = qcs.map((qc) => this.mapQuestionToUi(qc.quizz_question));
+    const filtered =
+      qtype === 'melanger'
+        ? qcs
+        : qcs.filter((qc) => qc.quizz_question.ref_categorie.type === qtype);
+
+    const questions = filtered.map((qc) => this.mapQuestionToUi(qc.quizz_question));
 
     const modules = col.quizz_module_collection.map((mc) => ({
       id: mc.quizz_module.id,
@@ -109,18 +118,34 @@ export class QuizzReadService {
     return out;
   }
 
-  async getCollection(collectionId: number): Promise<CollectionUi> {
-    const ui = await this.buildCollectionUi(collectionId);
+  async getCollection(
+    collectionId: number,
+    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+  ): Promise<CollectionUi> {
+    const ui = await this.buildCollectionUi(collectionId, qtype);
     if (!ui || ui.questions.length === 0) {
-      throw new NotFoundException(`Collection ${collectionId} introuvable ou vide`);
+      throw new NotFoundException(
+        qtype !== 'melanger'
+          ? `Aucune question de type « ${qtype} » dans la collection ${collectionId}.`
+          : `Collection ${collectionId} introuvable ou vide`,
+      );
     }
     return ui;
   }
 
   async randomQuizQuestions(
     order: 'random' | 'linear' = 'random',
+    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
   ): Promise<QuestionUi[]> {
+    const where =
+      qtype === 'melanger'
+        ? {}
+        : { ref_categorie: { type: qtype } };
     const rows = await this.prisma.prisma.quizz_question.findMany({
+      where: {
+        ...where,
+        quizz_question_reponse: { some: {} },
+      },
       orderBy: { id: 'asc' },
       include: {
         quizz_question_reponse: {
@@ -128,8 +153,7 @@ export class QuizzReadService {
         },
       },
     });
-    const withAnswers = rows.filter((q) => q.quizz_question_reponse.length > 0);
-    const mapped = withAnswers.map((q) => this.mapQuestionToUi(q));
+    const mapped = rows.map((q) => this.mapQuestionToUi(q));
     return order === 'linear' ? mapped : shuffle(mapped);
   }
 

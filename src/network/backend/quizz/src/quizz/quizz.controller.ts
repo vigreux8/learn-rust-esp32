@@ -36,6 +36,15 @@ function parseImportCategorie(raw?: string): 'histoire' | 'pratique' {
   throw new BadRequestException('Query categorie : "histoire" (défaut) ou "pratique"');
 }
 
+/** Filtre de questions pour le jeu (GET random / collections/:id). */
+function parsePlayQtypeQuery(raw?: string): 'histoire' | 'pratique' | 'melanger' {
+  if (raw === undefined || raw === '') return 'melanger';
+  if (raw === 'histoire' || raw === 'pratique' || raw === 'melanger') return raw;
+  throw new BadRequestException(
+    'Query qtype : "histoire", "pratique" ou "melanger" (défaut : tout mélanger)',
+  );
+}
+
 @Controller('quizz')
 export class QuizzController {
   constructor(private readonly quizz: QuizzService) {}
@@ -82,8 +91,12 @@ export class QuizzController {
   }
 
   @Get('collections/:id')
-  getCollection(@Param('id', ParseIntPipe) id: number) {
-    return this.quizz.getCollection(id);
+  getCollection(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('qtype') qtypeRaw?: string,
+  ) {
+    const qtype = parsePlayQtypeQuery(qtypeRaw);
+    return this.quizz.getCollection(id, qtype);
   }
 
   @Post('collections/:id/modules')
@@ -103,9 +116,13 @@ export class QuizzController {
   }
 
   @Get('random')
-  randomQuiz(@Query('order') orderRaw?: string) {
+  randomQuiz(
+    @Query('order') orderRaw?: string,
+    @Query('qtype') qtypeRaw?: string,
+  ) {
     const order = parsePlayOrderQuery(orderRaw);
-    return this.quizz.randomQuizQuestions(order);
+    const qtype = parsePlayQtypeQuery(qtypeRaw);
+    return this.quizz.randomQuizQuestions(order, qtype);
   }
 
   @Get('questions')

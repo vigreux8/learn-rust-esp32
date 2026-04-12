@@ -22,20 +22,29 @@ export class QuizzService {
   ) {}
 
   // Delegation: QuizzReadService
-  buildCollectionUi(collectionId: number): Promise<CollectionUi | null> {
-    return this.read.buildCollectionUi(collectionId);
+  buildCollectionUi(
+    collectionId: number,
+    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+  ): Promise<CollectionUi | null> {
+    return this.read.buildCollectionUi(collectionId, qtype);
   }
 
   listCollections(): Promise<CollectionUi[]> {
     return this.read.listCollections();
   }
 
-  getCollection(collectionId: number): Promise<CollectionUi> {
-    return this.read.getCollection(collectionId);
+  getCollection(
+    collectionId: number,
+    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+  ): Promise<CollectionUi> {
+    return this.read.getCollection(collectionId, qtype);
   }
 
-  randomQuizQuestions(order: 'random' | 'linear' = 'random'): Promise<QuestionUi[]> {
-    return this.read.randomQuizQuestions(order);
+  randomQuizQuestions(
+    order: 'random' | 'linear' = 'random',
+    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+  ): Promise<QuestionUi[]> {
+    return this.read.randomQuizQuestions(order, qtype);
   }
 
   listQuestions(

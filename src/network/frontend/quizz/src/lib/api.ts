@@ -24,10 +24,15 @@ async function readError(res: Response): Promise<string> {
   return text || res.statusText;
 }
 
+export type HttpError = Error & { status: number; body: string };
+
 async function assertResponseOk(res: Response): Promise<void> {
   if (!res.ok) {
     const body = await readError(res);
-    throw new Error(`HTTP ${res.status}: ${body}`);
+    const err = new Error(`HTTP ${res.status}: ${body}`) as HttpError;
+    err.status = res.status;
+    err.body = body;
+    throw err;
   }
 }
 
@@ -57,8 +62,16 @@ export async function fetchCollections(): Promise<CollectionUi[]> {
   return res.json() as Promise<CollectionUi[]>;
 }
 
-export async function fetchCollection(id: number): Promise<CollectionUi> {
-  const res = await fetch(apiUrl(`/quizz/collections/${id}`));
+export async function fetchCollection(
+  id: number,
+  opts?: { qtype?: "histoire" | "pratique" | "melanger" },
+): Promise<CollectionUi> {
+  const p = new URLSearchParams();
+  if (opts?.qtype != null && opts.qtype !== "melanger") {
+    p.set("qtype", opts.qtype);
+  }
+  const q = p.size > 0 ? `?${p.toString()}` : "";
+  const res = await fetch(apiUrl(`/quizz/collections/${id}${q}`));
   await assertResponseOk(res);
   return res.json() as Promise<CollectionUi>;
 }
@@ -111,9 +124,14 @@ export async function unassignCollectionFromModule(
 
 export async function fetchRandomQuiz(opts?: {
   order?: "random" | "linear";
+  qtype?: "histoire" | "pratique" | "melanger";
 }): Promise<QuestionUi[]> {
-  const order = opts?.order ?? "random";
-  const q = order === "linear" ? "?order=linear" : "";
+  const p = new URLSearchParams();
+  if (opts?.order === "linear") p.set("order", "linear");
+  if (opts?.qtype != null && opts.qtype !== "melanger") {
+    p.set("qtype", opts.qtype);
+  }
+  const q = p.size > 0 ? `?${p.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/random${q}`));
   await assertResponseOk(res);
   return res.json() as Promise<QuestionUi[]>;

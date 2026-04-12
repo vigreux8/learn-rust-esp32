@@ -1,12 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { ArrowLeft } from "lucide-preact";
-import { fetchCollection, fetchRandomQuiz, postQuizKpi } from "../../lib/api";
+import { fetchCollection, fetchRandomQuiz, postQuizKpi, type HttpError } from "../../lib/api";
 import { useRoutePath } from "../../lib/routePathContext";
 import {
   playOrderFromSearch,
+  playQtypeFromSearch,
+  playQtypeLabel,
   shuffleQuestions,
   type PlayOrder,
+  type PlayQtype,
 } from "../../lib/playOrder";
 import { useUserSession } from "../../lib/userSession";
 import type { QuestionUi } from "../../types/quizz";
@@ -29,6 +32,7 @@ type SessionData = {
   nom: string;
   questions: QuestionUi[];
   playOrder: PlayOrder;
+  playQtype: PlayQtype;
 };
 
 function isPickedCorrect(questions: QuestionUi[], qIndex: number, reponseId: number): boolean {
@@ -58,8 +62,9 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
     (async () => {
       try {
         const order = playOrderFromSearch();
+        const qtype = playQtypeFromSearch();
         if (collectionId === "random") {
-          const questions = await fetchRandomQuiz({ order });
+          const questions = await fetchRandomQuiz({ order, qtype });
           if (cancelled) return;
           if (questions.length === 0) {
             setLoadError("empty");
@@ -71,6 +76,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
             nom: "Mélange aléatoire",
             questions,
             playOrder: order,
+            playQtype: qtype,
           });
           return;
         }
@@ -79,7 +85,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           setLoadError("bad");
           return;
         }
-        const col = await fetchCollection(cid);
+        const col = await fetchCollection(cid, { qtype });
         if (cancelled) return;
         if (col.questions.length === 0) {
           setLoadError("empty");
@@ -93,9 +99,14 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           nom: col.nom,
           questions,
           playOrder: order,
+          playQtype: qtype,
         });
-      } catch {
-        if (!cancelled) setLoadError("fetch");
+      } catch (e) {
+        if (!cancelled) {
+          const status = typeof e === "object" && e !== null && "status" in e ? (e as HttpError).status : undefined;
+          if (status === 404) setLoadError("empty");
+          else setLoadError("fetch");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -137,6 +148,11 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           <p class="text-lg font-medium text-base-content">Parcours introuvable</p>
           {loadError === "fetch" ? (
             <p class="text-sm text-base-content/60">Impossible de joindre l’API. Le backend est-il démarré ?</p>
+          ) : null}
+          {loadError === "empty" ? (
+            <p class="text-sm text-base-content/60">
+              Aucune question avec ce filtre (essaie « Mélanger » ou un autre type) ou collection vide.
+            </p>
           ) : null}
           <Button variant="flow" onClick={() => route("/")}>
             Accueil
@@ -181,6 +197,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
         good: nextGood,
         total,
         playOrder: data.playOrder,
+        playQtype: data.playQtype,
       });
       route("/results");
       return;
@@ -206,6 +223,9 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
             <Badge tone={data.mode === "random" ? "flow" : "learn"}>{data.nom}</Badge>
             <Badge tone="learn" class="font-normal opacity-90">
               {data.playOrder === "linear" ? "Ordre linéaire" : "Ordre aléatoire"}
+            </Badge>
+            <Badge tone="flow" class="font-normal opacity-90">
+              {playQtypeLabel(data.playQtype)}
             </Badge>
           </div>
         </div>
