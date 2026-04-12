@@ -255,6 +255,16 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     setEditDetail(null);
   };
 
+  const refreshEditDetail = async () => {
+    if (editDetail == null) return;
+    try {
+      const d = await fetchQuestionDetail(editDetail.id);
+      setEditDetail(d);
+    } catch {
+      /* conserver le détail affiché */
+    }
+  };
+
   const saveEditModal = async () => {
     if (editDetail == null) return;
     setSaving(true);
@@ -455,6 +465,7 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
           onDraftCommentaire={setEditDraftCommentaire}
           onDraftCategorieId={setEditDraftCategorieId}
           onSave={() => void saveEditModal()}
+          onReponseUpdated={() => void refreshEditDetail()}
         />
       </PageMain>
       <AppFooter />

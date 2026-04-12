@@ -19,6 +19,7 @@ import {
   CreateQuizzModuleDto,
   CreateStandaloneCollectionDto,
   UpdateQuestionDto,
+  UpdateReponseDto,
 } from './dto/quizz.dto';
 
 function parsePlayOrderQuery(orderRaw?: string): 'random' | 'linear' {
@@ -164,6 +165,14 @@ export class QuizzController {
       commentaire: body?.commentaire,
       categorie_id: body?.categorie_id,
     });
+  }
+
+  @Patch('reponses/:id')
+  updateReponse(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateReponseDto,
+  ) {
+    return this.quizz.updateReponse(id, { reponse: body.reponse });
   }
 
   @Delete('questions/:id')

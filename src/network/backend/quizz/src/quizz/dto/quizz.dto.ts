@@ -1,5 +1,11 @@
 import { IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
 
+export class UpdateReponseDto {
+  @IsString()
+  @MinLength(1)
+  reponse!: string;
+}
+
 export class UpdateQuestionDto {
   @IsOptional()
   @IsString()

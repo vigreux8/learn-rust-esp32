@@ -68,6 +68,13 @@ export class QuizzService {
     return this.write.updateQuestion(id, data);
   }
 
+  updateReponse(
+    id: number,
+    data: { reponse: string },
+  ): Promise<{ id: number; reponse: string; bonne_reponse: boolean }> {
+    return this.write.updateReponse(id, data);
+  }
+
   deleteQuestion(id: number): Promise<void> {
     return this.write.deleteQuestion(id);
   }

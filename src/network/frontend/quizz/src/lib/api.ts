@@ -158,6 +158,19 @@ export async function patchQuestion(
   return res.json() as Promise<QuizzQuestionRow>;
 }
 
+export async function patchReponse(
+  id: number,
+  body: { reponse: string },
+): Promise<{ id: number; reponse: string; bonne_reponse: boolean }> {
+  const res = await fetch(apiUrl(`/quizz/reponses/${id}`), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<{ id: number; reponse: string; bonne_reponse: boolean }>;
+}
+
 export async function createEmptyCollection(body: {
   userId: number;
   nom: string;

@@ -10,6 +10,25 @@ import { QuizzQuestionRow } from '../quizz.type';
 export class QuizzWriteService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async updateReponse(
+    id: number,
+    data: { reponse: string },
+  ): Promise<{ id: number; reponse: string; bonne_reponse: boolean }> {
+    try {
+      const row = await this.prisma.prisma.quizz_reponse.update({
+        where: { id },
+        data: { reponse: data.reponse },
+      });
+      return {
+        id: row.id,
+        reponse: row.reponse,
+        bonne_reponse: row.bonne_reponse === 1,
+      };
+    } catch {
+      throw new NotFoundException(`Réponse ${id} introuvable`);
+    }
+  }
+
   async updateQuestion(
     id: number,
     data: { question?: string; commentaire?: string; categorie_id?: number },
