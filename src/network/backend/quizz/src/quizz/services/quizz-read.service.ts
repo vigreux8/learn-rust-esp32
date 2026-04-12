@@ -82,6 +82,13 @@ export class QuizzReadService {
       },
     });
 
+    const question_counts_by_type = { histoire: 0, pratique: 0 };
+    for (const qc of qcs) {
+      const t = qc.quizz_question.ref_categorie.type;
+      if (t === 'histoire') question_counts_by_type.histoire += 1;
+      else if (t === 'pratique') question_counts_by_type.pratique += 1;
+    }
+
     const filtered =
       qtype === 'melanger'
         ? qcs
@@ -101,6 +108,7 @@ export class QuizzReadService {
       update_at: col.update_at,
       nom: col.nom,
       questions,
+      question_counts_by_type,
       createur_pseudot: col.user.pseudot,
       modules,
     };

@@ -28,6 +28,12 @@ export interface QuizzModuleRow {
   update_at: string;
 }
 
+/** Comptage des questions de la collection par type de catégorie (toute la collection). */
+export interface CollectionQuestionCountsByType {
+  histoire: number;
+  pratique: number;
+}
+
 export interface CollectionUi {
   id: number;
   user_id: number;
@@ -35,6 +41,7 @@ export interface CollectionUi {
   update_at: string;
   nom: string;
   questions: QuestionUi[];
+  question_counts_by_type: CollectionQuestionCountsByType;
   createur_pseudot: string;
   modules: { id: number; nom: string }[];
 }

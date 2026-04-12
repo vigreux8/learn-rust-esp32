@@ -18,6 +18,12 @@ export type CollectionModuleRef = {
   nom: string;
 };
 
+/** Comptage des questions liées à la collection, par `ref_categorie.type` (toutes les questions, hors filtre `qtype`). */
+export type CollectionQuestionCountsByType = {
+  histoire: number;
+  pratique: number;
+};
+
 export type CollectionUi = {
   id: number;
   user_id: number;
@@ -25,6 +31,8 @@ export type CollectionUi = {
   update_at: string;
   nom: string;
   questions: QuestionUi[];
+  /** Effectifs par type de catégorie (toute la collection). */
+  question_counts_by_type: CollectionQuestionCountsByType;
   createur_pseudot: string;
   /** Super-collections (`quizz_module`) liées via `quizz_module_collection`. */
   modules: CollectionModuleRef[];

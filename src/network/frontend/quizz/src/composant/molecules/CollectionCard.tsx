@@ -25,6 +25,7 @@ export function CollectionCard({
   onUnassign,
 }: CollectionCardProps) {
   const n = collection.questions.length;
+  const counts = collection.question_counts_by_type;
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
   const [playOrder, setPlayOrder] = useState<PlayOrder>("random");
@@ -43,7 +44,15 @@ export function CollectionCard({
     <Card class="group transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:shadow-flow/15">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="space-y-2">
-          <Badge tone="flow">{n} question{n > 1 ? "s" : ""}</Badge>
+          <div class="flex flex-wrap items-center gap-2">
+            <Badge tone="flow">{n} question{n > 1 ? "s" : ""}</Badge>
+            <Badge tone="learn" class="font-normal opacity-90">
+              Histoire {counts.histoire}
+            </Badge>
+            <Badge tone="flow" class="border border-flow/25 bg-flow/10 font-normal opacity-95">
+              Pratique {counts.pratique}
+            </Badge>
+          </div>
           <h2 class="text-xl font-semibold tracking-tight text-base-content">{collection.nom}</h2>
           <p class="text-sm text-base-content/60">Collection · mise à jour {collection.update_at.slice(0, 10)}</p>
           <p class="text-sm text-base-content/60">Créé par {collection.createur_pseudot}</p>
