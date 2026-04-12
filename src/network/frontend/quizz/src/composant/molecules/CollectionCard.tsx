@@ -1,4 +1,4 @@
-import { ChevronRight, FolderTree } from "lucide-preact";
+import { ChevronRight, FolderTree, X } from "lucide-preact";
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
 import { Card } from "../atomes/Card";
@@ -12,6 +12,7 @@ export type CollectionCardProps = {
   allModules: QuizzModuleRow[];
   assignBusyCollectionId: number | null;
   onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
+  onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
 };
 
 export function CollectionCard({
@@ -20,6 +21,7 @@ export function CollectionCard({
   allModules,
   assignBusyCollectionId,
   onAssign,
+  onUnassign,
 }: CollectionCardProps) {
   const n = collection.questions.length;
   const isMine = collection.user_id === myUserId;
@@ -49,9 +51,24 @@ export function CollectionCard({
                 Supercollections
               </span>
               {linkedModules.map((m) => (
-                <Badge key={m.id} tone="learn">
-                  {m.nom}
-                </Badge>
+                <span
+                  key={m.id}
+                  class="inline-flex max-w-full items-center gap-0.5 rounded-full border border-learn/30 bg-learn/10 pl-2.5 pr-0.5 text-xs font-medium text-learn"
+                >
+                  <span class="truncate py-1">{m.nom}</span>
+                  {isMine ? (
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs min-h-0 h-7 w-7 shrink-0 rounded-full p-0 text-base-content/60 hover:bg-error/15 hover:text-error"
+                      title={`Retirer « ${m.nom} »`}
+                      aria-label={`Retirer la supercollection ${m.nom}`}
+                      disabled={assignBusyCollectionId !== null}
+                      onClick={() => void onUnassign(collection.id, m.id)}
+                    >
+                      <X class="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  ) : null}
+                </span>
               ))}
             </div>
           ) : null}

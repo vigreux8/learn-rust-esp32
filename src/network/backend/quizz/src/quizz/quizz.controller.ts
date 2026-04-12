@@ -68,6 +68,14 @@ export class QuizzController {
     return this.quizz.assignCollectionToModule(collectionId, body.moduleId);
   }
 
+  @Delete('collections/:id/modules/:moduleId')
+  unassignCollectionFromModule(
+    @Param('id', ParseIntPipe) collectionId: number,
+    @Param('moduleId', ParseIntPipe) moduleId: number,
+  ) {
+    return this.quizz.unassignCollectionFromModule(collectionId, moduleId);
+  }
+
   @Get('random')
   randomQuiz() {
     return this.quizz.randomQuizQuestions();

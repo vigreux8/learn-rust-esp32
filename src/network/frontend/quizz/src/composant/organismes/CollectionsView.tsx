@@ -6,6 +6,7 @@ import {
   deleteQuizzModule,
   fetchCollections,
   fetchModules,
+  unassignCollectionFromModule,
 } from "../../lib/api";
 import { useUserSession } from "../../lib/userSession";
 import type { CollectionUi, QuizzModuleRow } from "../../types/quizz";
@@ -97,6 +98,19 @@ export function CollectionsView() {
       setCollections((prev) => prev.map((c) => (c.id === collectionId ? updated : c)));
     } catch (e) {
       setAssignError(e instanceof Error ? e.message : "Assignation impossible.");
+    } finally {
+      setAssignBusyCollectionId(null);
+    }
+  };
+
+  const handleUnassign = async (collectionId: number, moduleId: number) => {
+    setAssignBusyCollectionId(collectionId);
+    setAssignError(null);
+    try {
+      const updated = await unassignCollectionFromModule(collectionId, moduleId);
+      setCollections((prev) => prev.map((c) => (c.id === collectionId ? updated : c)));
+    } catch (e) {
+      setAssignError(e instanceof Error ? e.message : "Retrait impossible.");
     } finally {
       setAssignBusyCollectionId(null);
     }
@@ -295,6 +309,7 @@ export function CollectionsView() {
                       allModules={modules}
                       assignBusyCollectionId={assignBusyCollectionId}
                       onAssign={handleAssign}
+                      onUnassign={handleUnassign}
                     />
                   </li>
                 ))}

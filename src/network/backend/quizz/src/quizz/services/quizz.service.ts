@@ -99,6 +99,20 @@ export class QuizzService {
     return ui;
   }
 
+  async unassignCollectionFromModule(
+    collectionId: number,
+    moduleId: number,
+  ): Promise<CollectionUi> {
+    await this.structure.unassignCollectionFromModule(collectionId, moduleId);
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(
+        `Collection ${collectionId} introuvable après retrait du lien`,
+      );
+    }
+    return ui;
+  }
+
   // Delegation: QuizzImportService
   importQuestionsFromLlmJson(body: unknown): Promise<{
     createdQuestions: number;

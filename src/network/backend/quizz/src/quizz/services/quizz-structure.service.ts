@@ -131,6 +131,27 @@ export class QuizzStructureService {
     });
   }
 
+  /** Retire le lien `quizz_module_collection` entre une collection et un module. */
+  async unassignCollectionFromModule(
+    collectionId: number,
+    moduleId: number,
+  ): Promise<void> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    const del = await this.prisma.prisma.quizz_module_collection.deleteMany({
+      where: { collection_id: collectionId, module_id: moduleId },
+    });
+    if (del.count === 0) {
+      throw new NotFoundException(
+        `Aucun lien entre la collection ${collectionId} et le module ${moduleId}`,
+      );
+    }
+  }
+
   /**
    * Supprime un module et les lignes `quizz_module_collection` associées.
    * Les collections (`quizz_collection`) ne sont pas supprimées.

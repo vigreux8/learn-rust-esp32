@@ -95,6 +95,18 @@ export async function assignCollectionToModule(
   return res.json() as Promise<CollectionUi>;
 }
 
+export async function unassignCollectionFromModule(
+  collectionId: number,
+  moduleId: number,
+): Promise<CollectionUi> {
+  const res = await fetch(
+    apiUrl(`/quizz/collections/${collectionId}/modules/${moduleId}`),
+    { method: "DELETE" },
+  );
+  await assertResponseOk(res);
+  return res.json() as Promise<CollectionUi>;
+}
+
 export async function fetchRandomQuiz(): Promise<QuestionUi[]> {
   const res = await fetch(apiUrl("/quizz/random"));
   await assertResponseOk(res);
