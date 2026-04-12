@@ -32,6 +32,14 @@ function filterCollections(
   return list;
 }
 
+function applyModuleFilter(
+  list: CollectionUi[],
+  moduleFilter: number | "all",
+): CollectionUi[] {
+  if (moduleFilter === "all") return list;
+  return list.filter((c) => (c.modules ?? []).some((m) => m.id === moduleFilter));
+}
+
 export function CollectionsView() {
   const { userId } = useUserSession();
   const [collections, setCollections] = useState<CollectionUi[]>([]);
@@ -39,6 +47,8 @@ export function CollectionsView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<CollectionFilter>("all");
+  /** Filtre croisé : supercollection (`quizz_module`), indépendant du filtre créateur. */
+  const [moduleFilter, setModuleFilter] = useState<number | "all">("all");
   const [newModuleName, setNewModuleName] = useState("");
   const [createModuleBusy, setCreateModuleBusy] = useState(false);
   const [createModuleError, setCreateModuleError] = useState<string | null>(null);
@@ -73,6 +83,15 @@ export function CollectionsView() {
       cancelled = true;
     };
   }, [loadData]);
+
+  useEffect(() => {
+    if (
+      moduleFilter !== "all" &&
+      !modules.some((m) => m.id === moduleFilter)
+    ) {
+      setModuleFilter("all");
+    }
+  }, [modules, moduleFilter]);
 
   const handleCreateModule = async () => {
     const nom = newModuleName.trim();
@@ -149,10 +168,10 @@ export function CollectionsView() {
     return [...map.entries()].sort((a, b) => a[0] - b[0]);
   }, [collections, userId]);
 
-  const filtered = useMemo(
-    () => filterCollections(collections, filter, userId),
-    [collections, filter, userId],
-  );
+  const filtered = useMemo(() => {
+    const byCreator = filterCollections(collections, filter, userId);
+    return applyModuleFilter(byCreator, moduleFilter);
+  }, [collections, filter, userId, moduleFilter]);
 
   return (
     <div class="flex min-h-dvh flex-col">
@@ -259,14 +278,17 @@ export function CollectionsView() {
               <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{assignError}</p>
             ) : null}
 
-            <fieldset class="mb-8">
-              <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">Filtrer</legend>
+            <fieldset class="mb-6">
+              <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">
+                Filtrer par créateur
+              </legend>
               <div class="filter">
                 <input
                   class="btn btn-sm rounded-full border-0 filter-reset"
                   type="radio"
                   name="flowlearn-collections-filter"
-                  aria-label="All"
+                  aria-label="Toutes les collections"
+                  title="Toutes les collections"
                   checked={filter === "all"}
                   onChange={() => setFilter("all")}
                 />
@@ -275,24 +297,63 @@ export function CollectionsView() {
                   type="radio"
                   name="flowlearn-collections-filter"
                   aria-label="Mes collections"
+                  title="Mes collections"
                   checked={filter === "mine"}
                   onChange={() => setFilter("mine")}
                 />
-                {autresCreateurs.map(([userId, pseudot]) => (
+                {autresCreateurs.map(([uid, pseudot]) => (
                   <input
-                    key={userId}
+                    key={uid}
                     class="btn btn-sm rounded-full border-0"
                     type="radio"
                     name="flowlearn-collections-filter"
                     aria-label={pseudot}
-                    checked={filter === (`user-${userId}` as CollectionFilter)}
-                    onChange={() => setFilter(`user-${userId}` as CollectionFilter)}
+                    title={pseudot}
+                    checked={filter === (`user-${uid}` as CollectionFilter)}
+                    onChange={() => setFilter(`user-${uid}` as CollectionFilter)}
                   />
                 ))}
               </div>
               <p class="mt-2 text-xs text-base-content/50">
-                Après un choix, les autres filtres se replient ; utilise le × pour tout réafficher (comportement DaisyUI).
+                Filtre les collections par auteur. Combine avec « Par supercollection » ci-dessous.
               </p>
+            </fieldset>
+
+            <fieldset class="mb-8">
+              <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">
+                Par supercollection
+              </legend>
+              {modules.length === 0 ? (
+                <p class="text-xs text-base-content/50">
+                  Aucune supercollection : crée-en une plus haut pour filtrer les collections rattachées.
+                </p>
+              ) : (
+                <>
+                  <label class="sr-only" for="flowlearn-module-filter-select">
+                    Filtrer par supercollection
+                  </label>
+                  <select
+                    id="flowlearn-module-filter-select"
+                    class="select select-bordered select-sm w-full max-w-md rounded-xl border-base-content/15 bg-base-100"
+                    value={moduleFilter === "all" ? "" : String(moduleFilter)}
+                    onChange={(e) => {
+                      const v = (e.target as HTMLSelectElement).value;
+                      setModuleFilter(v === "" ? "all" : Number(v));
+                    }}
+                  >
+                    <option value="">Toutes les supercollections</option>
+                    {modules.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nom}
+                      </option>
+                    ))}
+                  </select>
+                  <p class="mt-2 text-xs text-base-content/50">
+                    Combine avec le filtre créateur : seules les collections liées à cette supercollection sont
+                    affichées.
+                  </p>
+                </>
+              )}
             </fieldset>
 
             {filtered.length === 0 ? (
