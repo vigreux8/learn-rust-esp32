@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { ClipboardCopy, FileJson, Pencil, Trash2 } from "lucide-preact";
 import {
@@ -105,6 +105,17 @@ function filterFromRouteParam(cid?: string): string {
   return "";
 }
 
+/** Une ligne de prompt par question (énoncé seul, sans réponses). */
+function formatExistingQuestionStemsForPrompt(rows: QuizzQuestionRow[]): string {
+  if (rows.length === 0) return "";
+  return rows
+    .map((q, i) => {
+      const stem = q.question.replace(/\s+/g, " ").trim() || "(intitulé vide)";
+      return `${i + 1}. ${stem}`;
+    })
+    .join("\n");
+}
+
 export function QuestionsView({ collectionId }: QuestionsViewProps) {
   const [collections, setCollections] = useState<CollectionUi[]>([]);
   const [allModules, setAllModules] = useState<QuizzModuleRow[]>([]);
@@ -122,8 +133,13 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [importDesiredQuestionCount, setImportDesiredQuestionCount] = useState(5);
+  /** Nom de collection injecté dans le prompt (prérempli depuis la collection affichée). */
+  const [importLlmCollectionName, setImportLlmCollectionName] = useState("");
+  const [importLlmSubject, setImportLlmSubject] = useState("");
+  const [importLlmIncludeExistingStems, setImportLlmIncludeExistingStems] = useState(false);
   const [saving, setSaving] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
+  const importLlmLastSyncedCollectionId = useRef<number | null>(null);
 
   const targetCollectionNumeric =
     collectionFilter !== "" &&
@@ -132,6 +148,25 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
       ? Number(collectionFilter)
       : null;
 
+  useEffect(() => {
+    if (targetCollectionNumeric == null) {
+      importLlmLastSyncedCollectionId.current = null;
+      setImportLlmCollectionName("");
+      setImportLlmIncludeExistingStems(false);
+      return;
+    }
+    const col = collections.find((c) => c.id === targetCollectionNumeric);
+    const switched = importLlmLastSyncedCollectionId.current !== targetCollectionNumeric;
+    if (switched) {
+      importLlmLastSyncedCollectionId.current = targetCollectionNumeric;
+      setImportLlmCollectionName(col?.nom ?? "");
+      return;
+    }
+    if (col?.nom) {
+      setImportLlmCollectionName((prev) => (prev.trim() === "" ? col.nom : prev));
+    }
+  }, [targetCollectionNumeric, collections]);
+
   const llmPromptFull = useMemo(() => {
     const n = importDesiredQuestionCount;
     const countBlock =
@@ -139,8 +174,29 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
         ? `\n\n— Quantité : le tableau racine "questions" doit contenir exactement ${n} objet(s)-question (ni plus ni moins).`
         : `\n\n— Quantité : le JSON doit représenter exactement ${n} question(s) au total (somme des questions dans tous les blocs "collections" et dans "questions_sans_collection").`;
 
+    const nameTrim = importLlmCollectionName.trim();
+    const nameBlock =
+      nameTrim.length > 0
+        ? targetCollectionNumeric != null
+          ? `\n\n— Nom de la collection (thème / cohérence) : « ${nameTrim} ». Le JSON ne doit pas dupliquer ce nom dans un champ "collections" : seulement le tableau "questions".`
+          : `\n\n— Nom de la collection cible dans le JSON : utilise exactement « ${nameTrim} » comme "nom" dans le bloc "collections" concerné (ou fusionne avec une collection existante de ce nom pour cet utilisateur).`
+        : "";
+
+    const subjectTrim = importLlmSubject.trim();
+    const subjectBlock =
+      subjectTrim.length > 0
+        ? `\n\n— Sujet / thème des nouvelles questions à rédiger :\n${subjectTrim}`
+        : "";
+
+    const existingBlock =
+      importLlmIncludeExistingStems &&
+      targetCollectionNumeric != null &&
+      questions.length > 0
+        ? `\n\n— Questions déjà présentes dans cette collection (intitulés seuls, sans réponses) — évite les doublons et les paraphrases trop proches :\n${formatExistingQuestionStemsForPrompt(questions)}`
+        : "";
+
     if (targetCollectionNumeric == null) {
-      return LLM_PROMPT_BASE + countBlock;
+      return LLM_PROMPT_BASE + countBlock + nameBlock + subjectBlock;
     }
     const col = collections.find((c) => c.id === targetCollectionNumeric);
     const nom = col?.nom ?? `id ${targetCollectionNumeric}`;
@@ -152,13 +208,17 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     if (mod) {
       tail += `\n— Après import, lien vers la supercollection « ${mod.nom} » (id ${mod.id}) si tu l’as sélectionnée ci-dessus.`;
     }
-    return LLM_PROMPT_COLLECTION + countBlock + tail;
+    return LLM_PROMPT_COLLECTION + countBlock + nameBlock + subjectBlock + existingBlock + tail;
   }, [
     targetCollectionNumeric,
     collections,
     importTargetModuleId,
     allModules,
     importDesiredQuestionCount,
+    importLlmCollectionName,
+    importLlmSubject,
+    importLlmIncludeExistingStems,
+    questions,
   ]);
 
   useEffect(() => {
@@ -324,7 +384,7 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
         {importOpen ? (
           <Card class="fl-reveal-enter mb-6 border-learn/15 bg-learn/[0.06]">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-              <aside class="flex w-full shrink-0 flex-col gap-3 rounded-xl border border-base-content/10 bg-base-100/60 p-3 lg:w-44 lg:max-w-44">
+              <aside class="flex w-full shrink-0 flex-col gap-4 rounded-xl border border-base-content/10 bg-base-100/60 p-3 lg:min-w-70 lg:max-w-xs">
                 <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-base-content/45">
                   Options
                 </p>
@@ -350,10 +410,71 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
                       </option>
                     ))}
                   </select>
-                  <p class="mt-2 text-[0.65rem] leading-snug text-base-content/50">
-                    Inclus dans le prompt copié pour le LLM.
+                </div>
+                <div>
+                  <label
+                    class="mb-1 block text-xs font-medium text-base-content/70"
+                    for="import-llm-collection-name"
+                  >
+                    Nom de la collection
+                  </label>
+                  <input
+                    id="import-llm-collection-name"
+                    type="text"
+                    class="input input-bordered input-sm w-full rounded-lg border-base-content/15 bg-base-100 text-sm"
+                    placeholder={
+                      targetCollectionNumeric != null
+                        ? "Prérempli depuis la collection"
+                        : "Ex. Ma thématique"
+                    }
+                    value={importLlmCollectionName}
+                    onInput={(e) => setImportLlmCollectionName((e.target as HTMLInputElement).value)}
+                  />
+                  <p class="mt-1 text-[0.65rem] leading-snug text-base-content/50">
+                    {targetCollectionNumeric != null
+                      ? "Prérempli quand tu arrives depuis une collection ; tu peux l’ajuster."
+                      : "Optionnel : précise le nom pour le bloc JSON collections."}
                   </p>
                 </div>
+                <div>
+                  <label
+                    class="mb-1 block text-xs font-medium text-base-content/70"
+                    for="import-llm-subject"
+                  >
+                    Sujet des questions
+                  </label>
+                  <textarea
+                    id="import-llm-subject"
+                    class="textarea textarea-bordered w-full min-h-20 rounded-lg border-base-content/15 bg-base-100 text-sm"
+                    placeholder="Ex. verbes irréguliers du groupe 3, révision bac SVT…"
+                    value={importLlmSubject}
+                    onInput={(e) => setImportLlmSubject((e.target as HTMLTextAreaElement).value)}
+                  />
+                </div>
+                <label
+                  class={`flex cursor-pointer items-start gap-2 rounded-lg border border-base-content/10 p-2 text-xs leading-snug ${
+                    targetCollectionNumeric == null ? "cursor-not-allowed opacity-50" : ""
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-sm mt-0.5 shrink-0 border-base-content/30"
+                    checked={importLlmIncludeExistingStems}
+                    disabled={targetCollectionNumeric == null}
+                    onChange={(e) => setImportLlmIncludeExistingStems((e.target as HTMLInputElement).checked)}
+                  />
+                  <span>
+                    Lister les intitulés déjà en base (sans réponses) pour éviter les répétitions.
+                    {targetCollectionNumeric == null ? (
+                      <span class="mt-1 block text-[0.65rem] text-base-content/45">
+                        Disponible lorsque tu filtres sur une collection.
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+                <p class="text-[0.65rem] leading-snug text-base-content/50">
+                  Ces champs sont injectés dans le prompt copié pour le LLM.
+                </p>
               </aside>
               <div class="min-w-0 flex-1">
                 <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
