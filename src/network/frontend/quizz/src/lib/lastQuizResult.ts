@@ -4,6 +4,8 @@ export type LastQuizResult = {
   collectionName: string;
   good: number;
   total: number;
+  /** Ordre des questions pour Rejouer (défaut : aléatoire). */
+  playOrder?: "random" | "linear";
 };
 
 const KEY = "flowlearn_last_result";

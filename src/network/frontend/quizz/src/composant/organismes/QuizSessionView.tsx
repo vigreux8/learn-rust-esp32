@@ -2,6 +2,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { ArrowLeft } from "lucide-preact";
 import { fetchCollection, fetchRandomQuiz, postQuizKpi } from "../../lib/api";
+import { useRoutePath } from "../../lib/routePathContext";
+import {
+  playOrderFromSearch,
+  shuffleQuestions,
+  type PlayOrder,
+} from "../../lib/playOrder";
 import { useUserSession } from "../../lib/userSession";
 import type { QuestionUi } from "../../types/quizz";
 import { saveLastQuizResult } from "../../lib/lastQuizResult";
@@ -22,6 +28,7 @@ type SessionData = {
   collectionId: number | null;
   nom: string;
   questions: QuestionUi[];
+  playOrder: PlayOrder;
 };
 
 function isPickedCorrect(questions: QuestionUi[], qIndex: number, reponseId: number): boolean {
@@ -31,6 +38,7 @@ function isPickedCorrect(questions: QuestionUi[], qIndex: number, reponseId: num
 
 export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   const { userId } = useUserSession();
+  const routePath = useRoutePath();
   const questionStartedAtMs = useRef(0);
 
   const [data, setData] = useState<SessionData | null>(null);
@@ -49,8 +57,9 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
 
     (async () => {
       try {
+        const order = playOrderFromSearch();
         if (collectionId === "random") {
-          const questions = await fetchRandomQuiz();
+          const questions = await fetchRandomQuiz({ order });
           if (cancelled) return;
           if (questions.length === 0) {
             setLoadError("empty");
@@ -61,6 +70,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
             collectionId: null,
             nom: "Mélange aléatoire",
             questions,
+            playOrder: order,
           });
           return;
         }
@@ -75,11 +85,14 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           setLoadError("empty");
           return;
         }
+        const questions =
+          order === "random" ? shuffleQuestions(col.questions) : [...col.questions];
         setData({
           mode: "collection",
           collectionId: cid,
           nom: col.nom,
-          questions: col.questions,
+          questions,
+          playOrder: order,
         });
       } catch {
         if (!cancelled) setLoadError("fetch");
@@ -91,7 +104,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [collectionId]);
+  }, [collectionId, routePath]);
 
   useEffect(() => {
     setIndex(0);
@@ -167,6 +180,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
         collectionName: data.nom,
         good: nextGood,
         total,
+        playOrder: data.playOrder,
       });
       route("/results");
       return;
@@ -188,7 +202,12 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
             <ArrowLeft class="h-4 w-4" aria-hidden />
             Retour
           </Button>
-          <Badge tone={data.mode === "random" ? "flow" : "learn"}>{data.nom}</Badge>
+          <div class="flex flex-wrap items-center gap-2">
+            <Badge tone={data.mode === "random" ? "flow" : "learn"}>{data.nom}</Badge>
+            <Badge tone="learn" class="font-normal opacity-90">
+              {data.playOrder === "linear" ? "Ordre linéaire" : "Ordre aléatoire"}
+            </Badge>
+          </div>
         </div>
 
         <ProgressBar value={progressValue} max={total} class="mb-6" />

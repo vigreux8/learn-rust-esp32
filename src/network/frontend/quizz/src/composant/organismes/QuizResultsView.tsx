@@ -1,6 +1,7 @@
 import { useMemo } from "preact/hooks";
 import { route } from "preact-router";
 import { Trophy } from "lucide-preact";
+import { playOrderQuerySuffix } from "../../lib/playOrder";
 import { readLastQuizResult } from "../../lib/lastQuizResult";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
@@ -28,8 +29,9 @@ export function QuizResultsView() {
 
   const pct = result.total <= 0 ? 0 : Math.round((result.good / result.total) * 100);
   const replay = () => {
-    if (result.mode === "random") route("/play/random");
-    else if (result.collectionId != null) route(`/play/${result.collectionId}`);
+    const q = playOrderQuerySuffix(result.playOrder ?? "random");
+    if (result.mode === "random") route(`/play/random${q}`);
+    else if (result.collectionId != null) route(`/play/${result.collectionId}${q}`);
     else route("/collections");
   };
 

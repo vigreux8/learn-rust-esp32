@@ -107,8 +107,12 @@ export async function unassignCollectionFromModule(
   return res.json() as Promise<CollectionUi>;
 }
 
-export async function fetchRandomQuiz(): Promise<QuestionUi[]> {
-  const res = await fetch(apiUrl("/quizz/random"));
+export async function fetchRandomQuiz(opts?: {
+  order?: "random" | "linear";
+}): Promise<QuestionUi[]> {
+  const order = opts?.order ?? "random";
+  const q = order === "linear" ? "?order=linear" : "";
+  const res = await fetch(apiUrl(`/quizz/random${q}`));
   await assertResponseOk(res);
   return res.json() as Promise<QuestionUi[]>;
 }

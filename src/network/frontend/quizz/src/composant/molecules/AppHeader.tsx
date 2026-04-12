@@ -10,9 +10,15 @@ const links = [
   { href: "/dashboard", label: "Dashboard" },
 ] as const;
 
+function pathWithoutQuery(p: string) {
+  const i = p.indexOf("?");
+  return i >= 0 ? p.slice(0, i) : p;
+}
+
 function isActive(current: string, href: string) {
-  if (href === "/") return current === "/" || current === "";
-  return current === href || current.startsWith(`${href}/`);
+  const cur = pathWithoutQuery(current);
+  if (href === "/") return cur === "/" || cur === "";
+  return cur === href || cur.startsWith(`${href}/`);
 }
 
 export function AppHeader() {

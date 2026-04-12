@@ -111,8 +111,11 @@ export class QuizzReadService {
     return ui;
   }
 
-  async randomQuizQuestions(): Promise<QuestionUi[]> {
+  async randomQuizQuestions(
+    order: 'random' | 'linear' = 'random',
+  ): Promise<QuestionUi[]> {
     const rows = await this.prisma.prisma.quizz_question.findMany({
+      orderBy: { id: 'asc' },
       include: {
         quizz_question_reponse: {
           include: { quizz_reponse: true },
@@ -120,7 +123,8 @@ export class QuizzReadService {
       },
     });
     const withAnswers = rows.filter((q) => q.quizz_question_reponse.length > 0);
-    return shuffle(withAnswers.map((q) => this.mapQuestionToUi(q)));
+    const mapped = withAnswers.map((q) => this.mapQuestionToUi(q));
+    return order === 'linear' ? mapped : shuffle(mapped);
   }
 
   async listQuestions(

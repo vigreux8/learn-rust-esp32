@@ -1,6 +1,7 @@
 import { ChevronRight, FolderTree, ListTree, X } from "lucide-preact";
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
+import { playOrderQuerySuffix, type PlayOrder } from "../../lib/playOrder";
 import { Card } from "../atomes/Card";
 import { Badge } from "../atomes/Badge";
 import { Button } from "../atomes/Button";
@@ -26,6 +27,7 @@ export function CollectionCard({
   const n = collection.questions.length;
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
+  const [playOrder, setPlayOrder] = useState<PlayOrder>("random");
   const linkedModules = collection.modules ?? [];
 
   const assignable = allModules.filter(
@@ -117,6 +119,21 @@ export function CollectionCard({
           ) : null}
         </div>
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
+          <label class="w-full text-xs font-medium text-base-content/55 sm:text-end" for={`play-order-${collection.id}`}>
+            Mode de jeu
+          </label>
+          <select
+            id={`play-order-${collection.id}`}
+            class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:max-w-[11rem]"
+            value={playOrder}
+            onChange={(e) => {
+              const v = (e.target as HTMLSelectElement).value;
+              setPlayOrder(v === "linear" ? "linear" : "random");
+            }}
+          >
+            <option value="random">Aléatoire</option>
+            <option value="linear">Linéaire</option>
+          </select>
           <Button
             variant="outline"
             class="btn-sm gap-1"
@@ -132,7 +149,7 @@ export function CollectionCard({
           <Button
             variant="flow"
             class="btn-sm gap-1"
-            onClick={() => route(`/play/${collection.id}`)}
+            onClick={() => route(`/play/${collection.id}${playOrderQuerySuffix(playOrder)}`)}
           >
             Jouer
             <ChevronRight class="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />

@@ -10,20 +10,22 @@ import { QuizSessionView } from "./composant/organismes/QuizSessionView";
 import { SessionDetailsView } from "./composant/organismes/SessionDetailsView";
 import { StatsDashboard } from "./composant/organismes/StatsDashboard";
 
-function readPathname() {
+function readPathWithSearch() {
   if (typeof window === "undefined") return "/";
-  return window.location.pathname || "/";
+  const p = window.location.pathname || "/";
+  const s = window.location.search || "";
+  return `${p}${s}`;
 }
 
 export function App() {
-  const [path, setPath] = useState(readPathname);
+  const [path, setPath] = useState(readPathWithSearch);
 
   return (
     <DeviceAuthGate>
       <RoutePathContext.Provider value={path}>
         <Router
           onChange={() => {
-            setPath(readPathname());
+            setPath(readPathWithSearch());
           }}
         >
           <Route path="/" component={HomeView} />

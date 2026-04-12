@@ -21,6 +21,14 @@ import {
   UpdateQuestionDto,
 } from './dto/quizz.dto';
 
+function parsePlayOrderQuery(orderRaw?: string): 'random' | 'linear' {
+  if (orderRaw === undefined || orderRaw === '') return 'random';
+  if (orderRaw === 'random' || orderRaw === 'linear') return orderRaw;
+  throw new BadRequestException(
+    'Query order : utiliser "random" (défaut) ou "linear"',
+  );
+}
+
 @Controller('quizz')
 export class QuizzController {
   constructor(private readonly quizz: QuizzService) {}
@@ -88,8 +96,9 @@ export class QuizzController {
   }
 
   @Get('random')
-  randomQuiz() {
-    return this.quizz.randomQuizQuestions();
+  randomQuiz(@Query('order') orderRaw?: string) {
+    const order = parsePlayOrderQuery(orderRaw);
+    return this.quizz.randomQuizQuestions(order);
   }
 
   @Get('questions')

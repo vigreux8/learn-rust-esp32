@@ -32,8 +32,8 @@ export class QuizzService {
     return this.read.getCollection(collectionId);
   }
 
-  randomQuizQuestions(): Promise<QuestionUi[]> {
-    return this.read.randomQuizQuestions();
+  randomQuizQuestions(order: 'random' | 'linear' = 'random'): Promise<QuestionUi[]> {
+    return this.read.randomQuizQuestions(order);
   }
 
   listQuestions(

@@ -1,10 +1,13 @@
+import { useState } from "preact/hooks";
 import { Sparkles } from "lucide-preact";
 import { route } from "preact-router";
+import { playOrderQuerySuffix, type PlayOrder } from "../../lib/playOrder";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
 import { Button } from "../atomes/Button";
 
 export function HomeView() {
+  const [playOrder, setPlayOrder] = useState<PlayOrder>("random");
   return (
     <div class="flex min-h-dvh flex-col">
       <AppHeader />
@@ -17,14 +20,34 @@ export function HomeView() {
           <h1 class="mb-3 text-3xl font-bold tracking-tight text-base-content sm:text-4xl">
             Prêt à apprendre ?
           </h1>
-          <p class="mb-10 text-base leading-relaxed text-base-content/65">
-            Les questions sont tirées au hasard parmi toutes les collections. Un parcours fluide, sans choisir de thème
-            d’abord.
+          <p class="mb-6 text-base leading-relaxed text-base-content/65">
+            Les questions viennent de toutes les collections. Choisis l’ordre des cartes : mélangé (défaut) ou dans un
+            ordre stable (id croissant).
           </p>
+          <div class="mx-auto mb-8 w-full max-w-xs text-left">
+            <label
+              class="mb-1 block text-center text-xs font-semibold uppercase tracking-wide text-base-content/45"
+              for="home-play-order"
+            >
+              Mode de jeu
+            </label>
+            <select
+              id="home-play-order"
+              class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 text-sm"
+              value={playOrder}
+              onChange={(e) => {
+                const v = (e.target as HTMLSelectElement).value;
+                setPlayOrder(v === "linear" ? "linear" : "random");
+              }}
+            >
+              <option value="random">Aléatoire (défaut)</option>
+              <option value="linear">Linéaire (ordre stable)</option>
+            </select>
+          </div>
           <Button
             variant="flow"
             class="btn-lg min-h-14 min-w-[220px] px-10 text-base shadow-xl shadow-flow/25 transition duration-300 hover:scale-[1.03]"
-            onClick={() => route("/play/random")}
+            onClick={() => route(`/play/random${playOrderQuerySuffix(playOrder)}`)}
           >
             Commencer les quiz
           </Button>
