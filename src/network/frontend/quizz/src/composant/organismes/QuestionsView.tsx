@@ -55,6 +55,36 @@ Exemple minimal :
   "questions_sans_collection": []
 }`;
 
+/** Prompt court quand une collection est sélectionnée : le JSON ne contient que des questions. */
+const LLM_PROMPT_COLLECTION = `Tu produis UN SEUL JSON valide (sans markdown, sans texte avant ou après).
+
+L’application est déjà positionnée sur UNE collection précise : exporte uniquement une liste de questions. Elles seront toutes enregistrées dans cette collection — n’inclus aucun nom de collection, aucun tableau "collections", aucun "questions_sans_collection".
+
+Racine :
+- "user_id" (recommandé) : entier — le propriétaire de la collection (toi dans l’interface).
+- "questions" : tableau non vide. Chaque élément :
+  - "question" : string non vide.
+  - "commentaire" : string — courte anecdote ou explication pédagogique ; n’y recopie pas mot pour mot le libellé de la bonne réponse.
+  - "reponses" : exactement 4 objets { "texte": string, "correcte": true | false } avec exactement une seule "correcte": true.
+
+Exemple minimal :
+
+{
+  "user_id": 1,
+  "questions": [
+    {
+      "question": "… ?",
+      "commentaire": "…",
+      "reponses": [
+        { "texte": "Bonne réponse", "correcte": true },
+        { "texte": "Fausse A", "correcte": false },
+        { "texte": "Fausse B", "correcte": false },
+        { "texte": "Fausse C", "correcte": false }
+      ]
+    }
+  ]
+}`;
+
 export type QuestionsViewProps = {
   collectionId?: string;
 };
@@ -105,11 +135,11 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
       importTargetModuleId != null
         ? allModules.find((m) => m.id === importTargetModuleId)
         : undefined;
-    let extra = `\n\n[Contexte FlowLearn — page collection « ${nom} » (id ${targetCollectionNumeric}). Toutes les questions du JSON seront fusionnées dans CETTE collection : les champs collections[].nom sont ignorés pour le regroupement.]`;
+    let tail = `\n\n— Collection active dans l’interface : « ${nom} » (id ${targetCollectionNumeric}).`;
     if (mod) {
-      extra += `\n[Après import, un lien vers la supercollection « ${mod.nom} » (id ${mod.id}) sera créé si absent.]`;
+      tail += `\n— Après import, lien vers la supercollection « ${mod.nom} » (id ${mod.id}) si tu l’as sélectionnée ci-dessus.`;
     }
-    return LLM_PROMPT_BASE + extra;
+    return LLM_PROMPT_COLLECTION + tail;
   }, [targetCollectionNumeric, collections, importTargetModuleId, allModules]);
 
   useEffect(() => {
@@ -287,20 +317,26 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
               value={llmPromptFull}
             />
             <p class="mb-2 text-xs text-base-content/55">
-              Colle le JSON généré ci-dessous (champs <code class="text-xs">collections</code> et/ou{" "}
-              <code class="text-xs">questions_sans_collection</code>).
               {targetCollectionNumeric != null ? (
                 <>
-                  {" "}
-                  Avec une collection sélectionnée ci-dessous, toutes les questions importées sont fusionnées dans
-                  cette collection (les noms de blocs <code class="text-xs">collections[].nom</code> sont ignorés
-                  pour le regroupement).
+                  Colle le JSON au format <code class="text-xs">questions</code> uniquement : chaque entrée sera liée
+                  à la collection affichée (aucun autre format requis).
                 </>
-              ) : null}
+              ) : (
+                <>
+                  Colle le JSON généré ci-dessous (champs <code class="text-xs">collections</code> et/ou{" "}
+                  <code class="text-xs">questions_sans_collection</code>, ou tableau racine{" "}
+                  <code class="text-xs">questions</code>).
+                </>
+              )}
             </p>
             <textarea
               class="textarea textarea-bordered mb-3 w-full min-h-32 rounded-2xl border-dashed border-learn/35 bg-base-100/60 font-mono text-xs leading-relaxed"
-              placeholder='{ "collections": [ ... ], "questions_sans_collection": [] }'
+              placeholder={
+                targetCollectionNumeric != null
+                  ? '{ "user_id": 1, "questions": [ { "question": "…", "commentaire": "…", "reponses": [ ... ] } ] }'
+                  : '{ "collections": [ ... ], "questions_sans_collection": [] }'
+              }
               value={importText}
               onInput={(e) => setImportText((e.target as HTMLTextAreaElement).value)}
             />

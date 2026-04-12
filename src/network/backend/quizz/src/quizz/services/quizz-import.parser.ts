@@ -119,15 +119,16 @@ export class LlmImportParser {
     return collections;
   }
 
-  private parseQuestionsSansCollection(raw: unknown): LlmImportQuestion[] {
+  private parseQuestionsSansCollection(
+    raw: unknown,
+    pathLabel = 'questions_sans_collection',
+  ): LlmImportQuestion[] {
     if (!Array.isArray(raw)) {
       return [];
     }
     const out: LlmImportQuestion[] = [];
     for (let k = 0; k < raw.length; k++) {
-      out.push(
-        this.parseQuestion(raw[k], `questions_sans_collection[${k}]`),
-      );
+      out.push(this.parseQuestion(raw[k], `${pathLabel}[${k}]`));
     }
     return out;
   }
@@ -146,13 +147,36 @@ export class LlmImportParser {
     const b = body as Record<string, unknown>;
     const collectionsRaw = b.collections;
     const sansRaw = b.questions_sans_collection;
+    const rootQuestionsRaw = b.questions;
+
+    /** Format court : uniquement des questions (import ciblé sur une collection côté UI). */
+    if (Array.isArray(rootQuestionsRaw) && rootQuestionsRaw.length > 0) {
+      if (collectionsRaw != null && Array.isArray(collectionsRaw) && collectionsRaw.length > 0) {
+        throw new BadRequestException(
+          'Avec le tableau racine "questions", n’envoie pas aussi "collections".',
+        );
+      }
+      if (sansRaw != null && Array.isArray(sansRaw) && sansRaw.length > 0) {
+        throw new BadRequestException(
+          'Avec le tableau racine "questions", n’envoie pas aussi "questions_sans_collection".',
+        );
+      }
+      return {
+        userIdRaw: b.user_id,
+        collections: [],
+        questionsSansCollection: this.parseQuestionsSansCollection(
+          rootQuestionsRaw,
+          'questions',
+        ),
+      };
+    }
 
     if (
       (!collectionsRaw || !Array.isArray(collectionsRaw)) &&
       (!sansRaw || !Array.isArray(sansRaw))
     ) {
       throw new BadRequestException(
-        'Fournis "collections" (tableau) et/ou "questions_sans_collection" (tableau).',
+        'Fournis "questions" (tableau racine) et/ou "collections" et/ou "questions_sans_collection" (tableaux).',
       );
     }
 
