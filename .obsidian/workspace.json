@@ -11,10 +11,14 @@
             "id": "d5118ac2cd2f61ab",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "1-note/12-04-2026/note.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "Nouvel onglet"
+              "title": "note"
             }
           }
         ]
@@ -178,19 +182,22 @@
   },
   "active": "d5118ac2cd2f61ab",
   "lastOpenFiles": [
-    "src/network/quizz/doc/ddb/v1.sql",
-    "src/network/quizz/doc/ddb/v1",
+    "src/network/backend/quizz/quizz.db-journal",
+    "src/network/backend/quizz/ddb/readme.md",
+    "src/network/backend/quizz/ddb/ireadme.md",
+    "src/network/backend/quizz/ddb/inject.sql",
+    "src/network/backend/quizz/ddb/v2 copy.sql",
+    "src/network/backend/quizz/v2 copy.sql",
+    "src/network/backend/quizz/ddb/v2/v2 copy.sql",
+    "src/network/backend/quizz/ddb/v2/v2.sql",
+    "src/network/backend/quizz/ddb/v2/v2",
+    "src/network/backend/quizz/ddb/v2",
+    "src/network/backend/quizz/ddb/v1/v1.sql",
+    "src/network/backend/quizz/ddb/v1/v1.dbml",
+    "src/network/backend/quizz/ddb/v1",
+    "1-note/12-04-2026/note.md",
     "src/network/quizz/doc/wireframe.md",
     "src/network/quizz/doc/userstory.md",
-    "src/network/quizz/doc/ddb",
-    "src/network/quizz/doc",
-    "src/network/quizz/frontend/src/composant/molecules/PageMain.tsx",
-    "src/network/quizz/frontend/src/composant/molecules/KpiCard.tsx",
-    "src/network/quizz/frontend/src/composant/molecules/CollectionCard.tsx",
-    "src/network/quizz/frontend/src/composant/molecules/AppHeader.tsx",
-    "src/network/quizz/frontend/src/composant/molecules/AppFooter.tsx",
-    "src/network/quizz/frontend/src/composant/molecules/AnswerOption.tsx",
-    "src/network/quizz/frontend/src/composant/organismes/StatsDashboard.tsx",
     "src/network/quizz/frontend/src/assets/vite.svg",
     "src/network/quizz/frontend/src/assets/preact.svg",
     "src/network/quizz/frontend/src/assets/hero.png",
@@ -220,9 +227,6 @@
     "src/network/quizz/frontend/node_modules/@rollup/pluginutils/README.md",
     "src/network/quizz/frontend/node_modules/@rolldown/pluginutils/README.md",
     "src/network/quizz/frontend/node_modules/@rolldown/binding-darwin-arm64/README.md",
-    "src/network/quizz/frontend/node_modules/@prefresh/vite/README.md",
-    "src/network/quizz/frontend/node_modules/@prefresh/utils/README.md",
-    "src/network/quizz/frontend/node_modules/@prefresh/utils/CHANGELOG.md",
-    "src/network/quizz/frontend/node_modules/@prefresh/core/README.md"
+    "src/network/quizz/frontend/node_modules/@prefresh/vite/README.md"
   ]
 }

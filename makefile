@@ -57,11 +57,31 @@ dev-quizz:
 	cd src/network/frontend/quizz && npm run dev
 
 ## Backend quizz (SQLite)
+# Chemins relatifs à la racine
+# --- Variables de configuration ---
+QUIZZ_DIR   = src/network/backend/quizz
+DB_NAME     = quizz.db
+SQL_INJECT  = ddb/inject.sql
+SCHEMA_PATH = prisma/schema.prisma
+
+# --- Commandes ---
 
 inject-quizz-db:
-	cd src/network/backend/quizz && sqlite3 quizz.db < ddb/last.sql
-	@echo "OK: schéma SQL injecté dans quizz.db (backend quizz)."
-
+	@echo "--- 1. Reset physique de la DB ---"
+	# Suppression et recréation de la base SQLite
+	cd $(QUIZZ_DIR) && rm -f $(DB_NAME)
+	cd $(QUIZZ_DIR) && sqlite3 $(DB_NAME) < $(SQL_INJECT)
+	
+	@echo "--- 2. Nettoyage du schéma (Header 7 lignes) ---"
+	# On vide les anciens modèles pour éviter les erreurs de doublons (P1012)
+	cd $(QUIZZ_DIR) && head -n 7 $(SCHEMA_PATH) > $(SCHEMA_PATH).tmp && mv $(SCHEMA_PATH).tmp $(SCHEMA_PATH)
+	
+	@echo "--- 3. Synchronisation Prisma (Pull & Generate) ---"
+	# Introspection de la nouvelle DB et mise à jour du client
+	cd $(QUIZZ_DIR) && npx prisma db pull --schema=$(SCHEMA_PATH)
+	cd $(QUIZZ_DIR) && npx prisma generate --schema=$(SCHEMA_PATH)
+	
+	@echo "✅ Terminé : La base est prête et le code est synchronisé."
 seed-quizz-db:
 	cd src/network/backend/quizz && npx prisma generate && npx prisma db seed
 	@echo "OK: données de seed Prisma insérées (backend quizz)."
