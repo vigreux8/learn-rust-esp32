@@ -55,6 +55,10 @@ Exemple minimal :
   "questions_sans_collection": []
 }`;
 
+const LLM_QUESTION_COUNT_OPTIONS = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 50,
+] as const;
+
 /** Prompt court quand une collection est sélectionnée : le JSON ne contient que des questions. */
 const LLM_PROMPT_COLLECTION = `Tu produis UN SEUL JSON valide (sans markdown, sans texte avant ou après).
 
@@ -117,6 +121,7 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
   const [importText, setImportText] = useState("");
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [importDesiredQuestionCount, setImportDesiredQuestionCount] = useState(5);
   const [saving, setSaving] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
 
@@ -128,7 +133,15 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
       : null;
 
   const llmPromptFull = useMemo(() => {
-    if (targetCollectionNumeric == null) return LLM_PROMPT_BASE;
+    const n = importDesiredQuestionCount;
+    const countBlock =
+      targetCollectionNumeric != null
+        ? `\n\n— Quantité : le tableau racine "questions" doit contenir exactement ${n} objet(s)-question (ni plus ni moins).`
+        : `\n\n— Quantité : le JSON doit représenter exactement ${n} question(s) au total (somme des questions dans tous les blocs "collections" et dans "questions_sans_collection").`;
+
+    if (targetCollectionNumeric == null) {
+      return LLM_PROMPT_BASE + countBlock;
+    }
     const col = collections.find((c) => c.id === targetCollectionNumeric);
     const nom = col?.nom ?? `id ${targetCollectionNumeric}`;
     const mod =
@@ -139,8 +152,14 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     if (mod) {
       tail += `\n— Après import, lien vers la supercollection « ${mod.nom} » (id ${mod.id}) si tu l’as sélectionnée ci-dessus.`;
     }
-    return LLM_PROMPT_COLLECTION + tail;
-  }, [targetCollectionNumeric, collections, importTargetModuleId, allModules]);
+    return LLM_PROMPT_COLLECTION + countBlock + tail;
+  }, [
+    targetCollectionNumeric,
+    collections,
+    importTargetModuleId,
+    allModules,
+    importDesiredQuestionCount,
+  ]);
 
   useEffect(() => {
     setCollectionFilter(filterFromRouteParam(collectionId));
@@ -304,48 +323,83 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
 
         {importOpen ? (
           <Card class="fl-reveal-enter mb-6 border-learn/15 bg-learn/[0.06]">
-            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p class="text-sm font-medium text-base-content">Prompt à copier pour ton LLM</p>
-              <Button variant="outline" class="btn-sm gap-1" type="button" onClick={copyLlmPrompt}>
-                <ClipboardCopy class="h-3.5 w-3.5" aria-hidden />
-                {promptCopied ? "Copié" : "Copier"}
-              </Button>
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+              <aside class="flex w-full shrink-0 flex-col gap-3 rounded-xl border border-base-content/10 bg-base-100/60 p-3 lg:w-44 lg:max-w-44">
+                <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-base-content/45">
+                  Options
+                </p>
+                <div>
+                  <label
+                    class="mb-1 block text-xs font-medium text-base-content/70"
+                    for="import-llm-question-count"
+                  >
+                    Nombre de questions
+                  </label>
+                  <select
+                    id="import-llm-question-count"
+                    class="select select-bordered select-sm w-full rounded-lg border-base-content/15 bg-base-100 text-sm"
+                    value={String(importDesiredQuestionCount)}
+                    onChange={(e) => {
+                      const v = Number((e.target as HTMLSelectElement).value);
+                      if (Number.isFinite(v)) setImportDesiredQuestionCount(v);
+                    }}
+                  >
+                    {LLM_QUESTION_COUNT_OPTIONS.map((k) => (
+                      <option key={k} value={String(k)}>
+                        {k}
+                      </option>
+                    ))}
+                  </select>
+                  <p class="mt-2 text-[0.65rem] leading-snug text-base-content/50">
+                    Inclus dans le prompt copié pour le LLM.
+                  </p>
+                </div>
+              </aside>
+              <div class="min-w-0 flex-1">
+                <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p class="text-sm font-medium text-base-content">Prompt à copier pour ton LLM</p>
+                  <Button variant="outline" class="btn-sm gap-1" type="button" onClick={copyLlmPrompt}>
+                    <ClipboardCopy class="h-3.5 w-3.5" aria-hidden />
+                    {promptCopied ? "Copié" : "Copier"}
+                  </Button>
+                </div>
+                <textarea
+                  class="textarea textarea-bordered mb-3 w-full min-h-28 rounded-2xl border-base-content/15 bg-base-100/80 text-sm transition duration-300"
+                  readOnly
+                  value={llmPromptFull}
+                />
+                <p class="mb-2 text-xs text-base-content/55">
+                  {targetCollectionNumeric != null ? (
+                    <>
+                      Colle le JSON au format <code class="text-xs">questions</code> uniquement : chaque entrée sera
+                      liée à la collection affichée (aucun autre format requis).
+                    </>
+                  ) : (
+                    <>
+                      Colle le JSON généré ci-dessous (champs <code class="text-xs">collections</code> et/ou{" "}
+                      <code class="text-xs">questions_sans_collection</code>, ou tableau racine{" "}
+                      <code class="text-xs">questions</code>).
+                    </>
+                  )}
+                </p>
+                <textarea
+                  class="textarea textarea-bordered mb-3 w-full min-h-32 rounded-2xl border-dashed border-learn/35 bg-base-100/60 font-mono text-xs leading-relaxed"
+                  placeholder={
+                    targetCollectionNumeric != null
+                      ? '{ "user_id": 1, "questions": [ { "question": "…", "commentaire": "…", "reponses": [ ... ] } ] }'
+                      : '{ "collections": [ ... ], "questions_sans_collection": [] }'
+                  }
+                  value={importText}
+                  onInput={(e) => setImportText((e.target as HTMLTextAreaElement).value)}
+                />
+                {importMessage ? (
+                  <p class="mb-3 text-sm text-base-content/80">{importMessage}</p>
+                ) : null}
+                <Button variant="flow" disabled={importBusy || !importText.trim()} onClick={runImport}>
+                  {importBusy ? "Import…" : "Importer en base"}
+                </Button>
+              </div>
             </div>
-            <textarea
-              class="textarea textarea-bordered mb-3 w-full min-h-28 rounded-2xl border-base-content/15 bg-base-100/80 text-sm transition duration-300"
-              readOnly
-              value={llmPromptFull}
-            />
-            <p class="mb-2 text-xs text-base-content/55">
-              {targetCollectionNumeric != null ? (
-                <>
-                  Colle le JSON au format <code class="text-xs">questions</code> uniquement : chaque entrée sera liée
-                  à la collection affichée (aucun autre format requis).
-                </>
-              ) : (
-                <>
-                  Colle le JSON généré ci-dessous (champs <code class="text-xs">collections</code> et/ou{" "}
-                  <code class="text-xs">questions_sans_collection</code>, ou tableau racine{" "}
-                  <code class="text-xs">questions</code>).
-                </>
-              )}
-            </p>
-            <textarea
-              class="textarea textarea-bordered mb-3 w-full min-h-32 rounded-2xl border-dashed border-learn/35 bg-base-100/60 font-mono text-xs leading-relaxed"
-              placeholder={
-                targetCollectionNumeric != null
-                  ? '{ "user_id": 1, "questions": [ { "question": "…", "commentaire": "…", "reponses": [ ... ] } ] }'
-                  : '{ "collections": [ ... ], "questions_sans_collection": [] }'
-              }
-              value={importText}
-              onInput={(e) => setImportText((e.target as HTMLTextAreaElement).value)}
-            />
-            {importMessage ? (
-              <p class="mb-3 text-sm text-base-content/80">{importMessage}</p>
-            ) : null}
-            <Button variant="flow" disabled={importBusy || !importText.trim()} onClick={runImport}>
-              {importBusy ? "Import…" : "Importer en base"}
-            </Button>
           </Card>
         ) : null}
 
