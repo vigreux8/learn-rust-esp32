@@ -66,6 +66,10 @@ export class QuizzService {
     return this.structure.createModule(nom);
   }
 
+  deleteModule(moduleId: number): Promise<void> {
+    return this.structure.deleteModule(moduleId);
+  }
+
   createCollectionInModule(
     moduleId: number,
     body: { userId: number; nom: string },

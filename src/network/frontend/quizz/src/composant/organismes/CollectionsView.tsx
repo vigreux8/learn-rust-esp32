@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
-import { Layers } from "lucide-preact";
+import { Layers, Trash2 } from "lucide-preact";
 import {
   assignCollectionToModule,
   createQuizzModule,
+  deleteQuizzModule,
   fetchCollections,
   fetchModules,
 } from "../../lib/api";
@@ -42,6 +43,8 @@ export function CollectionsView() {
   const [createModuleError, setCreateModuleError] = useState<string | null>(null);
   const [assignBusyCollectionId, setAssignBusyCollectionId] = useState<number | null>(null);
   const [assignError, setAssignError] = useState<string | null>(null);
+  const [deleteModuleBusyId, setDeleteModuleBusyId] = useState<number | null>(null);
+  const [deleteModuleError, setDeleteModuleError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const [list, mods] = await Promise.all([fetchCollections(), fetchModules()]);
@@ -96,6 +99,29 @@ export function CollectionsView() {
       setAssignError(e instanceof Error ? e.message : "Assignation impossible.");
     } finally {
       setAssignBusyCollectionId(null);
+    }
+  };
+
+  const handleDeleteModule = async (m: QuizzModuleRow) => {
+    const ok = window.confirm(
+      `Supprimer la supercollection « ${m.nom} » ?\n\nLes liens avec les collections seront retirés. Les collections elles-mêmes ne sont pas supprimées.`,
+    );
+    if (!ok) return;
+    setDeleteModuleError(null);
+    setDeleteModuleBusyId(m.id);
+    try {
+      await deleteQuizzModule(m.id);
+      setModules((prev) => prev.filter((x) => x.id !== m.id));
+      setCollections((prev) =>
+        prev.map((c) => ({
+          ...c,
+          modules: (c.modules ?? []).filter((mod) => mod.id !== m.id),
+        })),
+      );
+    } catch (e) {
+      setDeleteModuleError(e instanceof Error ? e.message : "Suppression impossible.");
+    } finally {
+      setDeleteModuleBusyId(null);
     }
   };
 
@@ -161,19 +187,33 @@ export function CollectionsView() {
                 base : tu peux en créer une nouvelle, puis rattacher tes collections ci-dessous.
               </p>
               {modules.length > 0 ? (
-                <ul class="mt-3 flex flex-wrap gap-2">
+                <ul class="mt-3 flex flex-col gap-2">
                   {modules.map((m) => (
                     <li
                       key={m.id}
-                      class="rounded-full border border-learn/25 bg-learn/10 px-3 py-1 text-xs font-medium text-learn"
+                      class="flex items-center justify-between gap-3 rounded-xl border border-learn/25 bg-learn/10 px-3 py-2"
                     >
-                      {m.nom}
+                      <span class="min-w-0 flex-1 text-xs font-medium text-learn">{m.nom}</span>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-xs shrink-0 gap-1 text-error hover:bg-error/10"
+                        aria-label={`Supprimer la supercollection ${m.nom}`}
+                        disabled={deleteModuleBusyId !== null || assignBusyCollectionId !== null}
+                        onClick={() => void handleDeleteModule(m)}
+                      >
+                        {deleteModuleBusyId === m.id ? (
+                          <span class="loading loading-spinner loading-xs" aria-hidden />
+                        ) : (
+                          <Trash2 class="h-4 w-4" aria-hidden />
+                        )}
+                      </button>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p class="mt-3 text-xs text-base-content/50">Aucune supercollection pour l’instant.</p>
               )}
+              {deleteModuleError ? <p class="mt-2 text-xs text-error">{deleteModuleError}</p> : null}
               <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
                 <div class="flex-1">
                   <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-supercollection-name">

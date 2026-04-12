@@ -77,6 +77,11 @@ export async function createQuizzModule(nom: string): Promise<QuizzModuleRow> {
   return res.json() as Promise<QuizzModuleRow>;
 }
 
+export async function deleteQuizzModule(moduleId: number): Promise<void> {
+  const res = await fetch(apiUrl(`/quizz/modules/${moduleId}`), { method: "DELETE" });
+  await assertResponseOk(res);
+}
+
 export async function assignCollectionToModule(
   collectionId: number,
   moduleId: number,

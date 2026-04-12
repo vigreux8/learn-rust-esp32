@@ -130,4 +130,23 @@ export class QuizzStructureService {
       data: { module_id: moduleId, collection_id: collectionId },
     });
   }
+
+  /**
+   * Supprime un module et les lignes `quizz_module_collection` associées.
+   * Les collections (`quizz_collection`) ne sont pas supprimées.
+   */
+  async deleteModule(moduleId: number): Promise<void> {
+    const mod = await this.prisma.prisma.quizz_module.findUnique({
+      where: { id: moduleId },
+    });
+    if (!mod) {
+      throw new NotFoundException(`Module ${moduleId} introuvable`);
+    }
+    await this.prisma.prisma.$transaction([
+      this.prisma.prisma.quizz_module_collection.deleteMany({
+        where: { module_id: moduleId },
+      }),
+      this.prisma.prisma.quizz_module.delete({ where: { id: moduleId } }),
+    ]);
+  }
 }

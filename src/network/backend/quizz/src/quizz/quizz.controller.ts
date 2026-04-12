@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
@@ -29,6 +31,12 @@ export class QuizzController {
   @Post('modules')
   createModule(@Body() body: CreateQuizzModuleDto) {
     return this.quizz.createModule(body.nom);
+  }
+
+  @Delete('modules/:moduleId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteModule(@Param('moduleId', ParseIntPipe) moduleId: number) {
+    return this.quizz.deleteModule(moduleId);
   }
 
   @Post('modules/:moduleId/collections')
