@@ -7,6 +7,7 @@ import {
   QuizzQuestionRow,
   RefCategorieRow,
 } from '../quizz.type';
+import { LlmImportBodyDto } from '../dto/quizz.dto';
 import { QuizzImportService } from './quizz-import.service';
 import { QuizzReadService } from './quizz-read.service';
 import { QuizzStructureService } from './quizz-structure.service';
@@ -163,7 +164,7 @@ export class QuizzService {
 
   // Delegation: QuizzImportService
   importQuestionsFromLlmJson(
-    body: unknown,
+    body: LlmImportBodyDto,
     opts?: {
       collectionId?: number;
       moduleId?: number;

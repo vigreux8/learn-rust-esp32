@@ -48,7 +48,6 @@ export const LLM_PROMPT_COLLECTION = `Tu produis UN SEUL JSON valide (sans markd
 L’application est déjà positionnée sur UNE collection précise : exporte uniquement une liste de questions. Elles seront toutes enregistrées dans cette collection — n’inclus aucun nom de collection, aucun tableau "collections", aucun "questions_sans_collection".
 
 Racine :
-- "user_id" (recommandé) : entier — le propriétaire de la collection (toi dans l’interface).
 - "questions" : tableau non vide. Chaque élément :
   - "question" : string non vide.
   - "commentaire" : string — courte anecdote ou explication pédagogique ; n’y recopie pas mot pour mot le libellé de la bonne réponse.
@@ -57,7 +56,6 @@ Racine :
 Exemple minimal :
 
 {
-  "user_id": 1,
   "questions": [
     {
       "question": "… ?",

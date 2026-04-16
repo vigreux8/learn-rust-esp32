@@ -16,6 +16,7 @@ import { QuizzService } from './services';
 import {
   AssignCollectionToModuleDto,
   CreateCollectionInModuleDto,
+  LlmImportBodyDto,
   CreateQuizzModuleDto,
   CreateStandaloneCollectionDto,
   UpdateQuestionDto,
@@ -151,7 +152,7 @@ export class QuizzController {
 
   @Post('questions/import')
   importQuestions(
-    @Body() body: unknown,
+    @Body() body: LlmImportBodyDto,
     @Query('collectionId') collectionIdStr?: string,
     @Query('moduleId') moduleIdStr?: string,
     @Query('categorie') categorieRaw?: string,

@@ -11,6 +11,7 @@ import type {
   SessionSummary,
   UserKpiRow,
 } from "../types/quizz";
+import type { LlmImportPayload } from "../composant/molecules/QuestionsLlmImportPanel";
 
 async function readError(res: Response): Promise<string> {
   const text = await res.text();
@@ -212,7 +213,7 @@ export async function createEmptyCollection(body: {
 }
 
 export async function importQuestionsJson(
-  body: unknown,
+  body: LlmImportPayload,
   options?: { collectionId?: number; moduleId?: number; categorie?: "histoire" | "pratique" },
 ): Promise<{
   createdQuestions: number;

@@ -6,10 +6,10 @@ import {
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
-  LlmImportCollectionBlock,
-  LlmImportParser,
-  LlmImportQuestion,
-} from './quizz-import.parser';
+  LlmImportBodyDto,
+  LlmImportCollectionBlockDto,
+  LlmImportQuestionDto,
+} from '../dto/quizz.dto';
 import { QuizzStructureService } from './quizz-structure.service';
 
 function nowIso(): string {
@@ -19,14 +19,13 @@ function nowIso(): string {
 /**
  * Import transactionnel de questions/réponses au format JSON (LLM ou équivalent).
  *
- * Délègue la validation/parsing à `LlmImportParser` ; ce service orchestre
+ * Le frontend valide le JSON d'import ; ce service orchestre ensuite
  * la résolution utilisateur et la persistance Prisma.
  */
 @Injectable()
 export class QuizzImportService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly llmImportParser: LlmImportParser,
     private readonly structure: QuizzStructureService,
   ) {}
 
@@ -75,7 +74,7 @@ export class QuizzImportService {
     userId: number,
     categorieId: number,
     t: string,
-    qin: LlmImportQuestion,
+    qin: LlmImportQuestionDto,
     collectionId: number | null,
   ): Promise<void> {
     const qRow = await tx.quizz_question.create({
@@ -132,8 +131,8 @@ export class QuizzImportService {
    */
   private async persistImportPlan(
     userId: number,
-    collections: LlmImportCollectionBlock[],
-    questionsSansCollection: LlmImportQuestion[],
+    collections: LlmImportCollectionBlockDto[],
+    questionsSansCollection: LlmImportQuestionDto[],
     categorieKind: 'histoire' | 'pratique',
   ): Promise<{ createdQuestions: number; createdCollections: number }> {
     let createdQuestions = 0;
@@ -144,7 +143,7 @@ export class QuizzImportService {
       const categorieId = await this.resolveImportCategorieId(tx, categorieKind);
 
       const addQuestion = async (
-        qin: LlmImportQuestion,
+        qin: LlmImportQuestionDto,
         collectionId: number | null,
       ): Promise<void> => {
         await this.insertOneQuestion(
@@ -188,10 +187,10 @@ export class QuizzImportService {
   }
 
   private flattenParsedQuestions(
-    collections: LlmImportCollectionBlock[],
-    questionsSansCollection: LlmImportQuestion[],
-  ): LlmImportQuestion[] {
-    const out: LlmImportQuestion[] = [];
+    collections: LlmImportCollectionBlockDto[],
+    questionsSansCollection: LlmImportQuestionDto[],
+  ): LlmImportQuestionDto[] {
+    const out: LlmImportQuestionDto[] = [];
     for (const b of collections) {
       out.push(...b.questions);
     }
@@ -202,7 +201,7 @@ export class QuizzImportService {
   private async persistImportIntoExistingCollection(
     userId: number,
     targetCollectionId: number,
-    questions: LlmImportQuestion[],
+    questions: LlmImportQuestionDto[],
     categorieKind: 'histoire' | 'pratique',
   ): Promise<{ createdQuestions: number }> {
     const col = await this.prisma.prisma.quizz_collection.findUnique({
@@ -245,14 +244,14 @@ export class QuizzImportService {
   }
 
   /**
-   * Parse un corps JSON puis persiste en transaction.
+   * Persiste en transaction un corps déjà validé.
    *
-   * @param body - Objet JSON brut (`unknown`) validé par `LlmImportParser.parse`.
+   * @param body - Payload JSON déjà validé côté frontend + DTO backend.
    * @returns Nombre de questions et de collections créées (collections déjà existantes ne comptent pas comme créées).
    * @throws {BadRequestException} Corps invalide, aucune question importée, ou erreur métier durant l’import.
    */
   async importQuestionsFromLlmJson(
-    body: unknown,
+    body: LlmImportBodyDto,
     opts?: {
       collectionId?: number;
       moduleId?: number;
@@ -262,14 +261,13 @@ export class QuizzImportService {
     createdQuestions: number;
     createdCollections: number;
   }> {
-    const parsed = this.llmImportParser.parse(body);
-    const userId = await this.resolveImportUserId(parsed.userIdRaw);
+    const userId = await this.resolveImportUserId(body.user_id);
     const categorieKind = opts?.categorie ?? 'histoire';
 
     if (opts?.collectionId != null) {
       const flat = this.flattenParsedQuestions(
-        parsed.collections,
-        parsed.questionsSansCollection,
+        body.collections,
+        body.questions_sans_collection,
       );
       const { createdQuestions } = await this.persistImportIntoExistingCollection(
         userId,
@@ -288,8 +286,8 @@ export class QuizzImportService {
 
     const { createdQuestions, createdCollections } = await this.persistImportPlan(
       userId,
-      parsed.collections,
-      parsed.questionsSansCollection,
+      body.collections,
+      body.questions_sans_collection,
       categorieKind,
     );
 
