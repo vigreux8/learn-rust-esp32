@@ -1,3 +1,14 @@
+import { useEffect, useState } from "preact/hooks";
+import { fetchRefCategories } from "../../lib/api";
+import {
+  getQuestionCategorieSyncWarning,
+  getSupportedQuestionCategories,
+  QUESTION_CATEGORIE_KEYS,
+  type QuestionCategorieKey,
+} from "../../lib/questionCategories";
+
+export const CATEGORY_OPTION_ID = "categorie";
+
 export type LlmImportOptionValue = string | number | boolean | null;
 
 export type LlmImportOptionParent = {
@@ -34,10 +45,67 @@ export type QuestionsLlmImportOptionsPanelProps = {
   onOptionsChange: (options: LlmImportOption[]) => void;
 };
 
+function buildCategoryOption(
+  currentValue: LlmImportOptionValue,
+  listeChoix: readonly QuestionCategorieKey[],
+): LlmImportListeSelectionOption {
+  const fallbackValue = listeChoix[0] ?? QUESTION_CATEGORIE_KEYS[0];
+  const normalizedValue =
+    typeof currentValue === "string" && listeChoix.includes(currentValue as QuestionCategorieKey)
+      ? currentValue
+      : fallbackValue;
+
+  return {
+    id: CATEGORY_OPTION_ID,
+    titre: "Catégorie (enregistrée en base)",
+    type: "liste_selection",
+    liste_choix: [...listeChoix],
+    value: normalizedValue,
+  };
+}
+
 export function QuestionsLlmImportOptionsPanel({
   options,
   onOptionsChange,
 }: QuestionsLlmImportOptionsPanelProps) {
+  const [categoryChoices, setCategoryChoices] =
+    useState<readonly QuestionCategorieKey[]>(QUESTION_CATEGORIE_KEYS);
+  const [categoryWarning, setCategoryWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchRefCategories()
+      .then((rows) => {
+        setCategoryChoices(getSupportedQuestionCategories(rows));
+        setCategoryWarning(getQuestionCategorieSyncWarning(rows));
+      })
+      .catch(() => {
+        setCategoryChoices(QUESTION_CATEGORIE_KEYS);
+      });
+  }, []);
+
+  useEffect(() => {
+    const currentCategoryOption = options.find((option) => option.id === CATEGORY_OPTION_ID);
+    const nextCategoryOption = buildCategoryOption(currentCategoryOption?.value ?? null, categoryChoices);
+
+    if (currentCategoryOption == null) {
+      onOptionsChange([nextCategoryOption, ...options]);
+      return;
+    }
+
+    if (currentCategoryOption.type !== "liste_selection") return;
+
+    const sameValue = currentCategoryOption.value === nextCategoryOption.value;
+    const sameChoices =
+      currentCategoryOption.liste_choix.length === nextCategoryOption.liste_choix.length &&
+      currentCategoryOption.liste_choix.every((value, index) => value === nextCategoryOption.liste_choix[index]);
+
+    if (sameValue && sameChoices) return;
+
+    onOptionsChange(
+      options.map((option) => (option.id === CATEGORY_OPTION_ID ? { ...option, ...nextCategoryOption } : option)),
+    );
+  }, [options, onOptionsChange, categoryChoices]);
+
   const updateOption = (id: string, updater: (option: LlmImportOption) => LlmImportOption) => {
     onOptionsChange(options.map((option) => (option.id === id ? updater(option) : option)));
   };
@@ -57,6 +125,11 @@ export function QuestionsLlmImportOptionsPanel({
   return (
     <aside class="flex w-full shrink-0 flex-col gap-4 rounded-xl border border-base-content/10 bg-base-100/60 p-3 lg:min-w-70 lg:max-w-xs">
       <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-base-content/45">Options</p>
+      {categoryWarning ? (
+        <div class="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs leading-snug text-warning-content">
+          {categoryWarning}
+        </div>
+      ) : null}
       {options.map((option) => {
         if (option.type === "liste_selection") {
           return (

@@ -12,10 +12,12 @@ import type {
   CollectionUi,
   QuizzModuleRow,
   QuizzQuestionRow,
-  RefCategorieRow,
 } from "../../types/quizz";
 import { Button } from "../atomes/Button";
-import type { LlmImportOption } from "../molecules/QuestionsLlmImportOptionsPanel";
+import {
+  CATEGORY_OPTION_ID,
+  type LlmImportOption,
+} from "../molecules/QuestionsLlmImportOptionsPanel";
 import {
   QuestionsLlmImportPanel,
   type LlmImportCollectionBlock,
@@ -30,12 +32,10 @@ export type QuestionsLlmImportCardProps = {
   allModules: QuizzModuleRow[];
   importTargetModuleId: number | null;
   questions: QuizzQuestionRow[];
-  refCategories: RefCategorieRow[];
   onImportSuccess: () => void;
 };
 
 const QUESTION_COUNT_OPTION_ID = "question_count";
-const CATEGORY_OPTION_ID = "categorie";
 const COLLECTION_NAME_OPTION_ID = "collection_name";
 const SUBJECT_OPTION_ID = "subject";
 const EXISTING_STEMS_OPTION_ID = "existing_stems";
@@ -176,23 +176,19 @@ export function QuestionsLlmImportCard({
   allModules,
   importTargetModuleId,
   questions,
-  refCategories,
   onImportSuccess,
 }: QuestionsLlmImportCardProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [options, setOptions] = useState<LlmImportOption[]>([]);
   const importLlmLastSyncedCollectionId = useRef<number | null>(null);
+  const optionsRef = useRef<LlmImportOption[]>([]);
 
   useEffect(() => {
-    const categoryChoices = Array.from(
-      new Set(
-        refCategories
-          .map((entry) => entry.type)
-          .filter((type): type is "histoire" | "pratique" => type === "histoire" || type === "pratique"),
-      ),
-    );
+    optionsRef.current = options;
+  }, [options]);
+
+  useEffect(() => {
     const currentCollectionName = getOptionValue(options, COLLECTION_NAME_OPTION_ID);
-    const currentCategory = getOptionValue(options, CATEGORY_OPTION_ID);
     const currentSubject = getOptionValue(options, SUBJECT_OPTION_ID);
     const currentQuestionCount = getOptionValue(options, QUESTION_COUNT_OPTION_ID);
     const previousExistingValue = options.find((entry) => entry.id === EXISTING_STEMS_OPTION_ID)?.value;
@@ -209,16 +205,6 @@ export function QuestionsLlmImportCard({
     }
 
     setOptions([
-      {
-        id: CATEGORY_OPTION_ID,
-        titre: "Catégorie (enregistrée en base)",
-        type: "liste_selection",
-        liste_choix: categoryChoices.length > 0 ? categoryChoices : ["histoire"],
-        value:
-          currentCategory && categoryChoices.includes(currentCategory as "histoire" | "pratique")
-            ? currentCategory
-            : (categoryChoices[0] ?? "histoire"),
-      },
       {
         id: QUESTION_COUNT_OPTION_ID,
         titre: "Nombre de questions",
@@ -255,7 +241,7 @@ export function QuestionsLlmImportCard({
         disabled: targetCollectionNumeric == null,
         value: targetCollectionNumeric == null ? false : (previousExistingValue ?? false),
         function: () => {
-          const selectedCategory = getOptionValue(options, CATEGORY_OPTION_ID) || "histoire";
+          const selectedCategory = getOptionValue(optionsRef.current, CATEGORY_OPTION_ID) || "histoire";
           const filteredQuestions = questions.filter((q) => q.categorie_type === selectedCategory);
           return filteredQuestions.length > 0
             ? formatExistingQuestionStemsForPrompt(filteredQuestions)
@@ -263,7 +249,7 @@ export function QuestionsLlmImportCard({
         },
       },
     ]);
-  }, [targetCollectionNumeric, collections, refCategories, questions]);
+  }, [targetCollectionNumeric, collections, questions]);
 
   const buildPrompt = useMemo(
     () => (currentOptions: LlmImportOption[]) => {

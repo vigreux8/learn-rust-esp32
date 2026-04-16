@@ -215,7 +215,6 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
           allModules={allModules}
           importTargetModuleId={importTargetModuleId}
           questions={questions}
-          refCategories={refCategories}
           onImportSuccess={() => {
             reload();
             fetchCollections().then(setCollections).catch(() => {});
