@@ -10,6 +10,8 @@ export type ButtonProps = {
   disabled?: boolean;
   type?: "button" | "submit" | "reset";
   onClick?: JSX.MouseEventHandler<HTMLButtonElement>;
+  title?: string;
+  "aria-label"?: string;
 };
 
 /**
@@ -22,6 +24,8 @@ export function Button({
   disabled,
   type = "button",
   onClick,
+  title,
+  "aria-label": ariaLabel,
 }: ButtonProps) {
   const base =
     "btn rounded-full border-0 shadow-md transition-all duration-300 ease-out hover:shadow-lg active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
@@ -33,7 +37,14 @@ export function Button({
   };
 
   return (
-    <button type={type} disabled={disabled} onClick={onClick} class={cn(base, variants[variant], className)}>
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      class={cn(base, variants[variant], className)}
+      title={title}
+      aria-label={ariaLabel}
+    >
       {children}
     </button>
   );

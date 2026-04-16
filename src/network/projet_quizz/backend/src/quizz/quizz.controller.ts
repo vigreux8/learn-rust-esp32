@@ -17,6 +17,7 @@ import {
   AppCollectionImportBodyDto,
   AssignCollectionToModuleDto,
   CreateCollectionInModuleDto,
+  CreateQuestionDto,
   LlmImportBodyDto,
   CreateQuizzModuleDto,
   CreateStandaloneCollectionDto,
@@ -146,6 +147,22 @@ export class QuizzController {
     return this.quizz.getQuestionDetail(id);
   }
 
+  @Post('questions')
+  createQuestion(@Body() body: CreateQuestionDto) {
+    return this.quizz.createQuestion({
+      user_id: body.user_id,
+      categorie_id: body.categorie_id,
+      question: body.question,
+      commentaire: body.commentaire,
+      reponses: body.reponses.map((r) => ({
+        texte: r.texte,
+        correcte: r.correcte,
+      })),
+      collection_id: body.collection_id,
+      parent_question_id: body.parent_question_id,
+    });
+  }
+
   @Get('categories')
   listRefCategories() {
     return this.quizz.listRefCategories();
@@ -212,6 +229,7 @@ export class QuizzController {
       question: body?.question,
       commentaire: body?.commentaire,
       categorie_id: body?.categorie_id,
+      verifier: body?.verifier,
     });
   }
 

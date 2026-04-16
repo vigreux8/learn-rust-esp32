@@ -30,6 +30,46 @@ export class UpdateQuestionDto {
   @IsInt()
   @Min(1)
   categorie_id?: number;
+
+  /** Colonne `verifier` (fakechecker côté export app). */
+  @IsOptional()
+  @IsBoolean()
+  verifier?: boolean;
+}
+
+/** Création d’une question (4 réponses, une seule correcte) avec rattachements optionnels. */
+export class CreateQuestionDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsInt()
+  @Min(1)
+  categorie_id!: number;
+
+  @IsString()
+  @MinLength(1)
+  question!: string;
+
+  @IsString()
+  commentaire!: string;
+
+  @IsArray()
+  @ArrayMinSize(4)
+  @ValidateNested({ each: true })
+  @Type(() => LlmImportReponseDto)
+  reponses!: LlmImportReponseDto[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  collection_id?: number;
+
+  /** Question parente : insère une ligne `relation_question_implicite` (parent → enfant créé). */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  parent_question_id?: number;
 }
 
 export class CreateQuizzModuleDto {

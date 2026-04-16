@@ -73,6 +73,7 @@ export class QuizzService {
       question?: string;
       commentaire?: string;
       categorie_id?: number;
+      verifier?: boolean;
     },
   ): Promise<QuizzQuestionRow> {
     return this.write.updateQuestion(id, data);
@@ -87,6 +88,18 @@ export class QuizzService {
 
   deleteQuestion(id: number): Promise<void> {
     return this.write.deleteQuestion(id);
+  }
+
+  createQuestion(body: {
+    user_id: number;
+    categorie_id: number;
+    question: string;
+    commentaire: string;
+    reponses: { texte: string; correcte: boolean }[];
+    collection_id?: number;
+    parent_question_id?: number;
+  }): Promise<QuizzQuestionRow> {
+    return this.write.createQuestion(body);
   }
 
   deleteCollection(collectionId: number, userId: number): Promise<void> {

@@ -175,10 +175,30 @@ export async function fetchQuestions(
 
 export async function patchQuestion(
   id: number,
-  body: { question?: string; commentaire?: string; categorie_id?: number },
+  body: { question?: string; commentaire?: string; categorie_id?: number; verifier?: boolean },
 ): Promise<QuizzQuestionRow> {
   const res = await fetch(apiUrl(`/quizz/questions/${id}`), {
     method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<QuizzQuestionRow>;
+}
+
+export type CreateQuestionBody = {
+  user_id: number;
+  categorie_id: number;
+  question: string;
+  commentaire: string;
+  reponses: { texte: string; correcte: boolean }[];
+  collection_id?: number;
+  parent_question_id?: number;
+};
+
+export async function postCreateQuestion(body: CreateQuestionBody): Promise<QuizzQuestionRow> {
+  const res = await fetch(apiUrl("/quizz/questions"), {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

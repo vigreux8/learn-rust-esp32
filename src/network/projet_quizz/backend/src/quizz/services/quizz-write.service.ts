@@ -7,6 +7,10 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { QuizzQuestionRow } from '../quizz.type';
 
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
 @Injectable()
 export class QuizzWriteService {
   constructor(private readonly prisma: PrismaService) {}
@@ -32,12 +36,18 @@ export class QuizzWriteService {
 
   async updateQuestion(
     id: number,
-    data: { question?: string; commentaire?: string; categorie_id?: number },
+    data: {
+      question?: string;
+      commentaire?: string;
+      categorie_id?: number;
+      verifier?: boolean;
+    },
   ): Promise<QuizzQuestionRow> {
     const patch: {
       question?: string;
       commentaire?: string;
       categorie_id?: number;
+      verifier?: boolean;
     } = {};
     if (typeof data.question === 'string') patch.question = data.question;
     if (typeof data.commentaire === 'string') patch.commentaire = data.commentaire;
@@ -50,9 +60,12 @@ export class QuizzWriteService {
       }
       patch.categorie_id = data.categorie_id;
     }
+    if (typeof data.verifier === 'boolean') {
+      patch.verifier = data.verifier;
+    }
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException(
-        'Au moins un champ parmi "question", "commentaire" (string) ou "categorie_id" (entier) requis',
+        'Au moins un champ parmi "question", "commentaire" (string), "categorie_id" (entier) ou "verifier" (booléen) requis',
       );
     }
     try {
@@ -94,12 +107,145 @@ export class QuizzWriteService {
     if (!exists) throw new NotFoundException(`Question ${id} introuvable`);
 
     await this.prisma.prisma.$transaction([
+      this.prisma.prisma.relation_question_implicite.deleteMany({
+        where: { OR: [{ question_p_id: id }, { question_e_id: id }] },
+      }),
       this.prisma.prisma.user_kpi.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.relation_sous_collections.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.quizz_question_reponse.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.question_collection.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.quizz_question.delete({ where: { id } }),
     ]);
+  }
+
+  /**
+   * Crée une question avec 4 réponses, optionnellement liée à une collection et/ou à une question parente (implicite).
+   */
+  async createQuestion(body: {
+    user_id: number;
+    categorie_id: number;
+    question: string;
+    commentaire: string;
+    reponses: { texte: string; correcte: boolean }[];
+    collection_id?: number;
+    parent_question_id?: number;
+  }): Promise<QuizzQuestionRow> {
+    if (body.reponses.length !== 4) {
+      throw new BadRequestException('Exactement 4 réponses sont requises');
+    }
+    const nCorrect = body.reponses.filter((r) => r.correcte).length;
+    if (nCorrect !== 1) {
+      throw new BadRequestException('Une seule réponse doit être marquée comme correcte');
+    }
+    for (const r of body.reponses) {
+      if (typeof r.texte !== 'string' || r.texte.trim().length === 0) {
+        throw new BadRequestException('Chaque réponse doit avoir un texte non vide');
+      }
+    }
+
+    const user = await this.prisma.prisma.user.findUnique({
+      where: { id: body.user_id },
+    });
+    if (!user) {
+      throw new BadRequestException(`Utilisateur ${body.user_id} introuvable`);
+    }
+    const cat = await this.prisma.prisma.ref_categorie.findUnique({
+      where: { id: body.categorie_id },
+    });
+    if (!cat) {
+      throw new BadRequestException(`categorie_id ${body.categorie_id} introuvable`);
+    }
+
+    if (body.collection_id != null) {
+      const col = await this.prisma.prisma.quizz_collection.findUnique({
+        where: { id: body.collection_id },
+      });
+      if (!col) {
+        throw new BadRequestException(`collection_id ${body.collection_id} introuvable`);
+      }
+    }
+
+    if (body.parent_question_id != null) {
+      const parent = await this.prisma.prisma.quizz_question.findUnique({
+        where: { id: body.parent_question_id },
+      });
+      if (!parent) {
+        throw new BadRequestException(
+          `parent_question_id ${body.parent_question_id} introuvable`,
+        );
+      }
+    }
+
+    const t = nowIso();
+
+    const row = await this.prisma.prisma.$transaction(async (tx) => {
+      const qRow = await tx.quizz_question.create({
+        data: {
+          user_id: body.user_id,
+          categorie_id: body.categorie_id,
+          create_at: t,
+          question: body.question.trim(),
+          commentaire: body.commentaire.trim(),
+          verifier: false,
+        },
+      });
+      for (const r of body.reponses) {
+        const rep = await tx.quizz_reponse.create({
+          data: {
+            reponse: r.texte.trim(),
+            bonne_reponse: r.correcte ? 1 : 0,
+          },
+        });
+        await tx.quizz_question_reponse.create({
+          data: {
+            question_id: qRow.id,
+            reponse_id: rep.id,
+          },
+        });
+      }
+      if (body.collection_id != null) {
+        await tx.question_collection.create({
+          data: {
+            collection_id: body.collection_id,
+            question_id: qRow.id,
+          },
+        });
+      }
+      if (body.parent_question_id != null) {
+        await tx.relation_question_implicite.create({
+          data: {
+            question_p_id: body.parent_question_id,
+            question_e_id: qRow.id,
+            story_id: null,
+          },
+        });
+      }
+      return tx.quizz_question.findUniqueOrThrow({
+        where: { id: qRow.id },
+        include: {
+          ref_categorie: true,
+          question_collection: {
+            include: { quizz_collection: true },
+            orderBy: { id: 'asc' },
+          },
+        },
+      });
+    });
+
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      create_at: row.create_at,
+      question: row.question,
+      commentaire: row.commentaire ?? '',
+      verifier: row.verifier,
+      categorie_id: row.categorie_id,
+      categorie_type: row.ref_categorie.type,
+      collections: row.question_collection.map((qc) => ({
+        id: qc.quizz_collection.id,
+        nom: qc.quizz_collection.nom,
+      })),
+    };
   }
 
   /**
