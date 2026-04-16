@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { QuizzService } from './services';
 import {
+  AppCollectionImportBodyDto,
   AssignCollectionToModuleDto,
   CreateCollectionInModuleDto,
   LlmImportBodyDto,
@@ -180,6 +181,26 @@ export class QuizzController {
       moduleId,
       categorie,
     });
+  }
+
+  /** Import JSON généré par l’application (export collection) — distinct du flux LLM. */
+  @Post('collections/questions/import-app')
+  importAppCollectionQuestions(
+    @Body() body: AppCollectionImportBodyDto,
+    @Query('collectionId') collectionIdStr?: string,
+  ) {
+    const parseOptInt = (label: string, s?: string): number | undefined => {
+      if (s === undefined || s === '') return undefined;
+      const n = Number(s);
+      if (!Number.isInteger(n) || n < 1) {
+        throw new BadRequestException(
+          `Query ${label} : entier ≥ 1 attendu si le paramètre est fourni`,
+        );
+      }
+      return n;
+    };
+    const collectionId = parseOptInt('collectionId', collectionIdStr);
+    return this.quizz.importAppCollectionQuestionsJson(body, { collectionId });
   }
 
   @Patch('questions/:id')

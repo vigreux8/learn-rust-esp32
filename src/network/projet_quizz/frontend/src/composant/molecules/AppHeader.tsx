@@ -8,6 +8,7 @@ const links = [
   { href: "/collections", label: "Collection" },
   { href: "/questions", label: "Question" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/database", label: "Export/Import" },
 ] as const;
 
 function pathWithoutQuery(p: string) {
@@ -32,7 +33,7 @@ export function AppHeader() {
           onClick={() => route("/")}
           class="flex items-center gap-2.5 rounded-full px-1 py-1 text-left transition duration-300 ease-out hover:opacity-90 active:scale-[0.98]"
         >
-          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-flow to-learn text-white shadow-lg shadow-flow/20">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-flow to-learn text-white shadow-lg shadow-flow/20">
             <GraduationCap class="h-5 w-5" aria-hidden />
           </span>
           <div class="leading-tight">

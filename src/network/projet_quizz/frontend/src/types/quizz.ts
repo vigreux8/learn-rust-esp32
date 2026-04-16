@@ -17,6 +17,10 @@ export interface QuestionUi {
   question: string;
   /** Anecdote pédagogique (sans recopier mot pour mot la bonne réponse). */
   commentaire: string;
+  /** `ref_categorie.id` (stable entre exports/imports “app”). */
+  categorie_id: number;
+  /** `ref_categorie.type` (ex. histoire, pratique). */
+  categorie_type: string;
   reponses: ReponseUi[];
 }
 

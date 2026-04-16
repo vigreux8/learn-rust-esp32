@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import { PrismaClient } from '@prisma/client';
 
-function sqlitePathFromDatabaseUrl(): string {
+export function sqlitePathFromDatabaseUrl(): string {
   const raw = process.env.DATABASE_URL ?? 'file:./quizz.db';
   const stripped = raw.replace(/^"|"$/g, '').trim();
   const pathPart = stripped.startsWith('file:') ? stripped.slice('file:'.length) : stripped;
@@ -22,5 +22,11 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.prisma.$disconnect();
+  }
+
+  /** Recrée le client Prisma (utile après une restauration SQLite hors-process). */
+  async reconnect(): Promise<void> {
+    await this.prisma.$disconnect();
+    await this.onModuleInit();
   }
 }

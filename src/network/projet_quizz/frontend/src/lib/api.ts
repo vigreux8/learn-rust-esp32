@@ -12,6 +12,7 @@ import type {
   UserKpiRow,
 } from "../types/quizz";
 import type { LlmImportPayload } from "../composant/molecules/QuestionsLlmImportPanel";
+import type { AppCollectionImportPayload } from "./appCollectionImportNormalize";
 
 async function readError(res: Response): Promise<string> {
   const text = await res.text();
@@ -239,6 +240,20 @@ export async function importQuestionsJson(
   return res.json() as Promise<{ createdQuestions: number; createdCollections: number }>;
 }
 
+export async function importAppCollectionQuestionsJson(
+  body: AppCollectionImportPayload,
+  options: { collectionId: number },
+): Promise<{ createdQuestions: number }> {
+  const q = new URLSearchParams({ collectionId: String(options.collectionId) });
+  const res = await fetch(apiUrl(`/quizz/collections/questions/import-app?${q.toString()}`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<{ createdQuestions: number }>;
+}
+
 export async function deleteQuestion(id: number): Promise<void> {
   const res = await fetch(apiUrl(`/quizz/questions/${id}`), { method: "DELETE" });
   await assertResponseOk(res);
@@ -284,4 +299,63 @@ export async function fetchSessionDetail(
   if (res.status === 404) return null;
   await assertResponseOk(res);
   return res.json() as Promise<SessionDetail>;
+}
+
+export async function downloadDatabaseExport(
+  path: "/admin/database/export.sql" | "/admin/database/export.json",
+  fallbackFilename: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(apiUrl(path));
+  await assertResponseOk(res);
+
+  const blob = await res.blob();
+  const disposition = res.headers.get("content-disposition") ?? "";
+  const match = disposition.match(/filename="([^"]+)"/i);
+
+  return {
+    blob,
+    filename: match?.[1] ?? fallbackFilename,
+  };
+}
+
+export async function downloadDatabaseSqlExport(): Promise<{ blob: Blob; filename: string }> {
+  return downloadDatabaseExport("/admin/database/export.sql", "quizz-export.sql");
+}
+
+export async function downloadDatabaseJsonExport(): Promise<{ blob: Blob; filename: string }> {
+  return downloadDatabaseExport("/admin/database/export.json", "quizz-export.json");
+}
+
+export type DatabaseJsonMergeResult = {
+  insertedRows: number;
+  skippedRows: number;
+  remappedIds: number;
+  warnings: string[];
+};
+
+export async function postDatabaseJsonMerge(payload: unknown): Promise<DatabaseJsonMergeResult> {
+  const res = await fetch(apiUrl("/admin/database/import.json"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<DatabaseJsonMergeResult>;
+}
+
+export type DatabaseSqlReplaceResult = {
+  statementsExecuted: number;
+};
+
+export async function postDatabaseSqlReplace(script: string): Promise<DatabaseSqlReplaceResult> {
+  const res = await fetch(apiUrl("/admin/database/import.sql"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "X-Quizz-Confirm": "REMPLACE_TOUT",
+    },
+    body: script,
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<DatabaseSqlReplaceResult>;
 }

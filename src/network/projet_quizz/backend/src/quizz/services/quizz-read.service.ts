@@ -31,6 +31,8 @@ export class QuizzReadService {
     create_at: string;
     question: string;
     commentaire: string;
+    categorie_id: number;
+    ref_categorie: { type: string };
     quizz_question_reponse: {
       id: number;
       quizz_reponse: { id: number; reponse: string; bonne_reponse: number };
@@ -43,6 +45,8 @@ export class QuizzReadService {
       create_at: q.create_at,
       question: q.question,
       commentaire: q.commentaire ?? '',
+      categorie_id: q.categorie_id,
+      categorie_type: q.ref_categorie.type,
       reponses: ordered.map((j) => ({
         id: j.quizz_reponse.id,
         reponse: j.quizz_reponse.reponse,
@@ -156,6 +160,7 @@ export class QuizzReadService {
       },
       orderBy: { id: 'asc' },
       include: {
+        ref_categorie: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
         },

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
-import { Layers, Trash2 } from "lucide-preact";
+import { FileJson, Layers, Trash2 } from "lucide-preact";
 import {
   assignCollectionToModule,
   createEmptyCollection,
@@ -9,12 +9,17 @@ import {
   deleteQuizzModule,
   fetchCollections,
   fetchModules,
+  importAppCollectionQuestionsJson,
+  importQuestionsJson,
   unassignCollectionFromModule,
 } from "../../lib/api";
+import { normalizeAndValidateAppCollectionImportText } from "../../lib/appCollectionImportNormalize";
+import { normalizeAndValidateImportText } from "../../lib/llmImportNormalize";
 import { useUserSession } from "../../lib/userSession";
 import type { CollectionUi, QuizzModuleRow } from "../../types/quizz";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
+import { Card } from "../atomes/Card";
 import { CollectionCard } from "../molecules/CollectionCard";
 import { PopUpInformation } from "../molecules/PopUpInformation";
 import { PageMain } from "../molecules/PageMain";
@@ -94,6 +99,15 @@ export function CollectionsView() {
   const [createCollBusy, setCreateCollBusy] = useState(false);
   const [createCollError, setCreateCollError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
+
+  const jsonImportInputRef = useRef<HTMLInputElement | null>(null);
+  const [jsonImportOpen, setJsonImportOpen] = useState(false);
+  const [jsonImportMode, setJsonImportMode] = useState<"app" | "llm">("app");
+  const [jsonImportText, setJsonImportText] = useState("");
+  const [jsonImportBusy, setJsonImportBusy] = useState(false);
+  const [jsonImportMessage, setJsonImportMessage] = useState<string | null>(null);
+  const [jsonImportError, setJsonImportError] = useState<string | null>(null);
+  const [jsonImportCategorie, setJsonImportCategorie] = useState<"histoire" | "pratique">("histoire");
 
   const loadData = useCallback(async () => {
     const [list, mods] = await Promise.all([fetchCollections(), fetchModules()]);
@@ -262,25 +276,201 @@ export function CollectionsView() {
     return applyModuleFilter(byCreator, moduleFilter);
   }, [collections, filter, userId, moduleFilter]);
 
+  const handleJsonImportRun = async () => {
+    setJsonImportBusy(true);
+    setJsonImportError(null);
+    setJsonImportMessage(null);
+    try {
+      if (jsonImportMode === "app") {
+        const data = normalizeAndValidateAppCollectionImportText(jsonImportText);
+        data.user_id = userId;
+        let collectionCreeeId: number | undefined;
+        try {
+          const nouvelle = await createEmptyCollection({
+            userId,
+            nom: data.collection.nom,
+          });
+          collectionCreeeId = nouvelle.id;
+          const res = await importAppCollectionQuestionsJson(data, {
+            collectionId: nouvelle.id,
+          });
+          const { list, mods } = await loadData();
+          setCollections(list);
+          setModules(mods);
+          setJsonImportText("");
+          setJsonImportMessage(
+            `Import réussi (FlowLearn) : collection « ${data.collection.nom} » créée, ${res.createdQuestions} question(s).`,
+          );
+        } catch (inner) {
+          if (collectionCreeeId != null) {
+            try {
+              await deleteCollection(collectionCreeeId, userId);
+            } catch {
+              /* éviter de masquer l’erreur d’import */
+            }
+          }
+          throw inner;
+        }
+        return;
+      }
+
+      const data = normalizeAndValidateImportText(jsonImportText);
+      data.user_id = userId;
+      const res = await importQuestionsJson(data, { categorie: jsonImportCategorie });
+      const { list, mods } = await loadData();
+      setCollections(list);
+      setModules(mods);
+      setJsonImportText("");
+      setJsonImportMessage(
+        res.createdCollections > 0
+          ? `Import réussi (LLM) : ${res.createdQuestions} question(s), ${res.createdCollections} nouvelle(s) collection(s).`
+          : `Import réussi (LLM) : ${res.createdQuestions} question(s).`,
+      );
+    } catch (e) {
+      setJsonImportError(e instanceof Error ? e.message : "Import JSON impossible.");
+    } finally {
+      setJsonImportBusy(false);
+    }
+  };
+
   return (
     <div class="flex min-h-dvh flex-col">
       <AppHeader />
       <PageMain>
-        <div class="mb-6 space-y-2">
-          <p class="inline-flex items-center gap-2 rounded-full bg-learn/10 px-3 py-1 text-xs font-medium text-learn">
-            <Layers class="h-3.5 w-3.5" aria-hidden />
-            Tes collections
-          </p>
-          <h1 class="text-2xl font-bold tracking-tight text-base-content sm:text-3xl">Choisir une collection</h1>
-          <p class="max-w-xl text-sm text-base-content/60">
-            Lance un quiz ciblé : uniquement les questions liées à la collection sélectionnée.
-          </p>
+        <input
+          ref={jsonImportInputRef}
+          type="file"
+          accept=".json,application/json"
+          class="hidden"
+          onChange={async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) return;
+            try {
+              setJsonImportError(null);
+              setJsonImportMessage(null);
+              const text = await file.text();
+              setJsonImportText(text);
+              setJsonImportOpen(true);
+            } catch {
+              setJsonImportError("Lecture du fichier impossible.");
+            } finally {
+              (e.target as HTMLInputElement).value = "";
+            }
+          }}
+        />
+
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div class="space-y-2">
+            <p class="inline-flex items-center gap-2 rounded-full bg-learn/10 px-3 py-1 text-xs font-medium text-learn">
+              <Layers class="h-3.5 w-3.5" aria-hidden />
+              Tes collections
+            </p>
+            <h1 class="text-2xl font-bold tracking-tight text-base-content sm:text-3xl">Choisir une collection</h1>
+            <p class="max-w-xl text-sm text-base-content/60">
+              Lance un quiz ciblé : uniquement les questions liées à la collection sélectionnée.
+            </p>
+          </div>
+          <div class="flex flex-col gap-2 self-start sm:flex-row sm:items-center sm:self-auto">
+            <Button
+              variant={jsonImportOpen && jsonImportMode === "app" ? "learn" : "outline"}
+              class="gap-2"
+              onClick={() => {
+                setJsonImportMode("app");
+                setJsonImportOpen(true);
+              }}
+            >
+              <FileJson class="h-4 w-4" aria-hidden />
+              JSON FlowLearn
+            </Button>
+          </div>
         </div>
+
+        {jsonImportOpen ? (
+          <Card class="fl-reveal-enter mb-6 border-learn/15 bg-learn/6">
+            <div class="flex flex-col gap-3">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p class="text-sm font-medium text-base-content">
+                    Importer des questions — {jsonImportMode === "app" ? "FlowLearn" : "LLM"}
+                  </p>
+                  <p class="mt-1 text-xs text-base-content/55">
+                    {jsonImportMode === "app" ? (
+                      <>
+                        Une collection vide est créée avec le <code class="text-xs">collection.nom</code> du JSON,
+                        puis les questions y sont importées. Chaque question inclut{" "}
+                        <code class="text-xs">categorie_id</code> + <code class="text-xs">categorie_type</code>.
+                      </>
+                    ) : (
+                      <>
+                        Format LLM : catégorie choisie ci-dessous (mapping <code class="text-xs">ref_categorie</code>),
+                        import via <code class="text-xs">/quizz/questions/import</code>.
+                      </>
+                    )}
+                  </p>
+                </div>
+                {jsonImportMode === "llm" ? (
+                  <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <label class="text-xs font-medium text-base-content/60" for="collections-json-categorie">
+                      Catégorie enregistrée
+                    </label>
+                    <select
+                      id="collections-json-categorie"
+                      class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:w-44"
+                      value={jsonImportCategorie}
+                      disabled={jsonImportBusy}
+                      onChange={(e) => {
+                        const v = (e.target as HTMLSelectElement).value;
+                        setJsonImportCategorie(v === "pratique" ? "pratique" : "histoire");
+                      }}
+                    >
+                      <option value="histoire">Histoire</option>
+                      <option value="pratique">Pratique</option>
+                    </select>
+                  </div>
+                ) : null}
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="btn btn-outline btn-sm rounded-full border-base-content/15"
+                  disabled={jsonImportBusy}
+                  onClick={() => jsonImportInputRef.current?.click()}
+                >
+                  Choisir un fichier…
+                </button>
+              </div>
+
+              <textarea
+                class="textarea textarea-bordered w-full min-h-32 rounded-2xl border-dashed border-learn/35 bg-base-100/60 font-mono text-xs leading-relaxed"
+                placeholder={
+                  jsonImportMode === "app"
+                    ? '{ "format": "flowlearn-app-collection-export", "version": 1, "collection": { "nom": "…" }, "questions": [ ... ] }'
+                    : '{ "collections": [ ... ], "questions_sans_collection": [] }'
+                }
+                value={jsonImportText}
+                disabled={jsonImportBusy}
+                onInput={(e) => setJsonImportText((e.target as HTMLTextAreaElement).value)}
+              />
+
+              {jsonImportError ? <p class="text-xs text-error">{jsonImportError}</p> : null}
+              {jsonImportMessage ? <p class="text-sm text-base-content/80">{jsonImportMessage}</p> : null}
+
+              <Button
+                variant="flow"
+                disabled={jsonImportBusy || !jsonImportText.trim()}
+                onClick={() => void handleJsonImportRun()}
+              >
+                {jsonImportBusy ? "Import…" : "Importer en base"}
+              </Button>
+            </div>
+          </Card>
+        ) : null}
 
         {loading ? (
           <p class="text-sm text-base-content/60">Chargement…</p>
         ) : error ? (
-          <div class="rounded-[var(--radius-box)] border border-base-content/10 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/65">
+          <div class="rounded-box border border-base-content/10 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/65">
             <p class="mb-3">Impossible de charger les collections (API indisponible ?).</p>
             <Button
               variant="flow"
@@ -302,7 +492,7 @@ export function CollectionsView() {
           </div>
         ) : (
           <>
-            <section class="mb-8 rounded-[var(--radius-box)] border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
+            <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
               <h2 class="text-sm font-semibold tracking-tight text-base-content">Supercollections</h2>
               <p class="mt-1 max-w-2xl text-xs text-base-content/55">
                 Une supercollection correspond à un <code class="rounded bg-base-100 px-1 py-0.5">quizz_module</code> en
@@ -368,14 +558,14 @@ export function CollectionsView() {
               {createModuleError ? <p class="mt-2 text-xs text-error">{createModuleError}</p> : null}
             </section>
 
-            <section class="mb-8 rounded-[var(--radius-box)] border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
+            <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
               <h2 class="text-sm font-semibold tracking-tight text-base-content">Nouvelle collection</h2>
               <p class="mt-1 max-w-2xl text-xs text-base-content/55">
                 Crée une collection vide, éventuellement déjà rattachée à une supercollection, puis ouvre la page
                 Questions pour y importer via le LLM.
               </p>
               <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-                <div class="min-w-0 flex-1 sm:min-w-[12rem]">
+                <div class="min-w-0 flex-1 sm:min-w-48">
                   <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-name">
                     Nom
                   </label>
@@ -389,7 +579,7 @@ export function CollectionsView() {
                     onInput={(e) => setNewCollName((e.target as HTMLInputElement).value)}
                   />
                 </div>
-                <div class="w-full sm:w-auto sm:min-w-[10rem]">
+                <div class="w-full sm:w-auto sm:min-w-40">
                   <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-module">
                     Supercollection (optionnel)
                   </label>
@@ -511,7 +701,7 @@ export function CollectionsView() {
             </fieldset>
 
             {filtered.length === 0 ? (
-              <p class="rounded-[var(--radius-box)] border border-base-content/10 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/65">
+              <p class="rounded-box border border-base-content/10 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/65">
                 Aucune collection pour ce filtre.
               </p>
             ) : (

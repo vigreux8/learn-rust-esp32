@@ -7,7 +7,7 @@ import {
   QuizzQuestionRow,
   RefCategorieRow,
 } from '../quizz.type';
-import { LlmImportBodyDto } from '../dto/quizz.dto';
+import { AppCollectionImportBodyDto, LlmImportBodyDto } from '../dto/quizz.dto';
 import { QuizzImportService } from './quizz-import.service';
 import { QuizzReadService } from './quizz-read.service';
 import { QuizzStructureService } from './quizz-structure.service';
@@ -175,5 +175,12 @@ export class QuizzService {
     createdCollections: number;
   }> {
     return this.importSvc.importQuestionsFromLlmJson(body, opts);
+  }
+
+  importAppCollectionQuestionsJson(
+    body: AppCollectionImportBodyDto,
+    opts?: { collectionId?: number },
+  ): Promise<{ createdQuestions: number }> {
+    return this.importSvc.importAppCollectionQuestionsJson(body, opts);
   }
 }

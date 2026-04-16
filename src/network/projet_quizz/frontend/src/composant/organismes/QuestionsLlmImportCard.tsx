@@ -1,6 +1,8 @@
-import { FileJson } from "lucide-preact";
+import { Download, FileJson } from "lucide-preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { importQuestionsJson } from "../../lib/api";
+import { normalizeAndValidateImportText } from "../../lib/llmImportNormalize";
+import { downloadCollectionAsAppJson } from "../../lib/collectionAppJson";
 import {
   LLM_PROMPT_BASE,
   LLM_PROMPT_COLLECTION,
@@ -18,13 +20,7 @@ import {
   CATEGORY_OPTION_ID,
   type LlmImportOption,
 } from "../molecules/QuestionsLlmImportOptionsPanel";
-import {
-  QuestionsLlmImportPanel,
-  type LlmImportCollectionBlock,
-  type LlmImportPayload,
-  type LlmImportQuestion,
-  type LlmImportReponse,
-} from "../molecules/QuestionsLlmImportPanel";
+import { QuestionsLlmImportPanel } from "../molecules/QuestionsLlmImportPanel";
 
 export type QuestionsLlmImportCardProps = {
   targetCollectionNumeric: number | null;
@@ -47,129 +43,6 @@ function getOptionValue(options: LlmImportOption[], id: string): string {
     : "";
 }
 
-function normalizeAndValidateImportText(importText: string): LlmImportPayload {
-  const parsed = JSON.parse(importText) as unknown;
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("JSON invalide : objet racine attendu.");
-  }
-  const root = parsed as Record<string, unknown>;
-
-  const parseReponses = (value: unknown, ctx: string): LlmImportQuestion["reponses"] => {
-    if (!Array.isArray(value) || value.length !== 4) {
-      throw new Error(`${ctx} : il faut exactement 4 réponses.`);
-    }
-    const out: LlmImportReponse[] = [];
-    let correctCount = 0;
-    for (let i = 0; i < value.length; i++) {
-      const item = value[i];
-      if (!item || typeof item !== "object" || Array.isArray(item)) {
-        throw new Error(`${ctx}[${i}] : objet réponse attendu.`);
-      }
-      const raw = item as Record<string, unknown>;
-      const texte = raw.texte ?? raw.reponse;
-      if (typeof texte !== "string" || texte.trim() === "") {
-        throw new Error(`${ctx}[${i}] : "texte" non vide requis.`);
-      }
-      const correcte = raw.correcte === true || raw.bonne_reponse === 1;
-      if (correcte) correctCount += 1;
-      out.push({ texte: texte.trim(), correcte });
-    }
-    if (correctCount !== 1) {
-      throw new Error(`${ctx} : exactement une réponse doit être correcte.`);
-    }
-    return out as LlmImportQuestion["reponses"];
-  };
-
-  const parseQuestion = (value: unknown, ctx: string): LlmImportQuestion => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-      throw new Error(`${ctx} : objet question attendu.`);
-    }
-    const raw = value as Record<string, unknown>;
-    if (typeof raw.question !== "string" || raw.question.trim() === "") {
-      throw new Error(`${ctx} : "question" non vide requise.`);
-    }
-    const commentaire = typeof raw.commentaire === "string" ? raw.commentaire.trim() : "";
-    return {
-      question: raw.question.trim(),
-      commentaire,
-      reponses: parseReponses(raw.reponses, `${ctx}.reponses`),
-    };
-  };
-
-  const parseQuestionsArray = (value: unknown, ctx: string): LlmImportQuestion[] => {
-    if (value == null) return [];
-    if (!Array.isArray(value)) {
-      throw new Error(`${ctx} : tableau attendu.`);
-    }
-    return value.map((q, index) => parseQuestion(q, `${ctx}[${index}]`));
-  };
-
-  const parseCollections = (value: unknown): LlmImportCollectionBlock[] => {
-    if (value == null) return [];
-    if (!Array.isArray(value)) {
-      throw new Error(`collections : tableau attendu.`);
-    }
-    return value.map((block, index) => {
-      if (!block || typeof block !== "object" || Array.isArray(block)) {
-        throw new Error(`collections[${index}] : objet attendu.`);
-      }
-      const raw = block as Record<string, unknown>;
-      if (typeof raw.nom !== "string" || raw.nom.trim() === "") {
-        throw new Error(`collections[${index}] : "nom" non vide requis.`);
-      }
-      const questions = parseQuestionsArray(raw.questions, `collections[${index}].questions`);
-      if (questions.length === 0) {
-        throw new Error(`collections[${index}] : au moins une question requise.`);
-      }
-      return { nom: raw.nom.trim(), questions };
-    });
-  };
-
-  const userIdRaw = root.user_id;
-  let userId: number | undefined;
-  if (userIdRaw != null) {
-    if (typeof userIdRaw === "number" && Number.isInteger(userIdRaw) && userIdRaw > 0) {
-      userId = userIdRaw;
-    } else if (
-      typeof userIdRaw === "string" &&
-      /^\d+$/.test(userIdRaw.trim()) &&
-      Number(userIdRaw.trim()) > 0
-    ) {
-      userId = Number(userIdRaw.trim());
-    } else {
-      throw new Error(`user_id : entier positif attendu.`);
-    }
-  }
-
-  const rootQuestions = parseQuestionsArray(root.questions, "questions");
-  const collections = parseCollections(root.collections);
-  const questionsSansCollection = parseQuestionsArray(
-    root.questions_sans_collection,
-    "questions_sans_collection",
-  );
-
-  if (rootQuestions.length > 0 && (collections.length > 0 || questionsSansCollection.length > 0)) {
-    throw new Error(
-      `Format mixte interdit : utilise soit "questions", soit "collections"/"questions_sans_collection".`,
-    );
-  }
-
-  const normalized: LlmImportPayload = {
-    user_id: userId,
-    collections,
-    questions_sans_collection:
-      rootQuestions.length > 0 ? rootQuestions : questionsSansCollection,
-  };
-
-  if (
-    normalized.collections.length === 0 &&
-    normalized.questions_sans_collection.length === 0
-  ) {
-    throw new Error(`Aucune question détectée dans le JSON.`);
-  }
-  return normalized;
-}
-
 export function QuestionsLlmImportCard({
   targetCollectionNumeric,
   collections,
@@ -179,6 +52,8 @@ export function QuestionsLlmImportCard({
   onImportSuccess,
 }: QuestionsLlmImportCardProps) {
   const [importOpen, setImportOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [options, setOptions] = useState<LlmImportOption[]>([]);
   const importLlmLastSyncedCollectionId = useRef<number | null>(null);
   const optionsRef = useRef<LlmImportOption[]>([]);
@@ -331,6 +206,21 @@ export function QuestionsLlmImportCard({
     ],
   );
 
+  const handleExportCollectionJson = () => {
+    if (targetCollectionNumeric == null) return;
+    setExportBusy(true);
+    setExportError(null);
+    try {
+      const col = collections.find((entry) => entry.id === targetCollectionNumeric);
+      if (!col) throw new Error("Collection introuvable dans la liste chargée.");
+      downloadCollectionAsAppJson(col);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "Export JSON impossible.");
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
   return (
     <>
       <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -340,11 +230,23 @@ export function QuestionsLlmImportCard({
             Modifier ou supprimer via l’API backend (Prisma / SQLite).
           </p>
         </div>
-        <Button variant="learn" class="gap-2 self-start sm:self-auto" onClick={() => setImportOpen((o) => !o)}>
-          <FileJson class="h-4 w-4" aria-hidden />
-          Import LLM
-        </Button>
+        <div class="flex flex-col gap-2 self-start sm:flex-row sm:items-center sm:self-auto">
+          <Button
+            variant="outline"
+            class="gap-2"
+            disabled={exportBusy || targetCollectionNumeric == null}
+            onClick={() => handleExportCollectionJson()}
+          >
+            <Download class="h-4 w-4" aria-hidden />
+            {exportBusy ? "Export…" : "Export JSON"}
+          </Button>
+          <Button variant="learn" class="gap-2" onClick={() => setImportOpen((o) => !o)}>
+            <FileJson class="h-4 w-4" aria-hidden />
+            Import LLM
+          </Button>
+        </div>
       </div>
+      {exportError ? <p class="mb-3 text-xs text-error">{exportError}</p> : null}
 
       {importOpen ? (
         <QuestionsLlmImportPanel

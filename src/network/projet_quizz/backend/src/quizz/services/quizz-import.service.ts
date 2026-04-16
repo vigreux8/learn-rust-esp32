@@ -6,6 +6,8 @@ import {
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  AppCollectionImportBodyDto,
+  AppCollectionImportQuestionDto,
   LlmImportBodyDto,
   LlmImportCollectionBlockDto,
   LlmImportQuestionDto,
@@ -108,6 +110,14 @@ export class QuizzImportService {
         },
       });
     }
+  }
+
+  private toLlmQuestionDto(q: AppCollectionImportQuestionDto): LlmImportQuestionDto {
+    return {
+      question: q.question,
+      commentaire: q.commentaire ?? '',
+      reponses: q.reponses,
+    };
   }
 
   private async resolveImportCategorieId(
@@ -298,5 +308,85 @@ export class QuizzImportService {
     }
 
     return { createdQuestions, createdCollections };
+  }
+
+  /**
+   * Import JSON généré par l’application (export collection) : conserve `ref_categorie.id`.
+   *
+   * @param body - Payload validé par `AppCollectionImportBodyDto`.
+   * @returns Nombre de questions créées.
+   */
+  async importAppCollectionQuestionsJson(
+    body: AppCollectionImportBodyDto,
+    opts?: { collectionId?: number },
+  ): Promise<{
+    createdQuestions: number;
+  }> {
+    const userId = await this.resolveImportUserId(body.user_id);
+    const fromQuery = opts?.collectionId;
+    const fromBody = body.collection.id;
+    const targetCollectionId = fromQuery ?? fromBody;
+    if (targetCollectionId == null) {
+      throw new BadRequestException(
+        'Indique la collection cible : query ?collectionId=… (export récent) ou collection.id dans le JSON (ancien export).',
+      );
+    }
+
+    let createdQuestions = 0;
+    const t = nowIso();
+
+    await this.prisma.prisma.$transaction(async (tx) => {
+      const col = await tx.quizz_collection.findUnique({ where: { id: targetCollectionId } });
+      if (!col) {
+        throw new NotFoundException(`Collection ${targetCollectionId} introuvable`);
+      }
+      if (col.user_id !== userId) {
+        throw new BadRequestException(
+          `La collection ${targetCollectionId} n’appartient pas à l’utilisateur ${userId} (user_id du JSON).`,
+        );
+      }
+      const legacyStrict =
+        fromQuery == null &&
+        fromBody != null &&
+        body.collection.user_id != null;
+      if (legacyStrict) {
+        if (col.nom !== body.collection.nom) {
+          throw new BadRequestException(
+            `Le nom de collection ne correspond pas : attendu « ${col.nom} », reçu « ${body.collection.nom} ».`,
+          );
+        }
+        if (col.user_id !== body.collection.user_id) {
+          throw new BadRequestException(
+            'Le champ collection.user_id ne correspond pas au propriétaire réel.',
+          );
+        }
+      }
+
+      for (const qin of body.questions) {
+        const ref = await tx.ref_categorie.findUnique({ where: { id: qin.categorie_id } });
+        if (!ref) {
+          throw new BadRequestException(`ref_categorie introuvable : id ${qin.categorie_id}`);
+        }
+        if (ref.type !== qin.categorie_type) {
+          throw new BadRequestException(
+            `ref_categorie ${qin.categorie_id} : type attendu « ${ref.type} », reçu « ${qin.categorie_type} ».`,
+          );
+        }
+
+        await this.insertOneQuestion(tx, userId, qin.categorie_id, t, this.toLlmQuestionDto(qin), targetCollectionId);
+        createdQuestions += 1;
+      }
+
+      await tx.quizz_collection.update({
+        where: { id: targetCollectionId },
+        data: { update_at: t },
+      });
+    });
+
+    if (createdQuestions === 0) {
+      throw new BadRequestException('Aucune question importée.');
+    }
+
+    return { createdQuestions };
   }
 }

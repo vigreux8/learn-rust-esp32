@@ -222,7 +222,7 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
         />
 
         {loadError ? (
-          <div class="mb-6 rounded-[var(--radius-box)] border border-error/20 bg-error/5 px-4 py-3 text-sm text-base-content">
+          <div class="mb-6 rounded-box border border-error/20 bg-error/5 px-4 py-3 text-sm text-base-content">
             Une opération a échoué.{" "}
             <button type="button" class="link link-primary" onClick={() => setLoadError(null)}>
               Fermer

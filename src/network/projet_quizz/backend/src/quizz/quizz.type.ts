@@ -10,6 +10,10 @@ export type QuestionUi = {
   create_at: string;
   question: string;
   commentaire: string;
+  /** `ref_categorie.id` (utile pour export/import “app”). */
+  categorie_id: number;
+  /** `ref_categorie.type` (ex. histoire, pratique). */
+  categorie_type: string;
   reponses: ReponseUi[];
 };
 
