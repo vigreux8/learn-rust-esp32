@@ -16,11 +16,11 @@ build-servo:
 	@echo "OK: build frontend pilotage_servo_moteur termine."
 
 build-quizz:
-	cd src/network/frontend/quizz && npm run build
+	cd src/network/projet_quizz/frontend && npm run build
 	@echo "OK: build frontend quizz termine."
 
 build-quizz-backend:
-	cd src/network/backend/quizz && npm run build
+	cd src/network/projet_quizz/backend && npm run build
 	@echo "OK: build backend Nest quizz termine."
 
 build-bouton:
@@ -31,37 +31,37 @@ preview-servo:
 	cd src/network/frontend/pilotage_servo_moteur && npm run preview
 
 preview-quizz:
-	cd src/network/frontend/quizz && npm run preview
+	cd src/network/projet_quizz/frontend && npm run preview
 
 preview-bouton:
 	cd src/network/frontend/reglage_bouton && npm run preview
 
 ## Quizz — dépendances, dev (API + Vite), prod
-# Port d’écoute Nest (aligné sur src/network/backend/quizz/src/main.ts). Ex. : QUIZZ_BACKEND_PORT=4000 make run-quizz-backend
+# Port d’écoute Nest (aligné sur src/network/projet_quizz/backend/src/main.ts). Ex. : QUIZZ_BACKEND_PORT=4000 make run-quizz-backend
 QUIZZ_BACKEND_PORT ?= 3001
 
 install-quizz:
-	cd src/network/backend/quizz && npm install
-	cd src/network/frontend/quizz && npm install
+	cd src/network/projet_quizz/backend && npm install
+	cd src/network/projet_quizz/frontend && npm install
 	@echo "OK: npm install (backend + frontend quizz)."
 
 run-quizz-backend:
-	cd src/network/backend/quizz && PORT=$(QUIZZ_BACKEND_PORT) npm run start:dev
+	cd src/network/projet_quizz/backend && PORT=$(QUIZZ_BACKEND_PORT) npm run start:dev
 
 run-quizz-frontend:
-	cd src/network/frontend/quizz && npm run dev
+	cd src/network/projet_quizz/frontend && npm run dev
 
 ## Lance Nest (bg) puis Vite au premier plan ; Ctrl+C arrête les deux (trap).
 dev-quizz:
 	trap 'kill $$BACKEND_PID 2>/dev/null' EXIT INT TERM; \
-	cd src/network/backend/quizz && PORT=$(QUIZZ_BACKEND_PORT) npm run start:dev & \
+	cd src/network/projet_quizz/backend && PORT=$(QUIZZ_BACKEND_PORT) npm run start:dev & \
 	BACKEND_PID=$$!; \
-	cd src/network/frontend/quizz && npm run dev
+	cd src/network/projet_quizz/frontend && npm run dev
 
 ## Backend quizz (SQLite)
 # Chemins relatifs à la racine
 # --- Variables de configuration ---
-QUIZZ_DIR   = src/network/backend/quizz
+QUIZZ_DIR   = src/network/projet_quizz/backend
 DB_NAME     = quizz.db
 SQL_INJECT  = ddb/inject.sql
 SCHEMA_PATH = prisma/schema.prisma
@@ -90,9 +90,9 @@ inject-quizz-db:
 
 	
 seed-quizz-db:
-	cd src/network/backend/quizz && npx prisma generate && npx prisma db seed
+	cd src/network/projet_quizz/backend && npx prisma generate && npx prisma db seed
 	@echo "OK: données de seed Prisma insérées (backend quizz)."
 
 reset-quizz-db:
-	cd src/network/backend/quizz && rm -f quizz.db && sqlite3 quizz.db < ddb/inject.sql && npx prisma generate && npx prisma db seed
+	cd src/network/projet_quizz/backend && rm -f quizz.db && sqlite3 quizz.db < ddb/inject.sql && npx prisma generate && npx prisma db seed
 	@echo "OK: quizz.db recréée et seed exécuté (backend quizz)."

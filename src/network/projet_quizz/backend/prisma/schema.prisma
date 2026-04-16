@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model device {
+  id          Int           @id @unique(map: "sqlite_autoindex_device_1") @default(autoincrement())
+  adresse_mac String
+  user_device user_device[]
+}
+
+model question_collection {
+  id               Int              @id @unique(map: "sqlite_autoindex_question_collection_1") @default(autoincrement())
+  collection_id    Int
+  question_id      Int
+  quizz_question   quizz_question   @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_collection quizz_collection @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model quizz_collection {
+  id                      Int                       @id @unique(map: "sqlite_autoindex_quizz_collection_1") @default(autoincrement())
+  user_id                 Int
+  create_at               String
+  update_at               String
+  nom                     String
+  question_collection     question_collection[]
+  user                    user                      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_module_collection quizz_module_collection[]
+}
+
+model quizz_module {
+  id                      Int                       @id @unique(map: "sqlite_autoindex_quizz_module_1") @default(autoincrement())
+  nom                     String
+  create_at               String
+  update_at               String
+  quizz_module_collection quizz_module_collection[]
+}
+
+model quizz_module_collection {
+  id               Int              @id @unique(map: "sqlite_autoindex_quizz_module_collection_1") @default(autoincrement())
+  module_id        Int
+  collection_id    Int
+  quizz_collection quizz_collection @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_module     quizz_module     @relation(fields: [module_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model quizz_question {
+  id                     Int                      @id @unique(map: "sqlite_autoindex_quizz_question_1") @default(autoincrement())
+  user_id                Int
+  categorie_id           Int
+  create_at              String
+  question               String
+  commentaire            String
+  question_collection    question_collection[]
+  ref_categorie          ref_categorie            @relation(fields: [categorie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user                   user                     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_question_reponse quizz_question_reponse[]
+  user_kpi               user_kpi[]
+}
+
+model quizz_question_reponse {
+  id             Int            @id @unique(map: "sqlite_autoindex_quizz_question_reponse_1") @default(autoincrement())
+  question_id    Int
+  reponse_id     Int
+  quizz_reponse  quizz_reponse  @relation(fields: [reponse_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_question quizz_question @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model quizz_reponse {
+  id                     Int                      @id @unique(map: "sqlite_autoindex_quizz_reponse_1") @default(autoincrement())
+  reponse                String
+  bonne_reponse          Int
+  quizz_question_reponse quizz_question_reponse[]
+  user_kpi               user_kpi[]
+}
+
+model ref_categorie {
+  id             Int              @id @unique(map: "sqlite_autoindex_ref_categorie_1") @default(autoincrement())
+  type           String
+  quizz_question quizz_question[]
+}
+
+model user {
+  id               Int                @id @unique(map: "sqlite_autoindex_user_1") @default(autoincrement())
+  pseudot          String
+  quizz_collection quizz_collection[]
+  quizz_question   quizz_question[]
+  user_device      user_device[]
+  user_kpi         user_kpi[]
+}
+
+model user_device {
+  id        Int    @id @unique(map: "sqlite_autoindex_user_device_1") @default(autoincrement())
+  user_id   Int
+  device_id Int
+  device    device @relation(fields: [device_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      user   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_kpi {
+  id             Int            @id @unique(map: "sqlite_autoindex_user_kpi_1") @default(autoincrement())
+  user_id        Int
+  create_at      String
+  question_id    Int
+  reponse_id     Int
+  duree_session  String
+  quizz_question quizz_question @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_reponse  quizz_reponse  @relation(fields: [reponse_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user           user           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
