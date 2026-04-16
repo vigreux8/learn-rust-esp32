@@ -1,0 +1,166 @@
+Table collection_story [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	nom int [ not null, note: 'e : enfant' ]
+	description varchar(1200) [ not null ]
+}
+
+Table quizz_module [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	nom varchar(255) [ not null ]
+	create_at datetime [ not null ]
+	update_at datetime [ not null ]
+
+	Note: 'un module ces par exemple : "histoire-france"'
+}
+
+Table ref_categorie [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	type varchar(255) [ not null, note: 'histoire l pratique' ]
+
+	Note: 'histoire : "des question plus d''information" ; pratique "des question sur comment appliquer l''information ou et dans qu''elle cas l''utilisé"'
+}
+
+Table quizz_reponse [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	reponse varchar(1200) [ not null ]
+	bonne_reponse boolean [ not null ]
+}
+
+Table quizz_question_reponse [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	question_id int [ not null ]
+	reponse_id int [ not null ]
+}
+
+Table user_device [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	user_id int [ not null ]
+	device_id int [ not null ]
+}
+
+Table device [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	adresse_mac varchar(12) [ not null ]
+}
+
+Table user [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	pseudot varchar(255) [ not null ]
+}
+
+Table quizz_question [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	user_id int [ not null ]
+	categorie_id int [ not null ]
+	create_at datetime [ not null ]
+	question varchar(1200) [ not null ]
+	commentaire varchar(1600) [ not null ]
+}
+
+Table quizz_collection [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	user_id int [ not null ]
+	create_at datetime [ not null ]
+	update_at datetime [ not null ]
+	nom varchar(255) [ not null ]
+
+	Note: 'une collection ces par exemple : si quizz-module ="histoire-france" quizz-collection pourais être "rois" , "evénement" ect...'
+}
+
+Table question_collection [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	collection_id int [ not null ]
+	question_id int [ not null ]
+}
+
+Table user_kpi [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	user_id int [ not null ]
+	create_at datetime [ not null ]
+	question_id int [ not null ]
+	reponse_id int [ not null ]
+	duree_session timestamp [ not null, note: 'le temps que l''utillisateur a mis a repondre' ]
+}
+
+Table quizz_module_collection [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	module_id int [ not null ]
+	collection_id int [ not null ]
+}
+
+Table relation_question_implicite [headercolor: #175e7a] {
+	id int [ pk, increment, not null, unique ]
+	story_id int
+	question_p_id int [ not null, note: 'p : parent' ]
+	question_e_id int [ not null, note: 'e : enfant' ]
+
+	Note: 'regroupe des question qui on un lien étroit ensemble'
+}
+
+Ref fk_user_device_user_id_user {
+	user_device.user_id > user.id [ delete: no action, update: no action ]
+}
+
+Ref fk_user_kpi_user_id_user {
+	user_kpi.user_id > user.id [ delete: no action, update: no action ]
+}
+
+Ref fk_ref_collection_user_id_user {
+	quizz_collection.user_id > user.id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_question_user_id_user {
+	quizz_question.user_id > user.id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_question_reponse_question_id_quizz_question {
+	quizz_question_reponse.question_id > quizz_question.id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_question_reponse_reponse_id_quizz_reponse {
+	quizz_question_reponse.reponse_id > quizz_reponse.id [ delete: no action, update: no action ]
+}
+
+Ref fk_user_kpi_reponse_id_quizz_reponse {
+	user_kpi.reponse_id > quizz_reponse.id [ delete: no action, update: no action ]
+}
+
+Ref fk_user_kpi_question_id_quizz_question {
+	user_kpi.question_id > quizz_question.id [ delete: no action, update: no action ]
+}
+
+Ref fk_user_device_device_id_device {
+	user_device.device_id > device.id [ delete: no action, update: no action ]
+}
+
+Ref fk_question_collection_collection_id_ref_collection {
+	question_collection.collection_id > quizz_collection.id [ delete: no action, update: no action ]
+}
+
+Ref fk_question_collection_question_id_quizz_question {
+	question_collection.question_id > quizz_question.id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_module_collection_module_id_quizz_module {
+	quizz_module_collection.module_id > quizz_module.id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_module_collection_collection_id_quizz_collection {
+	quizz_module_collection.collection_id > quizz_collection.id [ delete: no action, update: no action ]
+}
+
+Ref fk_quizz_question_categorie_id_ref_categorie {
+	quizz_question.categorie_id > ref_categorie.id [ delete: no action, update: no action ]
+}
+
+Ref fk_relation_question_question_p_id_quizz_question {
+	relation_question_implicite.question_p_id > quizz_question.id [ delete: no action, update: no action ]
+}
+
+Ref fk_relation_question_question_e_id_quizz_question {
+	relation_question_implicite.question_e_id > quizz_question.id [ delete: no action, update: no action ]
+}
+
+Ref fk_relation_question_implicite_story_id_collection_story {
+	relation_question_implicite.story_id > collection_story.id [ delete: no action, update: no action ]
+}
