@@ -8,6 +8,9 @@ import { Card } from "../atomes/Card";
 
 type Phase = "checking" | "api-error" | "need-pseudot" | "welcome" | "ready";
 
+/**
+ * Overlay de bienvenue animé après reconnaissance du pseudonyme, puis passage à l’app.
+ */
 function WelcomeOverlay({
   pseudot,
   onDone,
@@ -51,6 +54,9 @@ function WelcomeOverlay({
   );
 }
 
+/**
+ * Écran de première visite : saisie du pseudonyme pour enregistrer l’appareil (MAC démo) côté API.
+ */
 function PseudotScreen({
   onSubmit,
   busy,
@@ -101,6 +107,7 @@ function PseudotScreen({
   );
 }
 
+/** Indicateur de chargement pendant la recherche de l’appareil / utilisateur en base. */
 function CheckingScreen() {
   return (
     <div class="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-base-100/95">
@@ -110,6 +117,9 @@ function CheckingScreen() {
   );
 }
 
+/**
+ * Écran d’erreur réseau ou API lors de la reconnaissance d’appareil, avec action pour réessayer.
+ */
 function ApiErrorScreen({
   message,
   onRetry,
@@ -135,6 +145,9 @@ function ApiErrorScreen({
   );
 }
 
+/**
+ * Enveloppe racine : résout l’utilisateur via la MAC simulée, enregistre le pseudonyme si besoin, puis rend les enfants.
+ */
 export function DeviceAuthGate({ children }: { children: ComponentChildren }) {
   const [session, setSession] = useState<UserSession | null>(null);
   const [phase, setPhase] = useState<Phase>("checking");

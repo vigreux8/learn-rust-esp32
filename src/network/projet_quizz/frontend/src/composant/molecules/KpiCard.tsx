@@ -10,6 +10,9 @@ export type KpiCardProps = {
   accent?: "flow" | "learn";
 };
 
+/**
+ * Carte indicateur clé : titre, valeur mise en avant, hint optionnel et icône pour tableaux de bord.
+ */
 export function KpiCard({ title, value, hint, icon, accent = "flow" }: KpiCardProps) {
   return (
     <Card padding="sm" class="relative overflow-hidden">

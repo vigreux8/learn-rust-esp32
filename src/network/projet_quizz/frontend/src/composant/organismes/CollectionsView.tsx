@@ -76,6 +76,9 @@ function applyModuleFilter(
   return list.filter((c) => (c.modules ?? []).some((m) => m.id === moduleFilter));
 }
 
+/**
+ * Page collections et supercollections : liste, filtres, création, import JSON et suppressions avec confirmation.
+ */
 export function CollectionsView() {
   const { userId } = useUserSession();
   const [collections, setCollections] = useState<CollectionUi[]>([]);

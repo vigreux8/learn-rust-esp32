@@ -40,6 +40,9 @@ function isPickedCorrect(questions: QuestionUi[], qIndex: number, reponseId: num
   return q?.reponses.some((r) => r.id === reponseId && r.bonne_reponse) ?? false;
 }
 
+/**
+ * Déroulé d’une session de quiz (collection ou aléatoire) : chargement des questions, réponses, progression et envoi des KPI.
+ */
 export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   const { userId } = useUserSession();
   const routePath = useRoutePath();

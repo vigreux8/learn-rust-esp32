@@ -21,6 +21,9 @@ export type CollectionCardProps = {
   onDeleteCollection?: (collection: CollectionUi) => void;
 };
 
+/**
+ * Carte d’une collection : stats, liaison aux supercollections, lancement quiz et navigation vers les questions.
+ */
 export function CollectionCard({
   collection,
   myUserId,

@@ -43,6 +43,9 @@ function filterFromRouteParam(cid?: string): string {
   return "";
 }
 
+/**
+ * Page de gestion des questions : chargement par collection, tableau, édition, suppression et import LLM associé.
+ */
 export function QuestionsView({ collectionId }: QuestionsViewProps) {
   const [collections, setCollections] = useState<CollectionUi[]>([]);
   const [allModules, setAllModules] = useState<QuizzModuleRow[]>([]);

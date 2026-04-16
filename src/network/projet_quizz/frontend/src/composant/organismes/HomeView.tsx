@@ -6,6 +6,9 @@ import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
 import { Button } from "../atomes/Button";
 
+/**
+ * Page d’accueil : présentation du mode quiz aléatoire et choix de l’ordre / du type de questions avant lecture.
+ */
 export function HomeView() {
   const [playOrder, setPlayOrder] = useState<PlayOrder>("random");
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");

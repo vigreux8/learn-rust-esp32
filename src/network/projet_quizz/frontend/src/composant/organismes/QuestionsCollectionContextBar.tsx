@@ -8,6 +8,9 @@ export type QuestionsCollectionContextBarProps = {
   setImportTargetModuleId: (id: number | null) => void;
 };
 
+/**
+ * Bandeau contextuel quand une collection est ciblée : rappel du nom et lien optionnel vers une supercollection pour l’import.
+ */
 export function QuestionsCollectionContextBar({
   targetCollectionNumeric,
   collections,

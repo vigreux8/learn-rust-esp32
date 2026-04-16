@@ -9,6 +9,9 @@ import { Card } from "../atomes/Card";
 import { Button } from "../atomes/Button";
 import { Badge } from "../atomes/Badge";
 
+/**
+ * Affiche le bilan du dernier quiz terminé (score, pourcentage) et propose de relancer avec les mêmes paramètres.
+ */
 export function QuizResultsView() {
   const result = useMemo(() => readLastQuizResult(), []);
 

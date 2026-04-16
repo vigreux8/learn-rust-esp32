@@ -7,6 +7,9 @@ export type BadgeProps = {
   tone?: "flow" | "learn" | "neutral";
 };
 
+/**
+ * Pastille d’étiquette compacte pour catégories, identifiants ou statuts (tons flow / learn / neutre).
+ */
 export function Badge({ children, class: className, tone = "neutral" }: BadgeProps) {
   const tones = {
     flow: "bg-flow/15 text-flow border-flow/20",

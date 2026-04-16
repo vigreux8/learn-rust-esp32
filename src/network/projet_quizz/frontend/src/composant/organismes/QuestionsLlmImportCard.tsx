@@ -43,6 +43,9 @@ function getOptionValue(options: LlmImportOption[], id: string): string {
     : "";
 }
 
+/**
+ * Carte regroupant workflow LLM (prompt + options), import JSON des questions et export App JSON de la collection courante.
+ */
 export function QuestionsLlmImportCard({
   targetCollectionNumeric,
   collections,

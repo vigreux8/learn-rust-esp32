@@ -6,6 +6,9 @@ export type ProgressBarProps = {
   class?: string;
 };
 
+/**
+ * Barre de progression native avec libellé et pourcentage pour suivre l’avancement d’un parcours (ex. quiz).
+ */
 export function ProgressBar({ value, max, class: className }: ProgressBarProps) {
   const pct = max <= 0 ? 0 : Math.min(100, Math.round((value / max) * 100));
 

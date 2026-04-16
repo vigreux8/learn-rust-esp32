@@ -28,6 +28,9 @@ async function readFileAsText(file: File): Promise<string> {
   return await file.text();
 }
 
+/**
+ * Vue export / import de la base (fichiers SQL ou JSON) pour sauvegarder ou fusionner des données hors ligne.
+ */
 export function DatabaseTransferView() {
   const [sqlBusy, setSqlBusy] = useState(false);
   const [jsonBusy, setJsonBusy] = useState(false);

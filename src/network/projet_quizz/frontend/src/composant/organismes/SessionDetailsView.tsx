@@ -14,6 +14,9 @@ export type SessionDetailsViewProps = {
   sessionId?: string;
 };
 
+/**
+ * Détail d’une session d’apprentissage passée : chargement par identifiant, affichage des métriques et navigation retour.
+ */
 export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
   const { userId } = useUserSession();
   const [session, setSession] = useState<SessionDetail | null>(null);

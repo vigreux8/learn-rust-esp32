@@ -7,6 +7,9 @@ export type QuestionsLlmImportPromptPanelProps = {
   importFromJson: (importText: string) => Promise<string>;
 };
 
+/**
+ * Affiche le prompt à copier vers un LLM et la zone de collage du JSON retourné pour lancer l’import.
+ */
 export function QuestionsLlmImportPromptPanel({
   prompt,
   importFromJson,

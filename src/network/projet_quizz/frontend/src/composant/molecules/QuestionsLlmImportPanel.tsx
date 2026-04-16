@@ -44,6 +44,9 @@ export type QuestionsLlmImportPanelProps = {
   llmImportWorkflow: LlmImportWorkflow;
 };
 
+/**
+ * Panneau complet d’import LLM : options de génération et zone prompt + collage JSON pour créer des questions.
+ */
 export function QuestionsLlmImportPanel({
   options,
   setOptions,

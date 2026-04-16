@@ -62,6 +62,9 @@ function dailyActivityLast7Days(kpis: UserKpiRow[], now = new Date()): DayBar[] 
   return buckets;
 }
 
+/**
+ * Tableau de bord statistiques : agrégats KPI, activité sur 7 jours et liste des sessions pour l’utilisateur connecté.
+ */
 export function StatsDashboard() {
   const { userId } = useUserSession();
   const [kpis, setKpis] = useState<UserKpiRow[]>([]);

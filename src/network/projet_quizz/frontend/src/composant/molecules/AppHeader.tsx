@@ -22,6 +22,9 @@ function isActive(current: string, href: string) {
   return cur === href || cur.startsWith(`${href}/`);
 }
 
+/**
+ * En-tête sticky avec marque FlowLearn et navigation principale (routes actives mises en évidence).
+ */
 export function AppHeader() {
   const path = useRoutePath();
 

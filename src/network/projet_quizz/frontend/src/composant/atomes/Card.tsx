@@ -9,6 +9,9 @@ export type CardProps = ComponentProps<"div"> & {
 
 const paddings = { sm: "p-4", md: "p-6", lg: "p-8" };
 
+/**
+ * Conteneur carte avec fond flouté, bordure légère et padding configurable pour regrouper du contenu.
+ */
 export function Card({ children, class: className, padding = "md", ...props }: CardProps) {
   return (
     <div

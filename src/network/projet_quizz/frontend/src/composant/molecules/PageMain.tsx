@@ -7,6 +7,9 @@ export type PageMainProps = {
   narrow?: boolean;
 };
 
+/**
+ * Zone `<main>` centrée avec largeur max et marges cohérentes pour le contenu des pages vues complètes.
+ */
 export function PageMain({ children, class: className, narrow }: PageMainProps) {
   return (
     <main

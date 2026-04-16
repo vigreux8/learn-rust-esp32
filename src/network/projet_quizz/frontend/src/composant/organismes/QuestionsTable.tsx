@@ -11,6 +11,9 @@ export type QuestionsTableProps = {
   onRemove: (id: number) => void;
 };
 
+/**
+ * Liste des questions sous forme de cartes avec badges (collections, catégorie) et actions modifier / supprimer.
+ */
 export function QuestionsTable({ questions, saving, onEdit, onRemove }: QuestionsTableProps) {
   return (
     <Card>

@@ -22,6 +22,9 @@ export type QuestionEditModalProps = {
   onReponseUpdated: () => void | Promise<void>;
 };
 
+/**
+ * Modale d’édition d’une question : libellé, catégorie, commentaire, réponses et enregistrement côté API.
+ */
 export function QuestionEditModal({
   open,
   loading,

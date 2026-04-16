@@ -10,6 +10,9 @@ export type AnswerOptionProps = {
   onPick: () => void;
 };
 
+/**
+ * Bouton réponse d’un QCM : sélection, états correct / incorrect après révélation, et désactivation pendant le flux.
+ */
 export function AnswerOption({
   label,
   reponseId,

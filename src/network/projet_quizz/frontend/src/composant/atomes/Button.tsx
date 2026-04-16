@@ -12,6 +12,9 @@ export type ButtonProps = {
   onClick?: JSX.MouseEventHandler<HTMLButtonElement>;
 };
 
+/**
+ * Bouton stylé FlowLearn (variantes flow, learn, ghost, outline) pour les actions principales et secondaires.
+ */
 export function Button({
   children,
   class: className,

@@ -15,6 +15,9 @@ export type PopUpInformationProps = {
   onCancel: () => void;
 };
 
+/**
+ * Modale de confirmation ou d’information (info / danger) avec message multiligne et actions Annuler / Confirmer.
+ */
 export function PopUpInformation({
   open,
   title,

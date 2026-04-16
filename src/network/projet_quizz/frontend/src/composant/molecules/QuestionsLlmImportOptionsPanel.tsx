@@ -64,6 +64,9 @@ function buildCategoryOption(
   };
 }
 
+/**
+ * Formulaire des options d’import LLM (catégorie, champs texte, cases dynamiques) pour construire le prompt.
+ */
 export function QuestionsLlmImportOptionsPanel({
   options,
   onOptionsChange,

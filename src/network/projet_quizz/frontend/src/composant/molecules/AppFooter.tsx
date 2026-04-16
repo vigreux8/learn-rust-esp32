@@ -1,6 +1,9 @@
 import { Wifi } from "lucide-preact";
 import { APP_VERSION } from "../../lib/config";
 
+/**
+ * Pied de page global : version de l’app et rappel du contexte matériel (démo ESP32).
+ */
 export function AppFooter() {
   return (
     <footer class="mt-auto border-t border-base-content/5 bg-base-100/50 py-4 text-center text-xs text-base-content/55">
