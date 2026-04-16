@@ -42,6 +42,7 @@ function questionUiToAppExportQuestion(q: QuestionUi): {
   categorie_type: string;
   question: string;
   commentaire: string;
+  fakechecker: boolean;
   reponses: [LlmImportReponse, LlmImportReponse, LlmImportReponse, LlmImportReponse];
 } {
   const reponses = [...q.reponses];
@@ -62,6 +63,7 @@ function questionUiToAppExportQuestion(q: QuestionUi): {
     categorie_type: q.categorie_type,
     question: q.question,
     commentaire: q.commentaire ?? "",
+    fakechecker: q.verifier,
     reponses: reponses.map((r) => ({
       texte: r.reponse,
       correcte: r.bonne_reponse,

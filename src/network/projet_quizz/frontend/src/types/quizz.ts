@@ -17,6 +17,8 @@ export interface QuestionUi {
   question: string;
   /** Anecdote pédagogique (sans recopier mot pour mot la bonne réponse). */
   commentaire: string;
+  /** Colonne `verifier` côté API ; champ JSON d’export/import app : `fakechecker`. */
+  verifier: boolean;
   /** `ref_categorie.id` (stable entre exports/imports “app”). */
   categorie_id: number;
   /** `ref_categorie.type` (ex. histoire, pratique). */
@@ -61,6 +63,7 @@ export interface QuizzQuestionRow {
   create_at: string;
   question: string;
   commentaire: string;
+  verifier: boolean;
   categorie_id: number;
   categorie_type: string;
   collections: QuizzCollectionRef[];

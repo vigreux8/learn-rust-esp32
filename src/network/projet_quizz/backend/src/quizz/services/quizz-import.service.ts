@@ -78,6 +78,7 @@ export class QuizzImportService {
     t: string,
     qin: LlmImportQuestionDto,
     collectionId: number | null,
+    verifier = false,
   ): Promise<void> {
     const qRow = await tx.quizz_question.create({
       data: {
@@ -86,6 +87,7 @@ export class QuizzImportService {
         create_at: t,
         question: qin.question,
         commentaire: qin.commentaire,
+        verifier,
       },
     });
     for (const r of qin.reponses) {
@@ -163,6 +165,7 @@ export class QuizzImportService {
           t,
           qin,
           collectionId,
+          false,
         );
         createdQuestions += 1;
       };
@@ -242,6 +245,7 @@ export class QuizzImportService {
           t,
           qin,
           targetCollectionId,
+          false,
         );
         createdQuestions += 1;
       }
@@ -373,7 +377,16 @@ export class QuizzImportService {
           );
         }
 
-        await this.insertOneQuestion(tx, userId, qin.categorie_id, t, this.toLlmQuestionDto(qin), targetCollectionId);
+        const verifier = qin.fakechecker ?? false;
+        await this.insertOneQuestion(
+          tx,
+          userId,
+          qin.categorie_id,
+          t,
+          this.toLlmQuestionDto(qin),
+          targetCollectionId,
+          verifier,
+        );
         createdQuestions += 1;
       }
 

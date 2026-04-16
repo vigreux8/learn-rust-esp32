@@ -153,6 +153,11 @@ export class AppCollectionImportQuestionDto {
   @IsString()
   commentaire!: string;
 
+  /** Aligné sur la colonne `verifier` ; absent ou omis dans le JSON LLM → faux. */
+  @IsOptional()
+  @IsBoolean()
+  fakechecker?: boolean;
+
   @IsArray()
   @ArrayMinSize(4)
   @ValidateNested({ each: true })

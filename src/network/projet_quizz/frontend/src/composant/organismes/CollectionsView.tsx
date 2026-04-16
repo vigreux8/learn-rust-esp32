@@ -398,12 +398,14 @@ export function CollectionsView() {
                       <>
                         Une collection vide est créée avec le <code class="text-xs">collection.nom</code> du JSON,
                         puis les questions y sont importées. Chaque question inclut{" "}
-                        <code class="text-xs">categorie_id</code> + <code class="text-xs">categorie_type</code>.
+                        <code class="text-xs">categorie_id</code>, <code class="text-xs">categorie_type</code> et
+                        optionnellement <code class="text-xs">fakechecker</code> (sinon faux).
                       </>
                     ) : (
                       <>
                         Format LLM : catégorie choisie ci-dessous (mapping <code class="text-xs">ref_categorie</code>),
-                        import via <code class="text-xs">/quizz/questions/import</code>.
+                        import via <code class="text-xs">/quizz/questions/import</code>. Les questions importées ont{" "}
+                        <code class="text-xs">verifier</code> à faux en base (pas de champ dans le JSON).
                       </>
                     )}
                   </p>
@@ -445,7 +447,7 @@ export function CollectionsView() {
                 class="textarea textarea-bordered w-full min-h-32 rounded-2xl border-dashed border-learn/35 bg-base-100/60 font-mono text-xs leading-relaxed"
                 placeholder={
                   jsonImportMode === "app"
-                    ? '{ "format": "flowlearn-app-collection-export", "version": 1, "collection": { "nom": "…" }, "questions": [ ... ] }'
+                    ? '{ "format": "flowlearn-app-collection-export", "version": 1, "collection": { "nom": "…" }, "questions": [ { "fakechecker": false, "categorie_id": 1, ... } ] }'
                     : '{ "collections": [ ... ], "questions_sans_collection": [] }'
                 }
                 value={jsonImportText}

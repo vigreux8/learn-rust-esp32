@@ -73,6 +73,7 @@ export class QuizzWriteService {
         create_at: row.create_at,
         question: row.question,
         commentaire: row.commentaire ?? '',
+        verifier: row.verifier,
         categorie_id: row.categorie_id,
         categorie_type: row.ref_categorie.type,
         collections: row.question_collection.map((qc) => ({
@@ -94,6 +95,7 @@ export class QuizzWriteService {
 
     await this.prisma.prisma.$transaction([
       this.prisma.prisma.user_kpi.deleteMany({ where: { question_id: id } }),
+      this.prisma.prisma.relation_sous_collections.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.quizz_question_reponse.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.question_collection.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.quizz_question.delete({ where: { id } }),
@@ -124,6 +126,12 @@ export class QuizzWriteService {
 
     await this.prisma.prisma.$transaction(async (tx) => {
       await tx.question_collection.deleteMany({
+        where: { collection_id: collectionId },
+      });
+      await tx.relation_sous_collections.deleteMany({
+        where: { question_id: { in: questionIds } },
+      });
+      await tx.sous_collections.deleteMany({
         where: { collection_id: collectionId },
       });
       await tx.quizz_module_collection.deleteMany({

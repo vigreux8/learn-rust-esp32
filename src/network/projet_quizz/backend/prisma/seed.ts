@@ -30,9 +30,12 @@ const SEED_DEMO_DEVICE_MAC = 'DE:AD:BE:EF:00:01';
 
 async function clearAll(prisma: PrismaClient): Promise<void> {
   await prisma.user_kpi.deleteMany();
+  await prisma.relation_sous_collections.deleteMany();
+  await prisma.relation_question_implicite.deleteMany();
   await prisma.question_collection.deleteMany();
   await prisma.quizz_question_reponse.deleteMany();
   await prisma.quizz_question.deleteMany();
+  await prisma.sous_collections.deleteMany();
   await prisma.quizz_module_collection.deleteMany();
   await prisma.quizz_collection.deleteMany();
   await prisma.quizz_module.deleteMany();
@@ -65,6 +68,7 @@ async function addQuestion(
       create_at: nowIso(),
       question,
       commentaire,
+      verifier: false,
     },
   });
 

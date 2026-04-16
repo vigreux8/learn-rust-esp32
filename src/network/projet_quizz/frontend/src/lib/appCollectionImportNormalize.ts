@@ -12,6 +12,8 @@ export type AppCollectionImportPayload = {
     categorie_type: string;
     question: string;
     commentaire: string;
+    /** Absent sur les anciens exports ou sur le JSON LLM → traité comme faux. */
+    fakechecker: boolean;
     reponses: [LlmImportReponse, LlmImportReponse, LlmImportReponse, LlmImportReponse];
   }[];
 };
@@ -67,11 +69,19 @@ function parseQuestion(value: unknown, ctx: string): AppCollectionImportPayload[
   }
   const commentaire = typeof raw.commentaire === "string" ? raw.commentaire.trim() : "";
 
+  const fakeRaw = raw.fakechecker ?? raw.verifier;
+  const fakechecker =
+    fakeRaw === true ||
+    fakeRaw === 1 ||
+    fakeRaw === "1" ||
+    (typeof fakeRaw === "string" && fakeRaw.trim().toLowerCase() === "true");
+
   return {
     categorie_id: categorieIdRaw,
     categorie_type: categorieType.trim(),
     question: raw.question.trim(),
     commentaire,
+    fakechecker,
     reponses: parseReponses(raw.reponses, `${ctx}.reponses`),
   };
 }

@@ -10,6 +10,8 @@ export type QuestionUi = {
   create_at: string;
   question: string;
   commentaire: string;
+  /** Colonne SQL `verifier` : export/import app sous le nom `fakechecker`. */
+  verifier: boolean;
   /** `ref_categorie.id` (utile pour export/import “app”). */
   categorie_id: number;
   /** `ref_categorie.type` (ex. histoire, pratique). */
@@ -53,6 +55,7 @@ export type QuizzQuestionRow = {
   create_at: string;
   question: string;
   commentaire: string;
+  verifier: boolean;
   /** `ref_categorie.id` */
   categorie_id: number;
   /** `ref_categorie.type` (ex. histoire, pratique) */

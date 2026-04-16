@@ -31,6 +31,7 @@ export class QuizzReadService {
     create_at: string;
     question: string;
     commentaire: string;
+    verifier: boolean;
     categorie_id: number;
     ref_categorie: { type: string };
     quizz_question_reponse: {
@@ -45,6 +46,7 @@ export class QuizzReadService {
       create_at: q.create_at,
       question: q.question,
       commentaire: q.commentaire ?? '',
+      verifier: q.verifier,
       categorie_id: q.categorie_id,
       categorie_type: q.ref_categorie.type,
       reponses: ordered.map((j) => ({
@@ -207,6 +209,7 @@ export class QuizzReadService {
       create_at: r.create_at,
       question: r.question,
       commentaire: r.commentaire ?? '',
+      verifier: r.verifier,
       categorie_id: r.categorie_id,
       categorie_type: r.ref_categorie.type,
       collections: r.question_collection.map((qc) => ({
@@ -249,6 +252,7 @@ export class QuizzReadService {
       create_at: r.create_at,
       question: r.question,
       commentaire: r.commentaire ?? '',
+      verifier: r.verifier,
       categorie_id: r.categorie_id,
       categorie_type: r.ref_categorie.type,
       collections: r.question_collection.map((qc) => ({

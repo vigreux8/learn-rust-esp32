@@ -29,6 +29,7 @@ model quizz_collection {
   question_collection     question_collection[]
   user                    user                      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   quizz_module_collection quizz_module_collection[]
+  sous_collections        sous_collections[]
 }
 
 model quizz_module {
@@ -54,12 +55,15 @@ model quizz_question {
   create_at                                                                             String
   question                                                                              String
   commentaire                                                                           String
+  /** 0/1 en SQLite : question validée (« fakechecker » côté JSON app). */
+  verifier                                                                              Boolean                       @default(false)
   question_collection                                                                   question_collection[]
   ref_categorie                                                                         ref_categorie                 @relation(fields: [categorie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user                                                                                  user                          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   quizz_question_reponse                                                                quizz_question_reponse[]
   relation_question_implicite_relation_question_implicite_question_e_idToquizz_question relation_question_implicite[] @relation("relation_question_implicite_question_e_idToquizz_question")
   relation_question_implicite_relation_question_implicite_question_p_idToquizz_question relation_question_implicite[] @relation("relation_question_implicite_question_p_idToquizz_question")
+  relation_sous_collections                                                             relation_sous_collections[]
   user_kpi                                                                              user_kpi[]
 }
 
@@ -129,4 +133,24 @@ model relation_question_implicite {
   collection_story                                                         collection_story? @relation(fields: [story_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   quizz_question_relation_question_implicite_question_e_idToquizz_question quizz_question    @relation("relation_question_implicite_question_e_idToquizz_question", fields: [question_e_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   quizz_question_relation_question_implicite_question_p_idToquizz_question quizz_question    @relation("relation_question_implicite_question_p_idToquizz_question", fields: [question_p_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model sous_collections {
+  id                        Int                         @id @default(autoincrement())
+  collection_id             Int
+  nom                       String
+  quizz_collection          quizz_collection            @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  relation_sous_collections relation_sous_collections[]
+
+  @@map("sous-collections")
+}
+
+model relation_sous_collections {
+  id                   Int              @id @default(autoincrement())
+  sous_collection_id   Int
+  question_id          Int
+  sous_collections     sous_collections @relation(fields: [sous_collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_question       quizz_question   @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("relation_sous-collections")
 }
