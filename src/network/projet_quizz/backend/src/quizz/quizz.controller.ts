@@ -13,12 +13,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { QuizzService } from './services';
+import { AppCollectionImportBodyDto } from './dto/import-collection.dto';
+import { LlmImportBodyDto } from './dto/import-llm.dto';
 import {
-  AppCollectionImportBodyDto,
   AssignCollectionToModuleDto,
   CreateCollectionInModuleDto,
   CreateQuestionDto,
-  LlmImportBodyDto,
   CreateQuizzModuleDto,
   CreateStandaloneCollectionDto,
   UpdateQuestionDto,

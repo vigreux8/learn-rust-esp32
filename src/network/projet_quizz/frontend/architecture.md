@@ -42,8 +42,36 @@ frontend/
     ├── lib/                     # logique non-UI (API, session, import LLM, etc.)
     └── composant/
         ├── atomes/              # briques visuelles minimales
+        │   ├── Badge.tsx
+        │   ├── Button.tsx
+        │   ├── Card.tsx
+        │   └── ProgressBar.tsx
         ├── molecules/           # blocs réutilisables composés
+        │   ├── AnswerOption.tsx
+        │   ├── AppFooter.tsx
+        │   ├── AppHeader.tsx
+        │   ├── CollectionCard.tsx
+        │   ├── KpiCard.tsx
+        │   ├── PageMain.tsx
+        │   ├── PlayModePicker.tsx
+        │   ├── PopUpInformation.tsx
+        │   ├── QuestionEditModal.tsx
+        │   ├── QuestionsLlmImportOptionsPanel.tsx
+        │   ├── QuestionsLlmImportPanel.tsx
+        │   └── QuestionsLlmImportPromptPanel.tsx
         └── organismes/          # pages / écrans complets
+            ├── CollectionsView.tsx
+            ├── DatabaseTransferView.tsx
+            ├── DeviceAuthGate.tsx
+            ├── HomeView.tsx
+            ├── QuestionsCollectionContextBar.tsx
+            ├── QuestionsLlmImportCard.tsx
+            ├── QuestionsTable.tsx
+            ├── QuestionsView.tsx
+            ├── QuizResultsView.tsx
+            ├── QuizSessionView.tsx
+            ├── SessionDetailsView.tsx
+            └── StatsDashboard.tsx
 ```
 
 ## Analogie avec `reglage_bouton/src`

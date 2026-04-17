@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { QuizzQuestionRow } from '../quizz.type';
+import type { Prisma } from '@prisma/client';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { QuizzQuestionRow } from '../../quizz.type';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -14,6 +15,63 @@ function nowIso(): string {
 @Injectable()
 export class QuizzWriteService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async insertQuestionWithAnswers(
+    tx: Prisma.TransactionClient,
+    body: {
+      user_id: number;
+      categorie_id: number;
+      question: string;
+      commentaire: string;
+      reponses: { texte: string; correcte: boolean }[];
+      collection_id?: number;
+      parent_question_id?: number;
+      verifier?: boolean;
+    },
+  ): Promise<number> {
+    const qRow = await tx.quizz_question.create({
+      data: {
+        user_id: body.user_id,
+        categorie_id: body.categorie_id,
+        create_at: nowIso(),
+        question: body.question,
+        commentaire: body.commentaire,
+        verifier: body.verifier ?? false,
+      },
+    });
+    for (const r of body.reponses) {
+      const rep = await tx.quizz_reponse.create({
+        data: {
+          reponse: r.texte,
+          bonne_reponse: r.correcte ? 1 : 0,
+        },
+      });
+      await tx.quizz_question_reponse.create({
+        data: {
+          question_id: qRow.id,
+          reponse_id: rep.id,
+        },
+      });
+    }
+    if (body.collection_id != null) {
+      await tx.question_collection.create({
+        data: {
+          collection_id: body.collection_id,
+          question_id: qRow.id,
+        },
+      });
+    }
+    if (body.parent_question_id != null) {
+      await tx.relation_question_implicite.create({
+        data: {
+          question_p_id: body.parent_question_id,
+          question_e_id: qRow.id,
+          story_id: null,
+        },
+      });
+    }
+    return qRow.id;
+  }
 
   async updateReponse(
     id: number,
@@ -176,52 +234,22 @@ export class QuizzWriteService {
       }
     }
 
-    const t = nowIso();
-
     const row = await this.prisma.prisma.$transaction(async (tx) => {
-      const qRow = await tx.quizz_question.create({
-        data: {
-          user_id: body.user_id,
-          categorie_id: body.categorie_id,
-          create_at: t,
-          question: body.question.trim(),
-          commentaire: body.commentaire.trim(),
-          verifier: false,
-        },
+      const questionId = await this.insertQuestionWithAnswers(tx, {
+        user_id: body.user_id,
+        categorie_id: body.categorie_id,
+        question: body.question.trim(),
+        commentaire: body.commentaire.trim(),
+        reponses: body.reponses.map((r) => ({
+          texte: r.texte.trim(),
+          correcte: r.correcte,
+        })),
+        collection_id: body.collection_id,
+        parent_question_id: body.parent_question_id,
+        verifier: false,
       });
-      for (const r of body.reponses) {
-        const rep = await tx.quizz_reponse.create({
-          data: {
-            reponse: r.texte.trim(),
-            bonne_reponse: r.correcte ? 1 : 0,
-          },
-        });
-        await tx.quizz_question_reponse.create({
-          data: {
-            question_id: qRow.id,
-            reponse_id: rep.id,
-          },
-        });
-      }
-      if (body.collection_id != null) {
-        await tx.question_collection.create({
-          data: {
-            collection_id: body.collection_id,
-            question_id: qRow.id,
-          },
-        });
-      }
-      if (body.parent_question_id != null) {
-        await tx.relation_question_implicite.create({
-          data: {
-            question_p_id: body.parent_question_id,
-            question_e_id: qRow.id,
-            story_id: null,
-          },
-        });
-      }
       return tx.quizz_question.findUniqueOrThrow({
-        where: { id: qRow.id },
+        where: { id: questionId },
         include: {
           ref_categorie: true,
           question_collection: {

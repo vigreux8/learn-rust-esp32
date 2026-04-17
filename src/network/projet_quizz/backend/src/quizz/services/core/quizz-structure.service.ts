@@ -3,8 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import type { QuizzModuleRow } from '../quizz.type';
+import { PrismaService } from '../../../prisma/prisma.service';
+import type { QuizzModuleRow } from '../../quizz.type';
 
 function nowIso(): string {
   return new Date().toISOString();

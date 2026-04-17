@@ -7,11 +7,13 @@ import {
   QuizzQuestionRow,
   RefCategorieRow,
 } from '../quizz.type';
-import { AppCollectionImportBodyDto, LlmImportBodyDto } from '../dto/quizz.dto';
-import { QuizzImportService } from './quizz-import.service';
+import { AppCollectionImportBodyDto } from '../dto/import-collection.dto';
+import { LlmImportBodyDto } from '../dto/import-llm.dto';
+import { ImportCollectionHandler } from './handlers/import-collection.handler';
+import { ImportLlmHandler } from './handlers/import-llm.handler';
+import { QuizzStructureService } from './core/quizz-structure.service';
+import { QuizzWriteService } from './core/quizz-write.service';
 import { QuizzReadService, type QuizPlaySessionOpts } from './quizz-read.service';
-import { QuizzStructureService } from './quizz-structure.service';
-import { QuizzWriteService } from './quizz-write.service';
 
 @Injectable()
 export class QuizzService {
@@ -19,7 +21,8 @@ export class QuizzService {
     private readonly read: QuizzReadService,
     private readonly write: QuizzWriteService,
     private readonly structure: QuizzStructureService,
-    private readonly importSvc: QuizzImportService,
+    private readonly importLlm: ImportLlmHandler,
+    private readonly importCollection: ImportCollectionHandler,
   ) {}
 
   // Delegation: QuizzReadService
@@ -173,7 +176,6 @@ export class QuizzService {
     return ui;
   }
 
-  // Delegation: QuizzImportService
   importQuestionsFromLlmJson(
     body: LlmImportBodyDto,
     opts?: {
@@ -185,13 +187,13 @@ export class QuizzService {
     createdQuestions: number;
     createdCollections: number;
   }> {
-    return this.importSvc.importQuestionsFromLlmJson(body, opts);
+    return this.importLlm.importQuestionsFromLlmJson(body, opts);
   }
 
   importAppCollectionQuestionsJson(
     body: AppCollectionImportBodyDto,
     opts?: { collectionId?: number },
   ): Promise<{ createdQuestions: number }> {
-    return this.importSvc.importAppCollectionQuestionsJson(body, opts);
+    return this.importCollection.importAppCollectionQuestionsJson(body, opts);
   }
 }
