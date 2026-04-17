@@ -15,12 +15,12 @@ import type {
   QuizzModuleRow,
   QuizzQuestionRow,
 } from "../../types/quizz";
-import { Button } from "../atomes/Button";
+import { Button } from "../atomes/Button/Button";
 import {
   CATEGORY_OPTION_ID,
   type LlmImportOption,
-} from "../molecules/QuestionsLlmImportOptionsPanel";
-import { QuestionsLlmImportPanel } from "../molecules/QuestionsLlmImportPanel";
+} from "../molecules/QuestionsLlmImportOptionsPanel/QuestionsLlmImportOptionsPanel";
+import { QuestionsLlmImportPanel } from "../molecules/QuestionsLlmImportPanel/QuestionsLlmImportPanel";
 
 export type QuestionsLlmImportCardProps = {
   targetCollectionNumeric: number | null;

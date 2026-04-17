@@ -9,11 +9,11 @@ import {
 } from "../../lib/playOrder";
 import { readLastQuizResult } from "../../lib/lastQuizResult";
 import { useUserSession } from "../../lib/userSession";
-import { AppHeader } from "../molecules/AppHeader";
-import { AppFooter } from "../molecules/AppFooter";
-import { Card } from "../atomes/Card";
-import { Button } from "../atomes/Button";
-import { Badge } from "../atomes/Badge";
+import { AppHeader } from "../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../molecules/AppFooter/AppFooter";
+import { Card } from "../atomes/Card/Card";
+import { Button } from "../atomes/Button/Button";
+import { Badge } from "../atomes/Badge/Badge";
 
 /**
  * Affiche le bilan du dernier quiz terminé (score, pourcentage) et propose de relancer avec les mêmes paramètres.

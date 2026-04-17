@@ -1,8 +1,8 @@
 import { Pencil, Trash2 } from "lucide-preact";
 import type { QuizzQuestionRow } from "../../types/quizz";
-import { Badge } from "../atomes/Badge";
-import { Button } from "../atomes/Button";
-import { Card } from "../atomes/Card";
+import { Badge } from "../atomes/Badge/Badge";
+import { Button } from "../atomes/Button/Button";
+import { Card } from "../atomes/Card/Card";
 
 export type QuestionsTableProps = {
   questions: QuizzQuestionRow[];

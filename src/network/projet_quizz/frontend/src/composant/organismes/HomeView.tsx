@@ -9,10 +9,10 @@ import {
   type PlaySortBase,
 } from "../../lib/playOrder";
 import { useUserSession } from "../../lib/userSession";
-import { AppHeader } from "../molecules/AppHeader";
-import { AppFooter } from "../molecules/AppFooter";
-import { Button } from "../atomes/Button";
-import { PlayModePicker } from "../molecules/PlayModePicker";
+import { AppHeader } from "../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../molecules/AppFooter/AppFooter";
+import { Button } from "../atomes/Button/Button";
+import { PlayModePicker } from "../molecules/PlayModePicker/PlayModePicker";
 
 /**
  * Page d’accueil : présentation du mode quiz aléatoire et choix des modes / type avant lecture.

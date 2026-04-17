@@ -4,9 +4,11 @@ le tree par composant :
 
 ```
 composant/
+├── index.ts
 ├── composant.tsx
-├── composant.métier.ts
+├── composant.métier.ts (contient le code métier)
 └── composant.styles.ts <-- On met les chaînes Tailwind ici
+
 ```
 
 

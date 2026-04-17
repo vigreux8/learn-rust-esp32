@@ -4,13 +4,13 @@ import { BarChart3, Clock, Target } from "lucide-preact";
 import { fetchKpis, fetchSessionSummaries } from "../../lib/api";
 import { useUserSession } from "../../lib/userSession";
 import type { SessionSummary, UserKpiRow } from "../../types/quizz";
-import { AppHeader } from "../molecules/AppHeader";
-import { AppFooter } from "../molecules/AppFooter";
-import { PageMain } from "../molecules/PageMain";
-import { KpiCard } from "../molecules/KpiCard";
-import { Card } from "../atomes/Card";
-import { Badge } from "../atomes/Badge";
-import { Button } from "../atomes/Button";
+import { AppHeader } from "../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../molecules/AppFooter/AppFooter";
+import { PageMain } from "../molecules/PageMain/PageMain";
+import { KpiCard } from "../molecules/KpiCard/KpiCard";
+import { Card } from "../atomes/Card/Card";
+import { Badge } from "../atomes/Badge/Badge";
+import { Button } from "../atomes/Button/Button";
 
 function avg(nums: number[]) {
   if (nums.length === 0) return 0;

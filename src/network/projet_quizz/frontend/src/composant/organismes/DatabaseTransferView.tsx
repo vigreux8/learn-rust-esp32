@@ -8,10 +8,10 @@ import {
   type DatabaseJsonMergeResult,
   type DatabaseSqlReplaceResult,
 } from "../../lib/api";
-import { AppFooter } from "../molecules/AppFooter";
-import { AppHeader } from "../molecules/AppHeader";
-import { PageMain } from "../molecules/PageMain";
-import { Button } from "../atomes/Button";
+import { AppFooter } from "../molecules/AppFooter/AppFooter";
+import { AppHeader } from "../molecules/AppHeader/AppHeader";
+import { PageMain } from "../molecules/PageMain/PageMain";
+import { Button } from "../atomes/Button/Button";
 
 function triggerFileDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);

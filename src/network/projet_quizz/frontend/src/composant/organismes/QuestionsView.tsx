@@ -20,12 +20,12 @@ import type { PlayQtype } from "../../lib/playOrder";
 import { QuestionsCollectionContextBar } from "./QuestionsCollectionContextBar";
 import { QuestionsTable } from "./QuestionsTable";
 import { QuestionsLlmImportCard } from "./QuestionsLlmImportCard";
-import { QuestionEditModal } from "../molecules/QuestionEditModal";
-import { AppHeader } from "../molecules/AppHeader";
-import { AppFooter } from "../molecules/AppFooter";
-import { PageMain } from "../molecules/PageMain";
-import { Button } from "../atomes/Button";
-import { Card } from "../atomes/Card";
+import { QuestionEditModal } from "../molecules/QuestionEditModal/QuestionEditModal";
+import { AppHeader } from "../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../molecules/AppFooter/AppFooter";
+import { PageMain } from "../molecules/PageMain/PageMain";
+import { Button } from "../atomes/Button/Button";
+import { Card } from "../atomes/Card/Card";
 
 export type QuestionsViewProps = {
   collectionId?: string;

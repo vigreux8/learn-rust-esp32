@@ -17,13 +17,13 @@ import { normalizeAndValidateAppCollectionImportText } from "../../lib/appCollec
 import { normalizeAndValidateImportText } from "../../lib/llmImportNormalize";
 import { useUserSession } from "../../lib/userSession";
 import type { CollectionUi, QuizzModuleRow } from "../../types/quizz";
-import { AppHeader } from "../molecules/AppHeader";
-import { AppFooter } from "../molecules/AppFooter";
-import { Card } from "../atomes/Card";
-import { CollectionCard } from "../molecules/CollectionCard";
-import { PopUpInformation } from "../molecules/PopUpInformation";
-import { PageMain } from "../molecules/PageMain";
-import { Button } from "../atomes/Button";
+import { AppHeader } from "../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../molecules/AppFooter/AppFooter";
+import { Card } from "../atomes/Card/Card";
+import { CollectionCard } from "../molecules/CollectionCard/CollectionCard";
+import { PopUpInformation } from "../molecules/PopUpInformation/PopUpInformation";
+import { PageMain } from "../molecules/PageMain/PageMain";
+import { Button } from "../atomes/Button/Button";
 
 export type CollectionFilter = "all" | "mine" | `user-${number}`;
 

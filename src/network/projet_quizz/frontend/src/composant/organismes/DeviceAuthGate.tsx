@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { fetchDeviceLookup, registerDeviceWithPseudot } from "../../lib/api";
 import { DEMO_DEVICE_MAC } from "../../lib/config";
 import { UserSessionContext, type UserSession } from "../../lib/userSession";
-import { Button } from "../atomes/Button";
-import { Card } from "../atomes/Card";
+import { Button } from "../atomes/Button/Button";
+import { Card } from "../atomes/Card/Card";
 
 type Phase = "checking" | "api-error" | "need-pseudot" | "welcome" | "ready";
 

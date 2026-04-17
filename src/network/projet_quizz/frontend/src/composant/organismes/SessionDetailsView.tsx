@@ -4,11 +4,11 @@ import { ArrowLeft } from "lucide-preact";
 import { fetchSessionDetail } from "../../lib/api";
 import { useUserSession } from "../../lib/userSession";
 import type { SessionDetail } from "../../types/quizz";
-import { AppHeader } from "../molecules/AppHeader";
-import { AppFooter } from "../molecules/AppFooter";
-import { Button } from "../atomes/Button";
-import { Card } from "../atomes/Card";
-import { Badge } from "../atomes/Badge";
+import { AppHeader } from "../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../molecules/AppFooter/AppFooter";
+import { Button } from "../atomes/Button/Button";
+import { Card } from "../atomes/Card/Card";
+import { Badge } from "../atomes/Badge/Badge";
 
 export type SessionDetailsViewProps = {
   sessionId?: string;

@@ -24,17 +24,17 @@ import {
 import { useUserSession } from "../../lib/userSession";
 import type { QuestionUi, QuizzQuestionDetail, RefCategorieRow } from "../../types/quizz";
 import { saveLastQuizResult } from "../../lib/lastQuizResult";
-import { AppHeader } from "../molecules/AppHeader";
-import { AppFooter } from "../molecules/AppFooter";
-import { Card } from "../atomes/Card";
-import { Button } from "../atomes/Button";
-import { ProgressBar } from "../atomes/ProgressBar";
-import { Badge } from "../atomes/Badge";
-import { AnswerOption } from "../molecules/AnswerOption";
+import { AppHeader } from "../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../molecules/AppFooter/AppFooter";
+import { Card } from "../atomes/Card/Card";
+import { Button } from "../atomes/Button/Button";
+import { ProgressBar } from "../atomes/ProgressBar/ProgressBar";
+import { Badge } from "../atomes/Badge/Badge";
+import { AnswerOption } from "../molecules/AnswerOption/AnswerOption";
 import {
   QuestionEditModal,
   type QuestionCreateSavePayload,
-} from "../molecules/QuestionEditModal";
+} from "../molecules/QuestionEditModal/QuestionEditModal";
 import { cn } from "../../lib/cn";
 
 export type QuizSessionViewProps = {
