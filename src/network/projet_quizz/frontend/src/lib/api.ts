@@ -13,6 +13,7 @@ import type {
 } from "../types/quizz";
 import type { LlmImportPayload } from "../composant/molecules/QuestionsLlmImportPanel";
 import type { AppCollectionImportPayload } from "./appCollectionImportNormalize";
+import type { PlayOrder } from "./playOrder";
 
 async function readError(res: Response): Promise<string> {
   const text = await res.text();
@@ -66,11 +67,29 @@ export async function fetchCollections(): Promise<CollectionUi[]> {
 
 export async function fetchCollection(
   id: number,
-  opts?: { qtype?: "histoire" | "pratique" | "melanger" },
+  opts?: {
+    qtype?: "histoire" | "pratique" | "melanger";
+    orders?: PlayOrder[];
+    userId?: number;
+    infinite?: boolean;
+    excludeIds?: number[];
+  },
 ): Promise<CollectionUi> {
   const p = new URLSearchParams();
   if (opts?.qtype != null && opts.qtype !== "melanger") {
     p.set("qtype", opts.qtype);
+  }
+  if (opts?.orders != null && opts.orders.length > 0) {
+    p.set("order", opts.orders.join(","));
+  }
+  if (opts?.userId != null) {
+    p.set("userId", String(opts.userId));
+  }
+  if (opts?.infinite) {
+    p.set("infinite", "1");
+  }
+  if (opts?.excludeIds != null && opts.excludeIds.length > 0) {
+    p.set("exclude", opts.excludeIds.join(","));
   }
   const q = p.size > 0 ? `?${p.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/collections/${id}${q}`));
@@ -133,13 +152,27 @@ export async function deleteCollection(collectionId: number, userId: number): Pr
 }
 
 export async function fetchRandomQuiz(opts?: {
-  order?: "random" | "linear";
+  orders?: PlayOrder[];
   qtype?: "histoire" | "pratique" | "melanger";
+  userId?: number;
+  infinite?: boolean;
+  excludeIds?: number[];
 }): Promise<QuestionUi[]> {
   const p = new URLSearchParams();
-  if (opts?.order === "linear") p.set("order", "linear");
+  if (opts?.orders != null && opts.orders.length > 0) {
+    p.set("order", opts.orders.join(","));
+  }
   if (opts?.qtype != null && opts.qtype !== "melanger") {
     p.set("qtype", opts.qtype);
+  }
+  if (opts?.userId != null) {
+    p.set("userId", String(opts.userId));
+  }
+  if (opts?.infinite) {
+    p.set("infinite", "1");
+  }
+  if (opts?.excludeIds != null && opts.excludeIds.length > 0) {
+    p.set("exclude", opts.excludeIds.join(","));
   }
   const q = p.size > 0 ? `?${p.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/random${q}`));

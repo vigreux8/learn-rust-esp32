@@ -13,8 +13,9 @@ import {
 } from "../../lib/api";
 import { useRoutePath } from "../../lib/routePathContext";
 import {
-  playOrderFromSearch,
-  playQtypeFromSearch,
+  playFetchParamsFromSearch,
+  playOrdersLabel,
+  playOrdersRequireUserId,
   playQtypeLabel,
   shuffleQuestions,
   type PlayOrder,
@@ -45,8 +46,13 @@ type SessionData = {
   collectionId: number | null;
   nom: string;
   questions: QuestionUi[];
-  playOrder: PlayOrder;
+  playOrders: PlayOrder[];
   playQtype: PlayQtype;
+  playInfinite: boolean;
+  /** Pour les requêtes API (modes KPI). */
+  playUserId?: number;
+  /** Si faux, l’ordre aléatoire est appliqué côté client (URLs sans paramètres de jeu). */
+  useServerPlayModes: boolean;
 };
 
 function isPickedCorrect(questions: QuestionUi[], qIndex: number, reponseId: number): boolean {
@@ -76,6 +82,8 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   const { userId } = useUserSession();
   const routePath = useRoutePath();
   const questionStartedAtMs = useRef(0);
+  const allServedQuestionIdsRef = useRef<number[]>([]);
+  const playedTowardResultsRef = useRef(0);
 
   const [data, setData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,6 +108,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   /** Fake-checker (`verifier`) ; persisté au clic sur « Suivant » si modifié. */
   const [draftVerifier, setDraftVerifier] = useState(false);
   const [nextBusy, setNextBusy] = useState(false);
+  const [fetchingMore, setFetchingMore] = useState(false);
 
   useEffect(() => {
     void fetchRefCategories()
@@ -112,26 +121,50 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
     setLoading(true);
     setLoadError(null);
     setData(null);
+    allServedQuestionIdsRef.current = [];
+    playedTowardResultsRef.current = 0;
 
     (async () => {
       try {
-        const order = playOrderFromSearch();
-        const qtype = playQtypeFromSearch();
+        const pf = playFetchParamsFromSearch();
+        const qtype = pf.qtype;
+        const orders = pf.orders;
+        const playUserId =
+          pf.userId ?? (playOrdersRequireUserId(orders) ? userId : undefined);
         if (collectionId === "random") {
-          const questions = await fetchRandomQuiz({ order, qtype });
+          const questions = await fetchRandomQuiz(
+            pf.useServerPlayModes
+              ? {
+                  orders: pf.orders,
+                  qtype: pf.qtype,
+                  userId: playUserId,
+                  infinite: pf.infinite,
+                  excludeIds: pf.excludeIds,
+                }
+              : { qtype: pf.qtype },
+          );
           if (cancelled) return;
           if (questions.length === 0) {
             setLoadError("empty");
             return;
+          }
+          if (pf.infinite) {
+            allServedQuestionIdsRef.current = questions.map((q) => q.id);
           }
           setData({
             mode: "random",
             collectionId: null,
             nom: "Mélange aléatoire",
             questions,
-            playOrder: order,
+            playOrders: orders,
             playQtype: qtype,
+            playInfinite: pf.infinite,
+            playUserId,
+            useServerPlayModes: pf.useServerPlayModes,
           });
+          setIndex(0);
+          setPickedId(null);
+          setGood(0);
           return;
         }
         const cid = Number(collectionId);
@@ -139,22 +172,44 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           setLoadError("bad");
           return;
         }
-        const col = await fetchCollection(cid, { qtype });
+        const col = await fetchCollection(
+          cid,
+          pf.useServerPlayModes
+            ? {
+                qtype: pf.qtype,
+                orders: pf.orders,
+                userId: playUserId,
+                infinite: pf.infinite,
+                excludeIds: pf.excludeIds,
+              }
+            : { qtype: pf.qtype },
+        );
         if (cancelled) return;
         if (col.questions.length === 0) {
           setLoadError("empty");
           return;
         }
-        const questions =
-          order === "random" ? shuffleQuestions(col.questions) : [...col.questions];
+        let questions = [...col.questions];
+        if (!pf.useServerPlayModes && orders.length === 1 && orders[0] === "random") {
+          questions = shuffleQuestions(questions);
+        }
+        if (pf.infinite) {
+          allServedQuestionIdsRef.current = questions.map((q) => q.id);
+        }
         setData({
           mode: "collection",
           collectionId: cid,
           nom: col.nom,
           questions,
-          playOrder: order,
+          playOrders: orders,
           playQtype: qtype,
+          playInfinite: pf.infinite,
+          playUserId,
+          useServerPlayModes: pf.useServerPlayModes,
         });
+        setIndex(0);
+        setPickedId(null);
+        setGood(0);
       } catch (e) {
         if (!cancelled) {
           const status = typeof e === "object" && e !== null && "status" in e ? (e as HttpError).status : undefined;
@@ -169,13 +224,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [collectionId, routePath]);
-
-  useEffect(() => {
-    setIndex(0);
-    setPickedId(null);
-    setGood(0);
-  }, [data]);
+  }, [collectionId, routePath, userId]);
 
   useLayoutEffect(() => {
     if (data == null) return;
@@ -405,7 +454,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   };
 
   const handleNext = () => {
-    if (nextBusy || pickedId == null) return;
+    if (nextBusy || pickedId == null || data == null) return;
     void (async () => {
       setNextBusy(true);
       try {
@@ -416,22 +465,113 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
         const nextGood = good + delta;
 
         if (index + 1 >= total) {
+          if (data.playInfinite) {
+            setFetchingMore(true);
+            try {
+              const excludeIds = allServedQuestionIdsRef.current;
+              const nextQuestions =
+                collectionId === "random"
+                  ? await fetchRandomQuiz({
+                      orders: data.playOrders,
+                      qtype: data.playQtype,
+                      userId: data.playUserId,
+                      infinite: true,
+                      excludeIds,
+                    })
+                  : (
+                      await fetchCollection(data.collectionId!, {
+                        orders: data.playOrders,
+                        qtype: data.playQtype,
+                        userId: data.playUserId,
+                        infinite: true,
+                        excludeIds,
+                      })
+                    ).questions;
+              playedTowardResultsRef.current += 1;
+              if (nextQuestions.length === 0) {
+                saveLastQuizResult({
+                  mode: data.mode,
+                  collectionId: data.collectionId,
+                  collectionName: data.nom,
+                  good: nextGood,
+                  total: playedTowardResultsRef.current,
+                  playOrders: data.playOrders,
+                  playQtype: data.playQtype,
+                  playInfinite: true,
+                });
+                route("/results");
+                return;
+              }
+              allServedQuestionIdsRef.current = [
+                ...allServedQuestionIdsRef.current,
+                ...nextQuestions.map((q) => q.id),
+              ];
+              setGood(nextGood);
+              setData((prev) =>
+                prev != null
+                  ? {
+                      ...prev,
+                      questions: nextQuestions,
+                    }
+                  : prev,
+              );
+              setIndex(0);
+              setPickedId(null);
+              return;
+            } catch {
+              setActionMessage("Impossible de charger la suite des questions.");
+            } finally {
+              setFetchingMore(false);
+            }
+            return;
+          }
+
+          playedTowardResultsRef.current += 1;
           saveLastQuizResult({
             mode: data.mode,
             collectionId: data.collectionId,
             collectionName: data.nom,
             good: nextGood,
-            total,
-            playOrder: data.playOrder,
+            total: playedTowardResultsRef.current,
+            playOrders: data.playOrders,
             playQtype: data.playQtype,
+            playInfinite: false,
           });
           route("/results");
           return;
         }
 
+        playedTowardResultsRef.current += 1;
         setGood(nextGood);
         setIndex((i) => i + 1);
         setPickedId(null);
+      } finally {
+        setNextBusy(false);
+      }
+    })();
+  };
+
+  const handleEndInfiniteSession = () => {
+    if (data == null || pickedId == null) return;
+    void (async () => {
+      setNextBusy(true);
+      try {
+        if (!(await syncVerifierIfNeeded())) return;
+        const delta =
+          pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
+        const nextGood = good + delta;
+        playedTowardResultsRef.current += 1;
+        saveLastQuizResult({
+          mode: data.mode,
+          collectionId: data.collectionId,
+          collectionName: data.nom,
+          good: nextGood,
+          total: playedTowardResultsRef.current,
+          playOrders: data.playOrders,
+          playQtype: data.playQtype,
+          playInfinite: true,
+        });
+        route("/results");
       } finally {
         setNextBusy(false);
       }
@@ -451,12 +591,19 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           </Button>
           <div class="flex flex-wrap items-center gap-2">
             <Badge tone={data.mode === "random" ? "flow" : "learn"}>{data.nom}</Badge>
-            <Badge tone="learn" class="font-normal opacity-90">
-              {data.playOrder === "linear" ? "Ordre linéaire" : "Ordre aléatoire"}
-            </Badge>
+            <span class="max-w-[min(100%,18rem)] truncate" title={playOrdersLabel(data.playOrders)}>
+              <Badge tone="learn" class="font-normal opacity-90">
+                {playOrdersLabel(data.playOrders)}
+              </Badge>
+            </span>
             <Badge tone="flow" class="font-normal opacity-90">
               {playQtypeLabel(data.playQtype)}
             </Badge>
+            {data.playInfinite ? (
+              <Badge tone="learn" class="font-normal opacity-90">
+                Session infinie
+              </Badge>
+            ) : null}
           </div>
         </div>
 
@@ -466,7 +613,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           </p>
         ) : null}
 
-        <ProgressBar value={progressValue} max={total} class="mb-6" />
+        {data.playInfinite ? null : <ProgressBar value={progressValue} max={total} class="mb-6" />}
 
         <div class="flex flex-col gap-4 md:flex-row md:items-stretch">
           <aside
@@ -559,15 +706,33 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
                     <>Ce n’était pas la bonne proposition.</>
                   )}
                 </p>
-                <div class="flex justify-center">
+                <div class="flex flex-col items-center justify-center gap-2 sm:flex-row">
                   <Button
                     variant="flow"
                     class="min-w-[11rem] px-8"
-                    disabled={nextBusy}
+                    disabled={nextBusy || fetchingMore}
                     onClick={handleNext}
                   >
-                    {nextBusy ? "Enregistrement…" : index >= total - 1 ? "Voir le résultat" : "Suivant"}
+                    {nextBusy
+                      ? "Enregistrement…"
+                      : fetchingMore
+                        ? "Chargement…"
+                        : index >= total - 1
+                          ? data.playInfinite
+                            ? "Nouvelles questions"
+                            : "Voir le résultat"
+                          : "Suivant"}
                   </Button>
+                  {data.playInfinite && index >= total - 1 ? (
+                    <Button
+                      variant="outline"
+                      class="min-w-[11rem] px-8"
+                      disabled={nextBusy || fetchingMore}
+                      onClick={() => handleEndInfiniteSession()}
+                    >
+                      Terminer la session
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ) : null}

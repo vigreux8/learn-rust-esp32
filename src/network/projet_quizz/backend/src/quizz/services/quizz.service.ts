@@ -9,7 +9,7 @@ import {
 } from '../quizz.type';
 import { AppCollectionImportBodyDto, LlmImportBodyDto } from '../dto/quizz.dto';
 import { QuizzImportService } from './quizz-import.service';
-import { QuizzReadService } from './quizz-read.service';
+import { QuizzReadService, type QuizPlaySessionOpts } from './quizz-read.service';
 import { QuizzStructureService } from './quizz-structure.service';
 import { QuizzWriteService } from './quizz-write.service';
 
@@ -37,15 +37,13 @@ export class QuizzService {
   getCollection(
     collectionId: number,
     qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
-    return this.read.getCollection(collectionId, qtype);
+    return this.read.getCollection(collectionId, qtype, play);
   }
 
-  randomQuizQuestions(
-    order: 'random' | 'linear' = 'random',
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
-  ): Promise<QuestionUi[]> {
-    return this.read.randomQuizQuestions(order, qtype);
+  randomQuizQuestions(opts: QuizPlaySessionOpts): Promise<QuestionUi[]> {
+    return this.read.randomQuizQuestions(opts);
   }
 
   listQuestions(

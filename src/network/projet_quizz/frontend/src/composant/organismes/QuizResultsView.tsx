@@ -1,8 +1,14 @@
 import { useMemo } from "preact/hooks";
 import { route } from "preact-router";
 import { Trophy } from "lucide-preact";
-import { buildPlaySessionQuery } from "../../lib/playOrder";
+import {
+  buildPlaySessionQuery,
+  isPlayOrder,
+  playOrdersRequireUserId,
+  type PlayOrder,
+} from "../../lib/playOrder";
 import { readLastQuizResult } from "../../lib/lastQuizResult";
+import { useUserSession } from "../../lib/userSession";
 import { AppHeader } from "../molecules/AppHeader";
 import { AppFooter } from "../molecules/AppFooter";
 import { Card } from "../atomes/Card";
@@ -13,6 +19,7 @@ import { Badge } from "../atomes/Badge";
  * Affiche le bilan du dernier quiz terminé (score, pourcentage) et propose de relancer avec les mêmes paramètres.
  */
 export function QuizResultsView() {
+  const { userId } = useUserSession();
   const result = useMemo(() => readLastQuizResult(), []);
 
   if (!result) {
@@ -32,9 +39,17 @@ export function QuizResultsView() {
 
   const pct = result.total <= 0 ? 0 : Math.round((result.good / result.total) * 100);
   const replay = () => {
+    const orders: PlayOrder[] =
+      result.playOrders != null && result.playOrders.length > 0
+        ? result.playOrders
+        : result.playOrder != null && isPlayOrder(result.playOrder)
+          ? [result.playOrder]
+          : ["random"];
     const q = buildPlaySessionQuery({
-      order: result.playOrder ?? "random",
+      orders,
       qtype: result.playQtype ?? "melanger",
+      infinite: result.playInfinite === true,
+      userId: playOrdersRequireUserId(orders) ? userId : undefined,
     });
     if (result.mode === "random") route(`/play/random${q}`);
     else if (result.collectionId != null) route(`/play/${result.collectionId}${q}`);

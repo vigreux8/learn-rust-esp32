@@ -2,10 +2,17 @@ import { ChevronRight, FolderTree, ListTree, Trash2, X } from "lucide-preact";
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
 import type { JSX } from "preact";
-import { buildPlaySessionQuery, type PlayOrder, type PlayQtype } from "../../lib/playOrder";
+import {
+  buildPlayOrdersFromPicker,
+  buildPlaySessionQuery,
+  playOrdersRequireUserId,
+  type PlayQtype,
+  type PlaySortBase,
+} from "../../lib/playOrder";
 import { Card } from "../atomes/Card";
 import { Badge } from "../atomes/Badge";
 import { Button } from "../atomes/Button";
+import { PlayModePicker } from "./PlayModePicker";
 import type { CollectionUi, QuizzModuleRow } from "../../types/quizz";
 
 export type CollectionCardProps = {
@@ -41,8 +48,12 @@ export function CollectionCard({
   const counts = collection.question_counts_by_type;
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
-  const [playOrder, setPlayOrder] = useState<PlayOrder>("random");
+  const [neverAnswered, setNeverAnswered] = useState(false);
+  const [sortBase, setSortBase] = useState<PlaySortBase>("none");
+  const [errorPriority, setErrorPriority] = useState(false);
+  const [shuffleExtra, setShuffleExtra] = useState(false);
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
+  const [playInfinite, setPlayInfinite] = useState(false);
   const linkedModules = collection.modules ?? [];
 
   const handleQuestionsClick = () => {
@@ -165,21 +176,21 @@ export function CollectionCard({
           ) : null}
         </div>
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
-          <label class="w-full text-xs font-medium text-base-content/55 sm:text-end" for={`play-order-${collection.id}`}>
-            Ordre des questions
-          </label>
-          <select
-            id={`play-order-${collection.id}`}
-            class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:max-w-[11rem]"
-            value={playOrder}
-            onChange={(e) => {
-              const v = (e.target as HTMLSelectElement).value;
-              setPlayOrder(v === "linear" ? "linear" : "random");
-            }}
-          >
-            <option value="random">Aléatoire</option>
-            <option value="linear">Linéaire</option>
-          </select>
+          <p class="w-full text-xs font-medium text-base-content/55 sm:text-end">Mode de jeu</p>
+          <div class="w-full rounded-xl border border-base-content/10 bg-base-100/50 p-2 sm:max-w-[14rem]">
+            <PlayModePicker
+              idPrefix={`col-${collection.id}`}
+              neverAnswered={neverAnswered}
+              onNeverAnswered={setNeverAnswered}
+              sortBase={sortBase}
+              onSortBase={setSortBase}
+              errorPriority={errorPriority}
+              onErrorPriority={setErrorPriority}
+              shuffleExtra={shuffleExtra}
+              onShuffleExtra={setShuffleExtra}
+              labelAlignClass="sm:text-end"
+            />
+          </div>
           <label class="w-full text-xs font-medium text-base-content/55 sm:text-end" for={`play-qtype-${collection.id}`}>
             Type de questions
           </label>
@@ -196,6 +207,15 @@ export function CollectionCard({
             <option value="histoire">Histoire</option>
             <option value="pratique">Pratique</option>
           </select>
+          <label class="flex cursor-pointer items-center justify-end gap-2 text-xs text-base-content/70">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-xs checkbox-primary"
+              checked={playInfinite}
+              onChange={(e) => setPlayInfinite((e.target as HTMLInputElement).checked)}
+            />
+            Session infinie (15)
+          </label>
           <Button
             variant="outline"
             class="btn-sm gap-1"
@@ -207,9 +227,22 @@ export function CollectionCard({
           <Button
             variant="flow"
             class="btn-sm gap-1"
-            onClick={() =>
-              route(`/play/${collection.id}${buildPlaySessionQuery({ order: playOrder, qtype: playQtype })}`)
-            }
+            onClick={() => {
+              const orders = buildPlayOrdersFromPicker({
+                neverAnswered,
+                sortBase,
+                errorPriority,
+                shuffleExtra,
+              });
+              route(
+                `/play/${collection.id}${buildPlaySessionQuery({
+                  orders,
+                  qtype: playQtype,
+                  infinite: playInfinite,
+                  userId: playOrdersRequireUserId(orders) ? myUserId : undefined,
+                })}`,
+              );
+            }}
           >
             Jouer
             <ChevronRight class="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />

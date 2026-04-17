@@ -12,6 +12,24 @@ import {
   RefCategorieRow,
 } from '../quizz.type';
 
+export type QuizPlayOrder =
+  | 'random'
+  | 'linear'
+  | 'jamais_repondu'
+  | 'recent'
+  | 'ancien'
+  | 'mal_repondu';
+
+export type QuizPlaySessionOpts = {
+  /** Modes appliqués dans l’ordre (ex. `ancien` puis `mal_repondu`). */
+  orders: QuizPlayOrder[];
+  /** Présent pour le tirage « toutes collections » (`GET /quizz/random`). */
+  qtype?: 'histoire' | 'pratique' | 'melanger';
+  userId?: number;
+  limit?: number;
+  excludeIds: number[];
+};
+
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -135,6 +153,7 @@ export class QuizzReadService {
   async getCollection(
     collectionId: number,
     qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
     const ui = await this.buildCollectionUi(collectionId, qtype);
     if (!ui || ui.questions.length === 0) {
@@ -144,13 +163,128 @@ export class QuizzReadService {
           : `Collection ${collectionId} introuvable ou vide`,
       );
     }
-    return ui;
+    if (play == null) {
+      return ui;
+    }
+    const exclude = new Set(play.excludeIds);
+    let questions = ui.questions.filter((q) => !exclude.has(q.id));
+    questions = await this.applyPlayOrders(questions, play.orders, play.userId);
+    if (play.limit != null && questions.length > play.limit) {
+      questions = questions.slice(0, play.limit);
+    }
+    if (questions.length === 0) {
+      throw new NotFoundException(
+        play.orders.includes('jamais_repondu')
+          ? `Aucune question « jamais répondue » disponible pour cet utilisateur dans la collection ${collectionId} (avec ce filtre).`
+          : `Aucune question disponible dans la collection ${collectionId} avec ces critères.`,
+      );
+    }
+    return { ...ui, questions };
   }
 
-  async randomQuizQuestions(
-    order: 'random' | 'linear' = 'random',
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+  private compareCreateAtIso(a: string, b: string): number {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+  }
+
+  private async distinctAttemptedQuestionIds(
+    userId: number,
+    questionIds: number[],
+  ): Promise<Set<number>> {
+    if (questionIds.length === 0) return new Set();
+    const rows = await this.prisma.prisma.user_kpi.findMany({
+      where: { user_id: userId, question_id: { in: questionIds } },
+      select: { question_id: true },
+      distinct: ['question_id'],
+    });
+    return new Set(rows.map((r) => r.question_id));
+  }
+
+  private async kpiGoodBadCounts(
+    userId: number,
+    questionIds: number[],
+  ): Promise<Map<number, { good: number; bad: number }>> {
+    const map = new Map<number, { good: number; bad: number }>();
+    if (questionIds.length === 0) return map;
+    const kpis = await this.prisma.prisma.user_kpi.findMany({
+      where: { user_id: userId, question_id: { in: questionIds } },
+      select: {
+        question_id: true,
+        quizz_reponse: { select: { bonne_reponse: true } },
+      },
+    });
+    for (const k of kpis) {
+      const ok = k.quizz_reponse.bonne_reponse === 1;
+      const cur = map.get(k.question_id) ?? { good: 0, bad: 0 };
+      if (ok) cur.good += 1;
+      else cur.bad += 1;
+      map.set(k.question_id, cur);
+    }
+    return map;
+  }
+
+  private async applySinglePlayOrder(
+    questions: QuestionUi[],
+    order: QuizPlayOrder,
+    userId?: number,
   ): Promise<QuestionUi[]> {
+    const copy = [...questions];
+    switch (order) {
+      case 'linear':
+        /** Ordre de liaison collection (ou id croissant côté `findMany` global) — on ne réordonne pas. */
+        return copy;
+      case 'random':
+        return shuffle(copy);
+      case 'recent':
+        return copy.sort((a, b) => this.compareCreateAtIso(b.create_at, a.create_at));
+      case 'ancien':
+        return copy.sort((a, b) => this.compareCreateAtIso(a.create_at, b.create_at));
+      case 'jamais_repondu': {
+        if (userId === undefined) {
+          throw new BadRequestException('userId requis pour jamais_repondu');
+        }
+        const ids = copy.map((q) => q.id);
+        const attempted = await this.distinctAttemptedQuestionIds(userId, ids);
+        return copy.filter((q) => !attempted.has(q.id));
+      }
+      case 'mal_repondu': {
+        if (userId === undefined) {
+          throw new BadRequestException('userId requis pour mal_repondu');
+        }
+        const ids = copy.map((q) => q.id);
+        const stats = await this.kpiGoodBadCounts(userId, ids);
+        const scored = copy.map((q) => {
+          const s = stats.get(q.id);
+          const good = s?.good ?? 0;
+          const bad = s?.bad ?? 0;
+          const w = 1 + Math.max(0, bad - good);
+          const key = -Math.log(Math.max(1e-12, Math.random())) / w;
+          return { q, key };
+        });
+        scored.sort((a, b) => a.key - b.key);
+        return scored.map((x) => x.q);
+      }
+      default:
+        return shuffle(copy);
+    }
+  }
+
+  private async applyPlayOrders(
+    questions: QuestionUi[],
+    orders: QuizPlayOrder[],
+    userId?: number,
+  ): Promise<QuestionUi[]> {
+    let pool = [...questions];
+    for (const step of orders) {
+      pool = await this.applySinglePlayOrder(pool, step, userId);
+    }
+    return pool;
+  }
+
+  async randomQuizQuestions(opts: QuizPlaySessionOpts): Promise<QuestionUi[]> {
+    const { orders, userId, limit, excludeIds } = opts;
+    const qtype = opts.qtype ?? 'melanger';
     const where =
       qtype === 'melanger'
         ? {}
@@ -168,8 +302,13 @@ export class QuizzReadService {
         },
       },
     });
-    const mapped = rows.map((q) => this.mapQuestionToUi(q));
-    return order === 'linear' ? mapped : shuffle(mapped);
+    const exclude = new Set(excludeIds);
+    let mapped = rows.map((q) => this.mapQuestionToUi(q)).filter((q) => !exclude.has(q.id));
+    mapped = await this.applyPlayOrders(mapped, orders, userId);
+    if (limit != null && mapped.length > limit) {
+      mapped = mapped.slice(0, limit);
+    }
+    return mapped;
   }
 
   async listRefCategories(): Promise<RefCategorieRow[]> {

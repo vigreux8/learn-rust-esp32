@@ -25,12 +25,107 @@ import {
   UpdateReponseDto,
 } from './dto/quizz.dto';
 
-function parsePlayOrderQuery(orderRaw?: string): 'random' | 'linear' {
-  if (orderRaw === undefined || orderRaw === '') return 'random';
-  if (orderRaw === 'random' || orderRaw === 'linear') return orderRaw;
-  throw new BadRequestException(
-    'Query order : utiliser "random" (défaut) ou "linear"',
-  );
+type QuizPlayOrderQuery =
+  | 'random'
+  | 'linear'
+  | 'jamais_repondu'
+  | 'recent'
+  | 'ancien'
+  | 'mal_repondu';
+
+const ALLOWED_PLAY_ORDER: QuizPlayOrderQuery[] = [
+  'random',
+  'linear',
+  'jamais_repondu',
+  'recent',
+  'ancien',
+  'mal_repondu',
+];
+
+function parseOnePlayOrderToken(token: string): QuizPlayOrderQuery {
+  const t = token.trim();
+  if (t === '') {
+    throw new BadRequestException('Query order : segment vide (virgules en trop ?)');
+  }
+  if (!(ALLOWED_PLAY_ORDER as string[]).includes(t)) {
+    throw new BadRequestException(
+      `Query order : segment inconnu « ${t} ». Valeurs : ${ALLOWED_PLAY_ORDER.join(', ')}`,
+    );
+  }
+  return t as QuizPlayOrderQuery;
+}
+
+/** Plusieurs modes séparés par des virgules, appliqués dans l’ordre (ex. `ancien,mal_repondu`). */
+function parsePlayOrdersQuery(orderRaw?: string): QuizPlayOrderQuery[] {
+  if (orderRaw === undefined || orderRaw.trim() === '') {
+    return ['random'];
+  }
+  const parts = orderRaw.split(',');
+  if (parts.length > 12) {
+    throw new BadRequestException('Query order : au plus 12 segments séparés par des virgules');
+  }
+  const out: QuizPlayOrderQuery[] = [];
+  for (const p of parts) {
+    const mode = parseOnePlayOrderToken(p);
+    if (out.length === 0 || out[out.length - 1] !== mode) {
+      out.push(mode);
+    }
+  }
+  if (out.length === 0) {
+    return ['random'];
+  }
+  /** Compat : seul « jamais_repondu » gardait un tirage aléatoire parmi les questions filtrées. */
+  if (out.length === 1 && out[0] === 'jamais_repondu') {
+    return ['jamais_repondu', 'random'];
+  }
+  return out;
+}
+
+function parseUserIdQueryOptional(raw?: string): number | undefined {
+  if (raw === undefined || raw === '') return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new BadRequestException('Query userId : entier ≥ 1 attendu si le paramètre est fourni');
+  }
+  return n;
+}
+
+function parseInfiniteQuery(raw?: string): boolean {
+  if (raw === undefined || raw === '') return false;
+  const v = raw.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+function parseExcludeIdsQuery(raw?: string): number[] {
+  if (raw === undefined || raw.trim() === '') return [];
+  const parts = raw.split(',');
+  const out: number[] = [];
+  for (const p of parts) {
+    const n = Number(p.trim());
+    if (!Number.isInteger(n) || n < 1) {
+      throw new BadRequestException(
+        'Query exclude : liste d’entiers séparés par des virgules (ex. 1,2,3)',
+      );
+    }
+    out.push(n);
+  }
+  if (out.length > 500) {
+    throw new BadRequestException('Query exclude : au plus 500 identifiants');
+  }
+  return [...new Set(out)];
+}
+
+function assertOrdersRequireUserId(
+  orders: QuizPlayOrderQuery[],
+  userId: number | undefined,
+): void {
+  const needs =
+    orders.includes('jamais_repondu') || orders.includes('mal_repondu');
+  if (needs && userId === undefined) {
+    throw new BadRequestException(
+      'Query userId (entier ≥ 1) requis si order contient jamais_repondu et/ou mal_repondu',
+    );
+  }
 }
 
 function parseImportCategorie(raw?: string): 'histoire' | 'pratique' {
@@ -97,9 +192,31 @@ export class QuizzController {
   getCollection(
     @Param('id', ParseIntPipe) id: number,
     @Query('qtype') qtypeRaw?: string,
+    @Query('order') orderRaw?: string,
+    @Query('userId') userIdRaw?: string,
+    @Query('infinite') infiniteRaw?: string,
+    @Query('exclude') excludeRaw?: string,
   ) {
     const qtype = parsePlayQtypeQuery(qtypeRaw);
-    return this.quizz.getCollection(id, qtype);
+    const hasPlay =
+      (orderRaw != null && orderRaw !== '') ||
+      (userIdRaw != null && userIdRaw !== '') ||
+      (infiniteRaw != null && infiniteRaw !== '') ||
+      (excludeRaw != null && excludeRaw !== '');
+    if (!hasPlay) {
+      return this.quizz.getCollection(id, qtype);
+    }
+    const orders = parsePlayOrdersQuery(orderRaw);
+    const userId = parseUserIdQueryOptional(userIdRaw);
+    assertOrdersRequireUserId(orders, userId);
+    const infinite = parseInfiniteQuery(infiniteRaw);
+    const excludeIds = parseExcludeIdsQuery(excludeRaw);
+    return this.quizz.getCollection(id, qtype, {
+      orders,
+      userId,
+      limit: infinite ? 15 : undefined,
+      excludeIds,
+    });
   }
 
   @Post('collections/:id/modules')
@@ -131,10 +248,23 @@ export class QuizzController {
   randomQuiz(
     @Query('order') orderRaw?: string,
     @Query('qtype') qtypeRaw?: string,
+    @Query('userId') userIdRaw?: string,
+    @Query('infinite') infiniteRaw?: string,
+    @Query('exclude') excludeRaw?: string,
   ) {
-    const order = parsePlayOrderQuery(orderRaw);
+    const orders = parsePlayOrdersQuery(orderRaw);
     const qtype = parsePlayQtypeQuery(qtypeRaw);
-    return this.quizz.randomQuizQuestions(order, qtype);
+    const userId = parseUserIdQueryOptional(userIdRaw);
+    assertOrdersRequireUserId(orders, userId);
+    const infinite = parseInfiniteQuery(infiniteRaw);
+    const excludeIds = parseExcludeIdsQuery(excludeRaw);
+    return this.quizz.randomQuizQuestions({
+      orders,
+      qtype,
+      userId,
+      limit: infinite ? 15 : undefined,
+      excludeIds,
+    });
   }
 
   @Get('questions')
