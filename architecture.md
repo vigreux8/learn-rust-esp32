@@ -12,15 +12,20 @@ Deux modes de pilotage existent côté interface:
 - `WebSocketServo` (route cliente `/`)
 - `HttpServo` (route cliente `/http`)
 
-Les interfaces utilisateur sont développées en **Preact** (TypeScript, Vite), regroupées sous `src/network/frontend/` :
+Les interfaces utilisateur sont développées en **Preact** (TypeScript, Vite), avec deux emplacements :
 
 - `src/network/frontend/pilotage_servo_moteur/` : pilotage des servomoteurs (routes clientes `/` et `/http`)
-- `src/network/frontend/quizz/frontend/` : interface quizz
+- `src/network/projet_quizz/frontend/` : interface quizz
 - `src/network/frontend/reglage_bouton/` : réglage des moteur (depricier se front-end seras supprimée)
 
 Chaque application Vite est compilée vers **`src/network/site_compiled/`** (`outDir` relatif), puis le firmware **embarque** ces fichiers via `include_str!` dans `src/network/handlers/http.rs` (seul cet artefact part sur l’ESP32).
 
-Le dossier **`src/network/backend/`** sert de **laboratoire** pour du code TypeScript (ex. API de développement pour le quizz dans `src/network/backend/quizz/` quand tu en auras besoin). Ce code **n’est pas** compilé ni flashé par Cargo ; la logique métier visée en production reste le **backend Rust** embarqué.
+Le dossier **`src/network/projet_quizz/`** regroupe le projet TypeScript du quizz :
+
+- `src/network/projet_quizz/frontend/` : interface Vite
+- `src/network/projet_quizz/backend/` : API Nest + SQLite/Prisma
+
+Ce code **n’est pas** compilé ni flashé par Cargo ; la logique métier visée en production reste le **backend Rust** embarqué.
 
 Le backend réseau embarqué est en Rust (`esp-idf-svc`) avec :
 
@@ -53,22 +58,27 @@ src/
     │   ├── mod.rs
     │   ├── http.rs                # Statiques + POST API ; `include_str!(../site_compiled/...)`
     │   └── ws.rs
-    └── frontend/
-        ├── pilotage_servo_moteur/ # Preact pilotage servo
+    ├── frontend/
+    │   ├── pilotage_servo_moteur/ # Preact pilotage servo
+    │   │   ├── package.json
+    │   │   ├── vite.config.ts
+    │   │   ├── index.html
+    │   │   └── src/
+    │   └── reglage_bouton/        # Preact réglage bouton
+    │       ├── package.json
+    │       ├── vite.config.ts
+    │       ├── index.html
+    │       └── src/
+    └── projet_quizz/
+        ├── frontend/              # Preact quizz
         │   ├── package.json
         │   ├── vite.config.ts
         │   ├── index.html
         │   └── src/
-        ├── quizz/
-        │   └── frontend/          # Preact quizz
-        │       ├── package.json
-        │       ├── vite.config.ts
-        │       ├── index.html
-        │       └── src/
-        └── reglage_bouton/        # Preact réglage bouton
+        └── backend/               # Nest quizz + Prisma + SQLite
             ├── package.json
-            ├── vite.config.ts
-            ├── index.html
+            ├── prisma/
+            ├── ddb/
             └── src/
 ```
 
@@ -127,7 +137,7 @@ src/
 - techno :
   - preact
 
-### Frontend quizz (`src/network/frontend/quizz/frontend/src/`)
+### Frontend quizz (`src/network/projet_quizz/frontend/src/`)
 
 - interface pour jouée au quizz et communiquer avec la base de donnée sqlite quizz
 - techo :
