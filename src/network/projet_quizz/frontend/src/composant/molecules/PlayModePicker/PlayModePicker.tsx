@@ -1,19 +1,6 @@
-import type { PlaySortBase } from "../../../lib/playOrder";
 import { PLAY_MODE_SORT_OPTIONS } from "./PlayModePicker.metier";
 import { PLAY_MODE_PICKER_STYLES } from "./PlayModePicker.styles";
-
-export type PlayModePickerProps = {
-  idPrefix: string;
-  neverAnswered: boolean;
-  onNeverAnswered: (v: boolean) => void;
-  sortBase: PlaySortBase;
-  onSortBase: (v: PlaySortBase) => void;
-  errorPriority: boolean;
-  onErrorPriority: (v: boolean) => void;
-  shuffleExtra: boolean;
-  onShuffleExtra: (v: boolean) => void;
-  labelAlignClass?: string;
-};
+import type { PlayModePickerProps } from "./PlayModePicker.types";
 
 export function PlayModePicker({
   idPrefix,

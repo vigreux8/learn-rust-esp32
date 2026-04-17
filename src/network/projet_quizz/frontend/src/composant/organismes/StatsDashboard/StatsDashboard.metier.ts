@@ -1,4 +1,5 @@
 import type { UserKpiRow } from "../../../types/quizz";
+import type { DayBar, KpisAgg } from "./StatsDashboard.types";
 
 function avg(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -19,8 +20,6 @@ function pad2(n: number): string {
 function localYmd(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
-
-export type DayBar = { key: string; label: string; count: number; h: number };
 
 export function dailyActivityLast7Days(kpis: UserKpiRow[], now = new Date()): DayBar[] {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -50,14 +49,7 @@ export function dailyActivityLast7Days(kpis: UserKpiRow[], now = new Date()): Da
 export function computeKpisAgg(
   kpis: UserKpiRow[],
   sessions: { good: number; total: number }[],
-): {
-  total: number;
-  good: number;
-  ratio: number;
-  avgSecLabel: string;
-  uniqueQuestions: number;
-  sessionsHint: string;
-} {
+): KpisAgg {
   const total = kpis.length;
   const good = kpis.filter((k) => k.correct).length;
   const ratio = total === 0 ? 0 : Math.round((good / total) * 100);

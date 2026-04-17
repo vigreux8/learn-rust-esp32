@@ -1,4 +1,4 @@
-type LinkedModule = { id: number };
+import type { LinkedModule } from "./CollectionCard.types";
 
 export function buildQuestionsRoutePath(collectionId: number, linkedModules: LinkedModule[]): string {
   const first = linkedModules[0];

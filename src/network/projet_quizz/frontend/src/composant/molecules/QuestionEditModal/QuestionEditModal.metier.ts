@@ -1,4 +1,4 @@
-export type CreateReponseDraft = { texte: string; correcte: boolean };
+import type { CreateReponseDraft } from "./QuestionEditModal.types";
 
 export function defaultCreateReponses(): CreateReponseDraft[] {
   return [

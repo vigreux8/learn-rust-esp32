@@ -7,7 +7,7 @@ import { DatabaseTransferView } from "./composant/organismes/DatabaseTransferVie
 import { HomeView } from "./composant/organismes/HomeView/HomeView";
 import { QuestionsView } from "./composant/organismes/QuestionsView/QuestionsView";
 import { QuizResultsView } from "./composant/organismes/QuizResultsView/QuizResultsView";
-import { QuizSessionView } from "./composant/organismes/QuizSessionView";
+import { QuizSessionView } from "./composant/organismes/QuizSessionView/QuizSessionView";
 import { SessionDetailsView } from "./composant/organismes/SessionDetailsView/SessionDetailsView";
 import { StatsDashboard } from "./composant/organismes/StatsDashboard/StatsDashboard";
 

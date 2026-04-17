@@ -1,16 +1,7 @@
 import { cn } from "../../../lib/cn";
 import { getAnswerOptionState } from "./AnswerOption.metier";
 import { ANSWER_OPTION_STYLES } from "./AnswerOption.styles";
-
-export type AnswerOptionProps = {
-  label: string;
-  reponseId: number;
-  pickedId: number | null;
-  revealed: boolean;
-  isCorrectAnswer: boolean;
-  disabled: boolean;
-  onPick: () => void;
-};
+import type { AnswerOptionProps } from "./AnswerOption.types";
 
 export function AnswerOption({
   label,

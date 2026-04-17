@@ -1,11 +1,5 @@
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
-
-export type CollectionFilter = "all" | "mine" | `user-${number}`;
-
-export type PendingDelete =
-  | null
-  | { kind: "collection"; data: CollectionUi }
-  | { kind: "module"; data: QuizzModuleRow };
+import type { CollectionUi } from "../../../types/quizz";
+import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 
 export function pendingDeleteLabels(pending: PendingDelete): { title: string; message: string } | null {
   if (pending == null) return null;

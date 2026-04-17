@@ -3,7 +3,7 @@ import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { CollectionCard } from "../../molecules/CollectionCard/CollectionCard";
-import type { CollectionFilter, PendingDelete } from "./CollectionsView.metier";
+import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 
 export function CollectionsHeader({
   jsonImportOpen,

@@ -1,10 +1,12 @@
+import type { HeaderLink } from "./AppHeader.types";
+
 export const HEADER_LINKS = [
   { href: "/", label: "Accueil" },
   { href: "/collections", label: "Collection" },
   { href: "/questions", label: "Question" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/database", label: "Export/Import" },
-] as const;
+] as const satisfies readonly HeaderLink[];
 
 export function pathWithoutQuery(p: string): string {
   const i = p.indexOf("?");

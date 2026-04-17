@@ -1,79 +1,43 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
-import { ArrowLeft, ClipboardCopy, Pencil, Plus } from "lucide-preact";
 import {
   fetchCollection,
-  fetchRandomQuiz,
   fetchQuestionDetail,
+  fetchRandomQuiz,
   fetchRefCategories,
   patchQuestion,
   postCreateQuestion,
   postQuizKpi,
   type HttpError,
-} from "../../lib/api";
-import { useRoutePath } from "../../lib/routePathContext";
+} from "../../../lib/api";
 import {
   playFetchParamsFromSearch,
-  playOrdersLabel,
   playOrdersRequireUserId,
-  playQtypeLabel,
   shuffleQuestions,
-  type PlayOrder,
-  type PlayQtype,
-} from "../../lib/playOrder";
-import { useUserSession } from "../../lib/userSession";
-import type { QuestionUi, QuizzQuestionDetail, RefCategorieRow } from "../../types/quizz";
-import { saveLastQuizResult } from "../../lib/lastQuizResult";
-import { AppHeader } from "../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../molecules/AppFooter/AppFooter";
-import { Card } from "../atomes/Card/Card";
-import { Button } from "../atomes/Button/Button";
-import { ProgressBar } from "../atomes/ProgressBar/ProgressBar";
-import { Badge } from "../atomes/Badge/Badge";
-import { AnswerOption } from "../molecules/AnswerOption/AnswerOption";
+} from "../../../lib/playOrder";
+import { saveLastQuizResult } from "../../../lib/lastQuizResult";
+import { useRoutePath } from "../../../lib/routePathContext";
+import { useUserSession } from "../../../lib/userSession";
+import type { QuestionUi, QuizzQuestionDetail, RefCategorieRow } from "../../../types/quizz";
 import {
   QuestionEditModal,
   type QuestionCreateSavePayload,
-} from "../molecules/QuestionEditModal/QuestionEditModal";
-import { cn } from "../../lib/cn";
-
-export type QuizSessionViewProps = {
-  collectionId?: string;
-};
-
-type SessionData = {
-  mode: "collection" | "random";
-  collectionId: number | null;
-  nom: string;
-  questions: QuestionUi[];
-  playOrders: PlayOrder[];
-  playQtype: PlayQtype;
-  playInfinite: boolean;
-  /** Pour les requêtes API (modes KPI). */
-  playUserId?: number;
-  /** Si faux, l’ordre aléatoire est appliqué côté client (URLs sans paramètres de jeu). */
-  useServerPlayModes: boolean;
-};
-
-function isPickedCorrect(questions: QuestionUi[], qIndex: number, reponseId: number): boolean {
-  const cur = questions[qIndex];
-  return cur?.reponses.some((r) => r.id === reponseId && r.bonne_reponse) ?? false;
-}
-
-function buildQuestionCopyJson(q: QuestionUi): string {
-  return JSON.stringify(
-    {
-      question: q.question,
-      commentaire: q.commentaire,
-      reponses: q.reponses.map((r) => ({
-        reponse: r.reponse,
-        bonne_reponse: r.bonne_reponse,
-      })),
-    },
-    null,
-    2,
-  );
-}
+} from "../../molecules/QuestionEditModal/QuestionEditModal";
+import {
+  buildQuestionCopyJson,
+  isPickedCorrect,
+} from "./QuizSessionView.metier";
+import type { QuizSessionViewProps, SessionData } from "./QuizSessionView.types";
+import {
+  QuizSessionError,
+  QuizSessionHeader,
+  QuizSessionLoading,
+  QuizSessionProgress,
+  QuizSessionQuestionCard,
+} from "./QuizSessionView.sections";
+import { QUIZ_SESSION_STYLES } from "./QuizSessionView.styles";
+import { AppFooter } from "../../molecules/AppFooter/AppFooter";
+import { AppHeader } from "../../molecules/AppHeader/AppHeader";
 
 /**
  * Déroulé d’une session de quiz (collection ou aléatoire) : chargement des questions, réponses, progression et envoi des KPI.
@@ -105,7 +69,6 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   const [draftCategorieId, setDraftCategorieId] = useState<number | null>(null);
   const [questionModalSaving, setQuestionModalSaving] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  /** Fake-checker (`verifier`) ; persisté au clic sur « Suivant » si modifié. */
   const [draftVerifier, setDraftVerifier] = useState(false);
   const [nextBusy, setNextBusy] = useState(false);
   const [fetchingMore, setFetchingMore] = useState(false);
@@ -129,8 +92,8 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
         const pf = playFetchParamsFromSearch();
         const qtype = pf.qtype;
         const orders = pf.orders;
-        const playUserId =
-          pf.userId ?? (playOrdersRequireUserId(orders) ? userId : undefined);
+        const playUserId = pf.userId ?? (playOrdersRequireUserId(orders) ? userId : undefined);
+
         if (collectionId === "random") {
           const questions = await fetchRandomQuiz(
             pf.useServerPlayModes
@@ -148,9 +111,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
             setLoadError("empty");
             return;
           }
-          if (pf.infinite) {
-            allServedQuestionIdsRef.current = questions.map((q) => q.id);
-          }
+          if (pf.infinite) allServedQuestionIdsRef.current = questions.map((q) => q.id);
           setData({
             mode: "random",
             collectionId: null,
@@ -167,6 +128,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
           setGood(0);
           return;
         }
+
         const cid = Number(collectionId);
         if (!Number.isFinite(cid)) {
           setLoadError("bad");
@@ -193,9 +155,8 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
         if (!pf.useServerPlayModes && orders.length === 1 && orders[0] === "random") {
           questions = shuffleQuestions(questions);
         }
-        if (pf.infinite) {
-          allServedQuestionIdsRef.current = questions.map((q) => q.id);
-        }
+        if (pf.infinite) allServedQuestionIdsRef.current = questions.map((q) => q.id);
+
         setData({
           mode: "collection",
           collectionId: cid,
@@ -212,7 +173,10 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
         setGood(0);
       } catch (e) {
         if (!cancelled) {
-          const status = typeof e === "object" && e !== null && "status" in e ? (e as HttpError).status : undefined;
+          const status =
+            typeof e === "object" && e !== null && "status" in e
+              ? (e as HttpError).status
+              : undefined;
           if (status === 404) setLoadError("empty");
           else setLoadError("fetch");
         }
@@ -307,9 +271,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
     try {
       const payload: { question?: string; commentaire?: string; categorie_id?: number } = {};
       if (draftQuestion !== questionModalDetail.question) payload.question = draftQuestion;
-      if (draftCommentaire !== questionModalDetail.commentaire) {
-        payload.commentaire = draftCommentaire;
-      }
+      if (draftCommentaire !== questionModalDetail.commentaire) payload.commentaire = draftCommentaire;
       if (draftCategorieId != null && draftCategorieId !== questionModalDetail.categorie_id) {
         payload.categorie_id = draftCategorieId;
       }
@@ -376,40 +338,8 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
     }
   };
 
-  if (loading) {
-    return (
-      <div class="flex min-h-dvh flex-col">
-        <AppHeader />
-        <main class="fl-page-enter mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-          <p class="text-base text-base-content/70">Chargement du quiz…</p>
-        </main>
-        <AppFooter />
-      </div>
-    );
-  }
-
-  if (loadError != null || !data) {
-    return (
-      <div class="flex min-h-dvh flex-col">
-        <AppHeader />
-        <main class="fl-page-enter mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-          <p class="text-lg font-medium text-base-content">Parcours introuvable</p>
-          {loadError === "fetch" ? (
-            <p class="text-sm text-base-content/60">Impossible de joindre l’API. Le backend est-il démarré ?</p>
-          ) : null}
-          {loadError === "empty" ? (
-            <p class="text-sm text-base-content/60">
-              Aucune question avec ce filtre (essaie « Mélanger » ou un autre type) ou collection vide.
-            </p>
-          ) : null}
-          <Button variant="flow" onClick={() => route("/")}>
-            Accueil
-          </Button>
-        </main>
-        <AppFooter />
-      </div>
-    );
-  }
+  if (loading) return <QuizSessionLoading />;
+  if (loadError != null || !data) return <QuizSessionError loadError={loadError} />;
 
   const q = data.questions[index];
   const total = data.questions.length;
@@ -433,7 +363,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   };
 
   const syncVerifierIfNeeded = async (): Promise<boolean> => {
-    const curQ = data!.questions[index];
+    const curQ = data.questions[index];
     if (draftVerifier === curQ.verifier) return true;
     try {
       const updated = await patchQuestion(curQ.id, { verifier: draftVerifier });
@@ -441,9 +371,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
         if (!prev) return prev;
         const qs = [...prev.questions];
         const i = qs.findIndex((x) => x.id === curQ.id);
-        if (i >= 0 && qs[i]) {
-          qs[i] = { ...qs[i]!, verifier: updated.verifier };
-        }
+        if (i >= 0 && qs[i]) qs[i] = { ...qs[i]!, verifier: updated.verifier };
         return { ...prev, questions: qs };
       });
       return true;
@@ -460,8 +388,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
       try {
         if (!(await syncVerifierIfNeeded())) return;
 
-        const delta =
-          pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
+        const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
         const nextGood = good + delta;
 
         if (index + 1 >= total) {
@@ -487,6 +414,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
                         excludeIds,
                       })
                     ).questions;
+
               playedTowardResultsRef.current += 1;
               if (nextQuestions.length === 0) {
                 saveLastQuizResult({
@@ -502,19 +430,13 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
                 route("/results");
                 return;
               }
+
               allServedQuestionIdsRef.current = [
                 ...allServedQuestionIdsRef.current,
-                ...nextQuestions.map((q) => q.id),
+                ...nextQuestions.map((nq) => nq.id),
               ];
               setGood(nextGood);
-              setData((prev) =>
-                prev != null
-                  ? {
-                      ...prev,
-                      questions: nextQuestions,
-                    }
-                  : prev,
-              );
+              setData((prev) => (prev != null ? { ...prev, questions: nextQuestions } : prev));
               setIndex(0);
               setPickedId(null);
               return;
@@ -557,8 +479,7 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
       setNextBusy(true);
       try {
         if (!(await syncVerifierIfNeeded())) return;
-        const delta =
-          pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
+        const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
         const nextGood = good + delta;
         playedTowardResultsRef.current += 1;
         saveLastQuizResult({
@@ -581,163 +502,36 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
   const backTarget = data.mode === "random" ? "/" : "/collections";
 
   return (
-    <div class="flex min-h-dvh flex-col">
+    <div class={QUIZ_SESSION_STYLES.pageShell}>
       <AppHeader />
-      <main class="fl-page-enter mx-auto w-full max-w-2xl flex-1 px-4 py-6 md:py-8">
-        <div class="mb-6 flex items-center gap-2">
-          <Button variant="ghost" class="btn-sm gap-1 px-3" onClick={() => route(backTarget)}>
-            <ArrowLeft class="h-4 w-4" aria-hidden />
-            Retour
-          </Button>
-          <div class="flex flex-wrap items-center gap-2">
-            <Badge tone={data.mode === "random" ? "flow" : "learn"}>{data.nom}</Badge>
-            <span class="max-w-[min(100%,18rem)] truncate" title={playOrdersLabel(data.playOrders)}>
-              <Badge tone="learn" class="font-normal opacity-90">
-                {playOrdersLabel(data.playOrders)}
-              </Badge>
-            </span>
-            <Badge tone="flow" class="font-normal opacity-90">
-              {playQtypeLabel(data.playQtype)}
-            </Badge>
-            {data.playInfinite ? (
-              <Badge tone="learn" class="font-normal opacity-90">
-                Session infinie
-              </Badge>
-            ) : null}
-          </div>
-        </div>
-
-        {actionMessage ? (
-          <p class="mb-3 rounded-xl border border-flow/20 bg-flow/5 px-3 py-2 text-center text-sm text-base-content">
-            {actionMessage}
-          </p>
-        ) : null}
-
-        {data.playInfinite ? null : <ProgressBar value={progressValue} max={total} class="mb-6" />}
-
-        <div class="flex flex-col gap-4 md:flex-row md:items-stretch">
-          <aside
-            class="flex shrink-0 flex-row flex-wrap gap-2 md:w-36 md:flex-col md:items-stretch"
-            aria-label="Actions sur la question"
-          >
-            <Button
-              variant="outline"
-              class="btn-sm flex-1 gap-1 sm:flex-none"
-              type="button"
-              title="Ajouter une question liée à celle-ci (relation parent → enfant)"
-              onClick={() => openCreateLinkedQuestionModal(q)}
-            >
-              <Plus class="h-4 w-4 shrink-0" aria-hidden />
-              <span class="hidden sm:inline">Ajouter</span>
-            </Button>
-            <Button
-              variant="outline"
-              class="btn-sm flex-1 gap-1 sm:flex-none"
-              type="button"
-              title="Modifier la question affichée"
-              onClick={() => openEditQuestionModal(q)}
-            >
-              <Pencil class="h-4 w-4 shrink-0" aria-hidden />
-              <span class="hidden sm:inline">Modifier</span>
-            </Button>
-            <Button
-              variant="outline"
-              class="btn-sm flex-1 gap-1 sm:flex-none"
-              type="button"
-              title="Copier un JSON (question, commentaire, réponses)"
-              onClick={() => void copyCurrentQuestionJson(q)}
-            >
-              <ClipboardCopy class="h-4 w-4 shrink-0" aria-hidden />
-              <span class="hidden sm:inline">Copier</span>
-            </Button>
-            <label
-              aria-label={`Fake-checker, ${draftVerifier ? "oui" : "non"}. Cliquer pour basculer.`}
-              class={cn(
-                "btn btn-sm mt-1 flex h-auto min-h-0 w-full cursor-pointer flex-nowrap items-center justify-start gap-2 rounded-full border-2 py-2.5 pl-3 pr-4 text-left text-sm font-medium shadow-md transition-all duration-300 ease-out hover:shadow-lg active:scale-[0.97] md:mt-0",
-                draftVerifier
-                  ? "border-flow/40 bg-transparent text-flow hover:border-flow hover:bg-flow/5"
-                  : "border-error/50 bg-error/10 text-error hover:border-error hover:bg-error/15",
-                nextBusy && "pointer-events-none opacity-50",
-              )}
-            >
-              <input
-                type="checkbox"
-                class="sr-only"
-                checked={draftVerifier}
-                disabled={nextBusy}
-                onChange={(e) => setDraftVerifier((e.target as HTMLInputElement).checked)}
-              />
-              <span class="pointer-events-none select-none">
-                verifier : {draftVerifier ? "Oui" : "Non"}
-              </span>
-            </label>
-          </aside>
-
-          <Card class="min-w-0 flex-1 transition duration-300">
-            <p class="mb-4 text-xs font-medium uppercase tracking-wide text-base-content/45">
-              Question {index + 1} / {total}
-            </p>
-            <h2 class="mb-6 text-lg font-semibold leading-snug text-base-content sm:text-xl">{q.question}</h2>
-            <div class="flex flex-col gap-2.5">
-              {q.reponses.map((r) => (
-                <AnswerOption
-                  key={r.id}
-                  label={r.reponse}
-                  reponseId={r.id}
-                  pickedId={pickedId}
-                  revealed={revealed}
-                  isCorrectAnswer={r.bonne_reponse}
-                  disabled={pickedId != null}
-                  onPick={() => handlePick(r.id)}
-                />
-              ))}
-            </div>
-
-            {revealed ? (
-              <div class="fl-reveal-enter mt-8 space-y-5 rounded-[1.75rem] border border-base-content/8 bg-gradient-to-b from-base-100/95 to-base-200/40 p-6 shadow-inner">
-                <p class="text-center text-base leading-relaxed text-base-content/85">
-                  {anecdote ? (
-                    <span class="block">{anecdote}</span>
-                  ) : correct ? (
-                    <>
-                      Bien vu — <span class="font-semibold text-flow">c’est la bonne réponse</span>.
-                    </>
-                  ) : (
-                    <>Ce n’était pas la bonne proposition.</>
-                  )}
-                </p>
-                <div class="flex flex-col items-center justify-center gap-2 sm:flex-row">
-                  <Button
-                    variant="flow"
-                    class="min-w-[11rem] px-8"
-                    disabled={nextBusy || fetchingMore}
-                    onClick={handleNext}
-                  >
-                    {nextBusy
-                      ? "Enregistrement…"
-                      : fetchingMore
-                        ? "Chargement…"
-                        : index >= total - 1
-                          ? data.playInfinite
-                            ? "Nouvelles questions"
-                            : "Voir le résultat"
-                          : "Suivant"}
-                  </Button>
-                  {data.playInfinite && index >= total - 1 ? (
-                    <Button
-                      variant="outline"
-                      class="min-w-[11rem] px-8"
-                      disabled={nextBusy || fetchingMore}
-                      onClick={() => handleEndInfiniteSession()}
-                    >
-                      Terminer la session
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-          </Card>
-        </div>
+      <main class={QUIZ_SESSION_STYLES.contentMain}>
+        <QuizSessionHeader data={data} backTarget={backTarget} />
+        {actionMessage ? <p class={QUIZ_SESSION_STYLES.actionMessage}>{actionMessage}</p> : null}
+        <QuizSessionProgress
+          playInfinite={data.playInfinite}
+          progressValue={progressValue}
+          total={total}
+        />
+        <QuizSessionQuestionCard
+          data={data}
+          index={index}
+          total={total}
+          q={q}
+          pickedId={pickedId}
+          revealed={revealed}
+          anecdote={anecdote}
+          correct={correct}
+          draftVerifier={draftVerifier}
+          nextBusy={nextBusy}
+          fetchingMore={fetchingMore}
+          onPick={handlePick}
+          onOpenCreateLinkedQuestionModal={openCreateLinkedQuestionModal}
+          onOpenEditQuestionModal={openEditQuestionModal}
+          onCopyCurrentQuestionJson={copyCurrentQuestionJson}
+          onDraftVerifier={setDraftVerifier}
+          onNext={handleNext}
+          onEndInfiniteSession={handleEndInfiniteSession}
+        />
       </main>
       <AppFooter />
 

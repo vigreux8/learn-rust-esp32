@@ -21,7 +21,8 @@ import { AppFooter } from "../../molecules/AppFooter/AppFooter";
 import { PageMain } from "../../molecules/PageMain/PageMain";
 import { Button } from "../../atomes/Button/Button";
 import { PopUpInformation } from "../../molecules/PopUpInformation/PopUpInformation";
-import { applyModuleFilter, filterCollections, pendingDeleteLabels, type CollectionFilter, type PendingDelete } from "./CollectionsView.metier";
+import { applyModuleFilter, filterCollections, pendingDeleteLabels } from "./CollectionsView.metier";
+import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 import { CollectionsContent, CollectionsHeader, JsonImportPanel } from "./CollectionsView.sections";
 
 export function CollectionsView() {

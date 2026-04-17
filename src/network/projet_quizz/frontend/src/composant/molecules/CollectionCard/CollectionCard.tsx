@@ -13,21 +13,9 @@ import { Card } from "../../atomes/Card";
 import { Badge } from "../../atomes/Badge";
 import { Button } from "../../atomes/Button";
 import { PlayModePicker } from "../PlayModePicker";
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
 import { buildQuestionsRoutePath } from "./CollectionCard.metier";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";
-
-export type CollectionCardProps = {
-  collection: CollectionUi;
-  myUserId: number;
-  allModules: QuizzModuleRow[];
-  assignBusyCollectionId: number | null;
-  deleteBusyCollectionId: number | null;
-  interactionLocked?: boolean;
-  onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
-  onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
-  onDeleteCollection?: (collection: CollectionUi) => void;
-};
+import type { CollectionCardProps } from "./CollectionCard.types";
 
 export function CollectionCard({
   collection,

@@ -1,39 +1,13 @@
 import { useEffect, useState } from "preact/hooks";
 import { ClipboardCopy } from "lucide-preact";
-import type { QuizzQuestionDetail, RefCategorieRow } from "../../../types/quizz";
 import { patchReponse } from "../../../lib/api";
 import { buildLlmCreateQuestionPrompt, parseCreateQuestionLlmJson } from "../../../lib/questionCreateLlmJson";
 import { Button } from "../../atomes/Button";
 import { defaultCreateReponses } from "./QuestionEditModal.metier";
 import { QUESTION_EDIT_MODAL_STYLES } from "./QuestionEditModal.styles";
+import type { QuestionEditModalProps } from "./QuestionEditModal.types";
 
-export type QuestionCreateSavePayload = {
-  question: string;
-  commentaire: string;
-  categorie_id: number;
-  reponses: { texte: string; correcte: boolean }[];
-};
-
-export type QuestionEditModalProps = {
-  open: boolean;
-  variant?: "edit" | "create";
-  modalTitle?: string;
-  loading: boolean;
-  loadError: string | null;
-  detail: QuizzQuestionDetail | null;
-  categorieOptions: RefCategorieRow[];
-  draftQuestion: string;
-  draftCommentaire: string;
-  draftCategorieId: number | null;
-  saving: boolean;
-  onClose: () => void;
-  onDraftQuestion: (v: string) => void;
-  onDraftCommentaire: (v: string) => void;
-  onDraftCategorieId: (id: number) => void;
-  onSave: () => void;
-  onReponseUpdated: () => void | Promise<void>;
-  onCreateSave?: (payload: QuestionCreateSavePayload) => void | Promise<void>;
-};
+export type { QuestionCreateSavePayload } from "./QuestionEditModal.types";
 
 export function QuestionEditModal(props: QuestionEditModalProps) {
   const {

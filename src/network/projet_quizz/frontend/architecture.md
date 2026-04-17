@@ -69,7 +69,7 @@ frontend/
             ├── QuestionsTable/
             ├── QuestionsView/
             ├── QuizResultsView/
-            ├── QuizSessionView.tsx
+            ├── QuizSessionView/
             ├── SessionDetailsView/
             └── StatsDashboard/
 ```
@@ -131,7 +131,7 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 | `QuestionsTable/`                | Table détaillée des questions (tri, actions).                 |
 | `QuestionsCollectionContextBar/` | Barre de contexte (collection courante, raccourcis).          |
 | `QuestionsLlmImportCard/`        | Carte dédiée au flux d’import type LLM.                       |
-| `QuizSessionView.tsx`            | Déroulé d’une partie (questions, réponses, progression).      |
+| `QuizSessionView/`               | Déroulé d’une partie (questions, réponses, progression).      |
 | `QuizResultsView/`               | Résumé à la fin d’un quiz.                                    |
 | `StatsDashboard/`                | Vue d’ensemble des statistiques / KPI.                        |
 | `SessionDetailsView/`            | Détail d’une session de jeu.                                  |
