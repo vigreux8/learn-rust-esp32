@@ -41,37 +41,37 @@ frontend/
     │   └── quizz.ts             # types TS alignés sur l’API quizz
     ├── lib/                     # logique non-UI (API, session, import LLM, etc.)
     └── composant/
-        ├── atomes/              # briques visuelles minimales
-        │   ├── Badge.tsx
-        │   ├── Button.tsx
-        │   ├── Card.tsx
-        │   └── ProgressBar.tsx
-        ├── molecules/           # blocs réutilisables composés
-        │   ├── AnswerOption.tsx
-        │   ├── AppFooter.tsx
-        │   ├── AppHeader.tsx
-        │   ├── CollectionCard.tsx
-        │   ├── KpiCard.tsx
-        │   ├── PageMain.tsx
-        │   ├── PlayModePicker.tsx
-        │   ├── PopUpInformation.tsx
-        │   ├── QuestionEditModal.tsx
-        │   ├── QuestionsLlmImportOptionsPanel.tsx
-        │   ├── QuestionsLlmImportPanel.tsx
-        │   └── QuestionsLlmImportPromptPanel.tsx
-        └── organismes/          # pages / écrans complets
-            ├── CollectionsView.tsx
-            ├── DatabaseTransferView.tsx
-            ├── DeviceAuthGate.tsx
-            ├── HomeView.tsx
-            ├── QuestionsCollectionContextBar.tsx
-            ├── QuestionsLlmImportCard.tsx
-            ├── QuestionsTable.tsx
-            ├── QuestionsView.tsx
-            ├── QuizResultsView.tsx
+        ├── atomes/              # briques visuelles minimales (dossier par composant)
+        │   ├── Badge/           # Badge.tsx, Badge.styles.ts, index.ts
+        │   ├── Button/          # Button.tsx, Button.styles.ts, index.ts
+        │   ├── Card/            # Card.tsx, Card.styles.ts, index.ts
+        │   └── ProgressBar/     # ProgressBar.tsx, ProgressBar.metier.ts, ProgressBar.styles.ts, index.ts
+        ├── molecules/           # blocs réutilisables composés (dossier par composant)
+        │   ├── AnswerOption/
+        │   ├── AppFooter/
+        │   ├── AppHeader/
+        │   ├── CollectionCard/
+        │   ├── KpiCard/
+        │   ├── PageMain/
+        │   ├── PlayModePicker/
+        │   ├── PopUpInformation/
+        │   ├── QuestionEditModal/
+        │   ├── QuestionsLlmImportOptionsPanel/
+        │   ├── QuestionsLlmImportPanel/
+        │   └── QuestionsLlmImportPromptPanel/
+        └── organismes/          # pages / écrans complets (dossier par composant)
+            ├── CollectionsView/
+            ├── DatabaseTransferView/
+            ├── DeviceAuthGate/
+            ├── HomeView/
+            ├── QuestionsCollectionContextBar/
+            ├── QuestionsLlmImportCard/
+            ├── QuestionsTable/
+            ├── QuestionsView/
+            ├── QuizResultsView/
             ├── QuizSessionView.tsx
-            ├── SessionDetailsView.tsx
-            └── StatsDashboard.tsx
+            ├── SessionDetailsView/
+            └── StatsDashboard/
 ```
 
 ## Analogie avec `reglage_bouton/src`
@@ -82,7 +82,7 @@ Ici le pattern est le même, mais **découpé davantage** :
 
 - **`app.tsx`** : routage et enveloppe `DeviceAuthGate` + contexte de chemin.
 - **`lib/*`** : équivalent élargi du « store » et des utilitaires (session utilisateur/appareil, résultats de quiz, normalisation JSON d’import, etc.).
-- **`composant/*`** : l’UI est structurée en **atomes / molécules / organismes** pour séparer briques, blocs et pages.
+- **`composant/*`** : l’UI est structurée en **atomes / molécules / organismes**. Chaque composant possède son propre dossier contenant son code (`.tsx`), ses styles Tailwind (`.styles.ts`), sa logique métier éventuelle (`.metier.ts`) et un point d’entrée (`index.ts`).
 
 ## Rôle des dossiers et fichiers
 
@@ -93,49 +93,49 @@ Ici le pattern est le même, mais **découpé davantage** :
 
 ### `composant/atomes/`
 
-Composants visuels de bas niveau, sans logique métier lourde.
+Composants visuels de bas niveau, sans logique métier lourde. Chaque composant est isolé dans son dossier.
 
-| Fichier | Rôle |
+| Dossier | Rôle |
 |---------|------|
-| `Button.tsx` | Bouton stylé cohérent avec le thème. |
-| `Card.tsx` | Conteneur carte (titres, corps). |
-| `Badge.tsx` | Pastille / libellé court. |
-| `ProgressBar.tsx` | Barre de progression (quiz, chargements). |
+| `Button/` | Bouton stylé cohérent avec le thème. |
+| `Card/` | Conteneur carte (titres, corps). |
+| `Badge/` | Pastille / libellé court. |
+| `ProgressBar/` | Barre de progression (quiz, chargements). |
 
 ### `composant/molecules/`
 
-Blocs réutilisables entre plusieurs pages.
+Blocs réutilisables entre plusieurs pages, structurés en dossiers.
 
-| Fichier | Rôle |
+| Dossier | Rôle |
 |---------|------|
-| `AppHeader.tsx` / `AppFooter.tsx` | En-tête et pied de page communs. |
-| `PageMain.tsx` | Mise en page centrale des pages. |
-| `CollectionCard.tsx` | Carte d’une collection (aperçu, actions). |
-| `PlayModePicker.tsx` | Choix du mode de lecture (ordre des questions). |
-| `AnswerOption.tsx` | Affichage / sélection d’une réponse pendant le jeu. |
-| `QuestionEditModal.tsx` | Modale d’édition d’une question. |
-| `KpiCard.tsx` | Carte indicateur pour le tableau de bord stats. |
-| `PopUpInformation.tsx` | Boîte d’information / alerte légère. |
-| `QuestionsLlmImport*.tsx` | Panneaux et options pour l’import assisté (prompts, options, JSON). |
+| `AppHeader/` / `AppFooter/` | En-tête et pied de page communs. |
+| `PageMain/` | Mise en page centrale des pages. |
+| `CollectionCard/` | Carte d’une collection (aperçu, actions). |
+| `PlayModePicker/` | Choix du mode de lecture (ordre des questions). |
+| `AnswerOption/` | Affichage / sélection d’une réponse pendant le jeu. |
+| `QuestionEditModal/` | Modale d’édition d’une question. |
+| `KpiCard/` | Carte indicateur pour le tableau de bord stats. |
+| `PopUpInformation/` | Boîte d’information / alerte légère. |
+| `QuestionsLlmImport*/` | Panneaux et options pour l’import assisté (prompts, options, JSON). |
 
 ### `composant/organismes/`
 
-Pages ou écrans majeurs branchés sur le routeur.
+Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 
-| Fichier | Rôle |
+| Dossier | Rôle |
 |---------|------|
-| `DeviceAuthGate.tsx` | Vérifie / enregistre l’appareil (MAC) avant d’afficher l’app ; bloque ou guide l’utilisateur. |
-| `HomeView.tsx` | Accueil et navigation vers collections, jeu, stats. |
-| `CollectionsView.tsx` | Liste et gestion des collections. |
-| `QuestionsView.tsx` | Liste / édition des questions (filtrage par collection). |
-| `QuestionsTable.tsx` | Table détaillée des questions (tri, actions). |
-| `QuestionsCollectionContextBar.tsx` | Barre de contexte (collection courante, raccourcis). |
-| `QuestionsLlmImportCard.tsx` | Carte dédiée au flux d’import type LLM. |
+| `DeviceAuthGate/` | Vérifie / enregistre l’appareil (MAC) avant d’afficher l’app. |
+| `HomeView/` | Accueil et navigation vers collections, jeu, stats. |
+| `CollectionsView/` | Liste et gestion des collections (découpé en sections). |
+| `QuestionsView/` | Liste / édition des questions (filtrage par collection). |
+| `QuestionsTable/` | Table détaillée des questions (tri, actions). |
+| `QuestionsCollectionContextBar/` | Barre de contexte (collection courante, raccourcis). |
+| `QuestionsLlmImportCard/` | Carte dédiée au flux d’import type LLM. |
 | `QuizSessionView.tsx` | Déroulé d’une partie (questions, réponses, progression). |
-| `QuizResultsView.tsx` | Résumé à la fin d’un quiz. |
-| `StatsDashboard.tsx` | Vue d’ensemble des statistiques / KPI. |
-| `SessionDetailsView.tsx` | Détail d’une session de jeu. |
-| `DatabaseTransferView.tsx` | Écran d’import / export de données (admin côté UI). |
+| `QuizResultsView/` | Résumé à la fin d’un quiz. |
+| `StatsDashboard/` | Vue d’ensemble des statistiques / KPI. |
+| `SessionDetailsView/` | Détail d’une session de jeu. |
+| `DatabaseTransferView/` | Écran d’import / export de données (admin côté UI). |
 
 ### `lib/`
 

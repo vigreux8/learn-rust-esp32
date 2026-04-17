@@ -7,16 +7,14 @@ import {
   playOrdersRequireUserId,
   type PlayQtype,
   type PlaySortBase,
-} from "../../lib/playOrder";
-import { useUserSession } from "../../lib/userSession";
-import { AppHeader } from "../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../molecules/AppFooter/AppFooter";
-import { Button } from "../atomes/Button/Button";
-import { PlayModePicker } from "../molecules/PlayModePicker/PlayModePicker";
+} from "../../../lib/playOrder";
+import { useUserSession } from "../../../lib/userSession";
+import { AppHeader } from "../../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../../molecules/AppFooter/AppFooter";
+import { Button } from "../../atomes/Button/Button";
+import { PlayModePicker } from "../../molecules/PlayModePicker/PlayModePicker";
+import { HOME_VIEW_STYLES } from "./HomeView.styles";
 
-/**
- * Page d’accueil : présentation du mode quiz aléatoire et choix des modes / type avant lecture.
- */
 export function HomeView() {
   const { userId } = useUserSession();
   const [neverAnswered, setNeverAnswered] = useState(false);
@@ -27,12 +25,7 @@ export function HomeView() {
   const [playInfinite, setPlayInfinite] = useState(false);
 
   const goPlay = () => {
-    const orders = buildPlayOrdersFromPicker({
-      neverAnswered,
-      sortBase,
-      errorPriority,
-      shuffleExtra,
-    });
+    const orders = buildPlayOrdersFromPicker({ neverAnswered, sortBase, errorPriority, shuffleExtra });
     const q = buildPlaySessionQuery({
       orders,
       qtype: playQtype,
@@ -43,20 +36,18 @@ export function HomeView() {
   };
 
   return (
-    <div class="flex min-h-dvh flex-col">
+    <div class={HOME_VIEW_STYLES.root}>
       <AppHeader />
-      <main class="fl-page-enter flex flex-1 flex-col items-center justify-center px-4 py-16">
+      <main class={HOME_VIEW_STYLES.main}>
         <div class="max-w-md text-center">
           <p class="mb-4 inline-flex items-center gap-2 rounded-full bg-flow/10 px-4 py-1.5 text-xs font-medium text-flow transition duration-300">
             <Sparkles class="h-4 w-4" aria-hidden />
-            Mode découverte
+            Mode decouverte
           </p>
-          <h1 class="mb-3 text-3xl font-bold tracking-tight text-base-content sm:text-4xl">
-            Prêt à apprendre ?
-          </h1>
+          <h1 class="mb-3 text-3xl font-bold tracking-tight text-base-content sm:text-4xl">Pret a apprendre ?</h1>
           <p class="mb-6 text-base leading-relaxed text-base-content/65">
-            Les questions viennent de toutes les collections. Combine plusieurs modes (ex. anciennes d’abord + priorité
-            aux erreurs), choisis le type de questions, et éventuellement une session infinie par paquets de 15.
+            Les questions viennent de toutes les collections. Combine plusieurs modes (ex. anciennes d abord + priorite
+            aux erreurs), choisis le type de questions, et eventuellement une session infinie par paquets de 15.
           </p>
           <div class="mx-auto mb-8 w-full max-w-xs space-y-5 text-left">
             <PlayModePicker
@@ -71,10 +62,7 @@ export function HomeView() {
               onShuffleExtra={setShuffleExtra}
             />
             <div>
-              <label
-                class="mb-1 block text-center text-xs font-semibold uppercase tracking-wide text-base-content/45"
-                for="home-play-qtype"
-              >
+              <label class="mb-1 block text-center text-xs font-semibold uppercase tracking-wide text-base-content/45" for="home-play-qtype">
                 Type de questions
               </label>
               <select
@@ -86,7 +74,7 @@ export function HomeView() {
                   if (v === "histoire" || v === "pratique" || v === "melanger") setPlayQtype(v);
                 }}
               >
-                <option value="melanger">Mélanger (tout)</option>
+                <option value="melanger">Melanger (tout)</option>
                 <option value="histoire">Histoire</option>
                 <option value="pratique">Pratique</option>
               </select>

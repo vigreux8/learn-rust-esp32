@@ -1,22 +1,20 @@
 import { useEffect, useState } from "preact/hooks";
 import { route } from "preact-router";
 import { ArrowLeft } from "lucide-preact";
-import { fetchSessionDetail } from "../../lib/api";
-import { useUserSession } from "../../lib/userSession";
-import type { SessionDetail } from "../../types/quizz";
-import { AppHeader } from "../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../molecules/AppFooter/AppFooter";
-import { Button } from "../atomes/Button/Button";
-import { Card } from "../atomes/Card/Card";
-import { Badge } from "../atomes/Badge/Badge";
+import { fetchSessionDetail } from "../../../lib/api";
+import { useUserSession } from "../../../lib/userSession";
+import type { SessionDetail } from "../../../types/quizz";
+import { AppHeader } from "../../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../../molecules/AppFooter/AppFooter";
+import { Button } from "../../atomes/Button/Button";
+import { Card } from "../../atomes/Card/Card";
+import { Badge } from "../../atomes/Badge/Badge";
+import { SESSION_DETAILS_VIEW_STYLES } from "./SessionDetailsView.styles";
 
 export type SessionDetailsViewProps = {
   sessionId?: string;
 };
 
-/**
- * Détail d’une session d’apprentissage passée : chargement par identifiant, affichage des métriques et navigation retour.
- */
 export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
   const { userId } = useUserSession();
   const [session, setSession] = useState<SessionDetail | null>(null);
@@ -51,10 +49,10 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
 
   if (loading) {
     return (
-      <div class="flex min-h-dvh flex-col">
+      <div class={SESSION_DETAILS_VIEW_STYLES.root}>
         <AppHeader />
-        <main class="fl-page-enter mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-12">
-          <p class="text-sm text-base-content/60">Chargement…</p>
+        <main class={SESSION_DETAILS_VIEW_STYLES.centeredMain}>
+          <p class="text-sm text-base-content/60">Chargement...</p>
         </main>
         <AppFooter />
       </div>
@@ -63,9 +61,9 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
 
   if (notFound || !session) {
     return (
-      <div class="flex min-h-dvh flex-col">
+      <div class={SESSION_DETAILS_VIEW_STYLES.root}>
         <AppHeader />
-        <main class="fl-page-enter mx-auto flex max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-12">
+        <main class={SESSION_DETAILS_VIEW_STYLES.centeredMain}>
           <p class="text-base text-base-content/70">Session introuvable.</p>
           <Button variant="flow" onClick={() => route("/dashboard")}>
             Retour au dashboard
@@ -77,14 +75,14 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
   }
 
   return (
-    <div class="flex min-h-dvh flex-col">
+    <div class={SESSION_DETAILS_VIEW_STYLES.root}>
       <AppHeader />
-      <main class="fl-page-enter mx-auto w-full max-w-2xl flex-1 px-4 py-6 md:py-8">
+      <main class={SESSION_DETAILS_VIEW_STYLES.contentMain}>
         <Button variant="ghost" class="btn-sm mb-6 gap-1 px-3" onClick={() => route("/dashboard")}>
           <ArrowLeft class="h-4 w-4" aria-hidden />
           Dashboard
         </Button>
-        <h1 class="mb-2 text-2xl font-bold tracking-tight text-base-content">Détail de session</h1>
+        <h1 class="mb-2 text-2xl font-bold tracking-tight text-base-content">Detail de session</h1>
         <p class="mb-6 text-sm text-base-content/60">{session.date}</p>
 
         <Card class="mb-6">
@@ -94,12 +92,12 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
           </div>
           <p class="mt-4 text-3xl font-semibold text-flow">{session.scoreLabel}</p>
           <p class="mt-2 text-sm text-base-content/55">
-            Réponses enregistrées ce jour pour cette collection (agrégat <code class="text-xs">user_kpi</code>).
+            Reponses enregistrees ce jour pour cette collection (agregat <code class="text-xs">user_kpi</code>).
           </p>
         </Card>
 
         <Card>
-          <p class="mb-3 text-sm font-medium text-base-content">Questions concernées</p>
+          <p class="mb-3 text-sm font-medium text-base-content">Questions concernees</p>
           <ul class="space-y-2 text-sm text-base-content/75">
             {session.questionsPreview.map((q) => (
               <li key={q.id} class="rounded-lg bg-base-200/40 px-3 py-2">

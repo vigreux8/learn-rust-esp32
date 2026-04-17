@@ -1,8 +1,9 @@
 import { Pencil, Trash2 } from "lucide-preact";
-import type { QuizzQuestionRow } from "../../types/quizz";
-import { Badge } from "../atomes/Badge/Badge";
-import { Button } from "../atomes/Button/Button";
-import { Card } from "../atomes/Card/Card";
+import type { QuizzQuestionRow } from "../../../types/quizz";
+import { Badge } from "../../atomes/Badge/Badge";
+import { Button } from "../../atomes/Button/Button";
+import { Card } from "../../atomes/Card/Card";
+import { QUESTIONS_TABLE_STYLES } from "./QuestionsTable.styles";
 
 export type QuestionsTableProps = {
   questions: QuizzQuestionRow[];
@@ -11,21 +12,15 @@ export type QuestionsTableProps = {
   onRemove: (id: number) => void;
 };
 
-/**
- * Liste des questions sous forme de cartes avec badges (collections, catégorie) et actions modifier / supprimer.
- */
 export function QuestionsTable({ questions, saving, onEdit, onRemove }: QuestionsTableProps) {
   return (
     <Card>
       <p class="mb-4 text-sm text-base-content/60">
-        {questions.length} question{questions.length !== 1 ? "s" : ""} affichée{questions.length !== 1 ? "s" : ""}.
+        {questions.length} question{questions.length !== 1 ? "s" : ""} affichee{questions.length !== 1 ? "s" : ""}.
       </p>
       <ul class="space-y-3">
         {questions.map((q) => (
-          <li
-            key={q.id}
-            class="overflow-hidden rounded-[1.35rem] border border-base-content/10 bg-base-200/35 transition duration-300 hover:border-flow/20 hover:shadow-md hover:shadow-flow/5"
-          >
+          <li key={q.id} class={QUESTIONS_TABLE_STYLES.item}>
             <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
               <div class="min-w-0 flex-1">
                 <div class="mb-2 flex flex-wrap items-center gap-2">

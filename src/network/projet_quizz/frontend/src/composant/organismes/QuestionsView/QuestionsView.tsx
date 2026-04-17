@@ -8,28 +8,21 @@ import {
   fetchQuestions,
   fetchRefCategories,
   patchQuestion,
-} from "../../lib/api";
-import type {
-  CollectionUi,
-  QuizzModuleRow,
-  QuizzQuestionDetail,
-  QuizzQuestionRow,
-  RefCategorieRow,
-} from "../../types/quizz";
-import type { PlayQtype } from "../../lib/playOrder";
-import { QuestionsCollectionContextBar } from "./QuestionsCollectionContextBar";
-import { QuestionsTable } from "./QuestionsTable";
-import { QuestionsLlmImportCard } from "./QuestionsLlmImportCard";
-import { QuestionEditModal } from "../molecules/QuestionEditModal/QuestionEditModal";
-import { AppHeader } from "../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../molecules/AppFooter/AppFooter";
-import { PageMain } from "../molecules/PageMain/PageMain";
-import { Button } from "../atomes/Button/Button";
-import { Card } from "../atomes/Card/Card";
+} from "../../../lib/api";
+import type { CollectionUi, QuizzModuleRow, QuizzQuestionDetail, QuizzQuestionRow, RefCategorieRow } from "../../../types/quizz";
+import type { PlayQtype } from "../../../lib/playOrder";
+import { QuestionsCollectionContextBar } from "../QuestionsCollectionContextBar/QuestionsCollectionContextBar";
+import { QuestionsTable } from "../QuestionsTable/QuestionsTable";
+import { QuestionsLlmImportCard } from "../QuestionsLlmImportCard/QuestionsLlmImportCard";
+import { QuestionEditModal } from "../../molecules/QuestionEditModal/QuestionEditModal";
+import { AppHeader } from "../../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../../molecules/AppFooter/AppFooter";
+import { PageMain } from "../../molecules/PageMain/PageMain";
+import { Button } from "../../atomes/Button/Button";
+import { Card } from "../../atomes/Card/Card";
+import { QUESTIONS_VIEW_STYLES } from "./QuestionsView.styles";
 
-export type QuestionsViewProps = {
-  collectionId?: string;
-};
+export type QuestionsViewProps = { collectionId?: string };
 
 function collectionFilterToQuery(s: string): number | "none" | undefined {
   if (s === "") return undefined;
@@ -43,15 +36,10 @@ function filterFromRouteParam(cid?: string): string {
   return "";
 }
 
-/**
- * Page de gestion des questions : chargement par collection, tableau, édition, suppression et import LLM associé.
- */
 export function QuestionsView({ collectionId }: QuestionsViewProps) {
   const [collections, setCollections] = useState<CollectionUi[]>([]);
   const [allModules, setAllModules] = useState<QuizzModuleRow[]>([]);
-  const [collectionFilter, setCollectionFilter] = useState<string>(() =>
-    filterFromRouteParam(collectionId),
-  );
+  const [collectionFilter, setCollectionFilter] = useState<string>(() => filterFromRouteParam(collectionId));
   const [importTargetModuleId, setImportTargetModuleId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<QuizzQuestionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,20 +53,10 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
   const [editDraftCommentaire, setEditDraftCommentaire] = useState("");
   const [editDraftCategorieId, setEditDraftCategorieId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  /** Filtre d’affichage du tableau (sans nouvel appel API). */
   const [listFilterQtype, setListFilterQtype] = useState<PlayQtype>("melanger");
 
-  const targetCollectionNumeric =
-    collectionFilter !== "" &&
-    collectionFilter !== "none" &&
-    /^\d+$/.test(collectionFilter)
-      ? Number(collectionFilter)
-      : null;
-
-  const questionsForTable = useMemo(() => {
-    if (listFilterQtype === "melanger") return questions;
-    return questions.filter((q) => q.categorie_type === listFilterQtype);
-  }, [questions, listFilterQtype]);
+  const targetCollectionNumeric = collectionFilter !== "" && collectionFilter !== "none" && /^\d+$/.test(collectionFilter) ? Number(collectionFilter) : null;
+  const questionsForTable = useMemo(() => (listFilterQtype === "melanger" ? questions : questions.filter((q) => q.categorie_type === listFilterQtype)), [questions, listFilterQtype]);
 
   useEffect(() => {
     setCollectionFilter(filterFromRouteParam(collectionId));
@@ -95,28 +73,13 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     setLoading(true);
     setLoadError(null);
     const fp = collectionFilterToQuery(collectionFilter);
-    fetchQuestions(fp)
-      .then(setQuestions)
-      .catch(() => setLoadError("fetch"))
-      .finally(() => setLoading(false));
+    fetchQuestions(fp).then(setQuestions).catch(() => setLoadError("fetch")).finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    fetchCollections()
-      .then(setCollections)
-      .catch(() => {
-        /* liste filtres optionnelle */
-      });
-    fetchModules()
-      .then(setAllModules)
-      .catch(() => {
-        /* optionnel */
-      });
-    fetchRefCategories()
-      .then(setRefCategories)
-      .catch(() => {
-        /* catégories optionnelles pour la modal */
-      });
+    fetchCollections().then(setCollections).catch(() => {});
+    fetchModules().then(setAllModules).catch(() => {});
+    fetchRefCategories().then(setRefCategories).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -125,13 +88,9 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
 
   const onCollectionFilterChange = (value: string) => {
     setCollectionFilter(value);
-    if (value === "" || value === "none") {
-      route("/questions");
-      return;
-    }
+    if (value === "" || value === "none") return void route("/questions");
     if (/^\d+$/.test(value)) {
-      const modQ =
-        importTargetModuleId != null ? `?module=${importTargetModuleId}` : "";
+      const modQ = importTargetModuleId != null ? `?module=${importTargetModuleId}` : "";
       route(`/questions/${value}${modQ}`);
     }
   };
@@ -164,9 +123,7 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     try {
       const d = await fetchQuestionDetail(editDetail.id);
       setEditDetail(d);
-    } catch {
-      /* conserver le détail affiché */
-    }
+    } catch {}
   };
 
   const saveEditModal = async () => {
@@ -175,12 +132,8 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
     try {
       const payload: { question?: string; commentaire?: string; categorie_id?: number } = {};
       if (editDraftQuestion !== editDetail.question) payload.question = editDraftQuestion;
-      if (editDraftCommentaire !== editDetail.commentaire) {
-        payload.commentaire = editDraftCommentaire;
-      }
-      if (editDraftCategorieId != null && editDraftCategorieId !== editDetail.categorie_id) {
-        payload.categorie_id = editDraftCategorieId;
-      }
+      if (editDraftCommentaire !== editDetail.commentaire) payload.commentaire = editDraftCommentaire;
+      if (editDraftCategorieId != null && editDraftCategorieId !== editDetail.categorie_id) payload.categorie_id = editDraftCategorieId;
       if (Object.keys(payload).length === 0) {
         closeEditModal();
         return;
@@ -209,7 +162,7 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
   };
 
   return (
-    <div class="flex min-h-dvh flex-col">
+    <div class={QUESTIONS_VIEW_STYLES.root}>
       <AppHeader />
       <PageMain>
         <QuestionsLlmImportCard
@@ -226,7 +179,7 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
 
         {loadError ? (
           <div class="mb-6 rounded-box border border-error/20 bg-error/5 px-4 py-3 text-sm text-base-content">
-            Une opération a échoué.{" "}
+            Une operation a echoue.{" "}
             <button type="button" class="link link-primary" onClick={() => setLoadError(null)}>
               Fermer
             </button>
@@ -282,22 +235,18 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
         </div>
 
         {loading ? (
-          <p class="text-sm text-base-content/60">Chargement…</p>
+          <p class="text-sm text-base-content/60">Chargement...</p>
         ) : loadError === "fetch" ? (
           <Card class="border-base-content/15">
             <p class="mb-3 text-sm text-base-content/70">Impossible de charger les questions.</p>
             <Button variant="flow" class="btn-sm" onClick={reload}>
-              Réessayer
+              Reessayer
             </Button>
           </Card>
         ) : (
-          <QuestionsTable
-            questions={questionsForTable}
-            saving={saving}
-            onEdit={openEditModal}
-            onRemove={remove}
-          />
+          <QuestionsTable questions={questionsForTable} saving={saving} onEdit={openEditModal} onRemove={remove} />
         )}
+
         <QuestionEditModal
           open={editModalOpen}
           loading={editModalLoading}
