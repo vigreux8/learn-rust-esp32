@@ -1,4 +1,6 @@
-import type Database from 'better-sqlite3';
+import { Injectable } from '@nestjs/common';
+import Database from 'better-sqlite3';
+import { PrismaService, sqlitePathFromDatabaseUrl } from '../../../prisma/prisma.service';
 
 export type SqlReplaceResult = {
   statementsExecuted: number;
@@ -26,7 +28,7 @@ function stripLeadingCommentsAndWhitespace(input: string): string {
  * Découpe grossièrement un script SQLite en statements (séparateur `;`).
  * Suffisant pour les dumps générés par l’export interne (pas de `;` dans des chaînes).
  */
-export function splitSqlStatements(script: string): string[] {
+function splitSqlStatements(script: string): string[] {
   const out: string[] = [];
   let buf = '';
   let inSingle = false;
@@ -57,7 +59,7 @@ export function splitSqlStatements(script: string): string[] {
   return out;
 }
 
-export function applySqlReplacementScript(db: Database.Database, script: string): SqlReplaceResult {
+function applySqlReplacementScript(db: Database.Database, script: string): SqlReplaceResult {
   const statements = splitSqlStatements(script).map((s) => stripLeadingCommentsAndWhitespace(s)).filter(Boolean);
 
   db.exec('PRAGMA foreign_keys = OFF');
@@ -82,4 +84,26 @@ export function applySqlReplacementScript(db: Database.Database, script: string)
   }
 
   return { statementsExecuted: executed };
+}
+
+@Injectable()
+export class SqlReplaceService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async importDatabaseSqlReplace(script: string, confirmToken: string): Promise<SqlReplaceResult> {
+    if (confirmToken.trim() !== 'REMPLACE_TOUT') {
+      throw new Error('Confirmation invalide : envoyer confirm="REMPLACE_TOUT" pour exécuter un remplacement SQL.');
+    }
+
+    const dbPath = sqlitePathFromDatabaseUrl();
+    const db = new Database(dbPath);
+
+    try {
+      const result = applySqlReplacementScript(db, script);
+      await this.prisma.reconnect();
+      return result;
+    } finally {
+      db.close();
+    }
+  }
 }
