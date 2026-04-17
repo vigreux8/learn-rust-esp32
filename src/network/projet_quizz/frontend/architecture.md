@@ -82,9 +82,39 @@ Ici le pattern est le même, mais **découpé davantage** :
 
 - **`app.tsx`** : routage et enveloppe `DeviceAuthGate` + contexte de chemin.
 - **`lib/*`** : équivalent élargi du « store » et des utilitaires (session utilisateur/appareil, résultats de quiz, normalisation JSON d’import, etc.).
-- **`composant/*`** : l’UI est structurée en **atomes / molécules / organismes**. Chaque composant possède son propre dossier contenant son code (`.tsx`), ses styles Tailwind (`.styles.ts`), sa logique métier éventuelle (`.metier.ts`) et un point d’entrée (`index.ts`).
 
 ## Rôle des dossiers et fichiers
+
+### régle a respecter :
+
+- **`composant/*`** : l’UI est structurée en **atomes / molécules / organismes**. Chaque composant possède son propre dossier contenant son code (`.tsx`), ses styles Tailwind (`.styles.ts`), sa logique métier éventuelle (`.metier.ts`) et un point d’entrée (`index.ts`). Les types de props (`ComposantProps`) restent définis dans le fichier `*.tsx` du composant.
+
+#### Organisation des fonctions publiques et privées
+
+> Un fichier doit se lire comme un article de presse : l’information principale en haut (titre, résumé), et les détails techniques en bas.
+
+**Règle de présentation dans les fichiers helpers :**
+
+1. **En haut : Fonctions exportées (publiques)**
+   - Ce sont les fonctions `export` utilisées par votre composant `.tsx`.
+   - Quand un développeur ouvre le fichier `*.helper.ts`, il doit voir d’un coup d’œil ce que ce module sait « faire » (API publique), sans avoir à scroller.
+2. **En bas : Fonctions privées (détails techniques)**
+   - Fonctions non-exportées (`function ...`) servant de support, utilitaires internes.
+   - Elles sont rangées après les fonctions publiques, comme les annexes d’un article.
+
+**Résumé :**
+
+- Commencez toujours par les fonctions publiques (exportées), suivi des fonctions privées utilisées « sous le capot ».
+
+### arborecence composant :
+
+composant/
+├── index.ts
+├── composant.tsx
+├── composant.métier.ts (contient le code métier)
+└── composant.styles.ts <-- On met les chaînes Tailwind ici (sans être un contre-patterne de tailwind)
+└── composant.types.ts
+└── composant.helper.ts (La "Boîte à outils" technique contient la logique d'interface)
 
 ### Racine `src/`
 

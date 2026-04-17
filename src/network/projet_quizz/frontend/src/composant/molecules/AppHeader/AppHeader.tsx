@@ -1,9 +1,10 @@
 import { route } from "preact-router";
 import { GraduationCap } from "lucide-preact";
-import { useRoutePath } from "../../../lib/routePathContext";
 import { cn } from "../../../lib/cn";
+import { useRoutePath } from "../../../lib/routePathContext";
+import { isActivePath } from "./AppHeader.helper";
+import { HEADER_LINKS } from "./AppHeader.types";
 import { APP_HEADER_STYLES } from "./AppHeader.styles";
-import { HEADER_LINKS, isActivePath } from "./AppHeader.metier";
 
 export function AppHeader() {
   const path = useRoutePath();

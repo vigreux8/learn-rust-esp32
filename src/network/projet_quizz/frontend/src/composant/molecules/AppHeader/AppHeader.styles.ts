@@ -1,7 +1,3 @@
-/**
- * Centralise les classes Tailwind pour `AppHeader`.
- * Les variantes actif/inactif sont statiques pour respecter Tailwind.
- */
 export const APP_HEADER_STYLES = {
   header: "sticky top-0 z-40 border-b border-base-content/5 bg-base-100/80 backdrop-blur-lg transition-shadow duration-300",
   container: "mx-auto flex max-w-4xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4",

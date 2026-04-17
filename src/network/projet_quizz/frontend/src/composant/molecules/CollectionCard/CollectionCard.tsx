@@ -1,21 +1,38 @@
-import { ChevronRight, FolderTree, ListTree, Trash2, X } from "lucide-preact";
-import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
+import { route } from "preact-router";
 import type { JSX } from "preact";
-import {
-  buildPlayOrdersFromPicker,
-  buildPlaySessionQuery,
-  playOrdersRequireUserId,
-  type PlayQtype,
-  type PlaySortBase,
+import { ChevronRight, FolderTree, ListTree, Trash2, X } from "lucide-preact";
+
+import { 
+  buildPlayOrdersFromPicker, 
+  buildPlaySessionQuery, 
+  playOrdersRequireUserId 
 } from "../../../lib/playOrder";
+import type { PlayQtype } from "../../../lib/playOrder";
+import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
+
 import { Card } from "../../atomes/Card";
 import { Badge } from "../../atomes/Badge";
 import { Button } from "../../atomes/Button";
+
 import { PlayModePicker } from "../PlayModePicker";
-import { buildQuestionsRoutePath } from "./CollectionCard.metier";
+import type { PlayModeSettings } from "../PlayModePicker/PlayModePicker.types";
+
+import { buildQuestionsRoutePath } from "./CollectionCard.helper";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";
-import type { CollectionCardProps } from "./CollectionCard.types";
+
+
+export type CollectionCardProps = {
+  collection: CollectionUi;
+  myUserId: number;
+  allModules: QuizzModuleRow[];
+  assignBusyCollectionId: number | null;
+  deleteBusyCollectionId: number | null;
+  interactionLocked?: boolean;
+  onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
+  onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
+  onDeleteCollection?: (collection: CollectionUi) => void;
+};
 
 export function CollectionCard({
   collection,
@@ -33,10 +50,12 @@ export function CollectionCard({
   const counts = collection.question_counts_by_type;
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
-  const [neverAnswered, setNeverAnswered] = useState(false);
-  const [sortBase, setSortBase] = useState<PlaySortBase>("none");
-  const [errorPriority, setErrorPriority] = useState(false);
-  const [shuffleExtra, setShuffleExtra] = useState(false);
+  const [playMode, setPlayMode] = useState<PlayModeSettings>({
+    neverAnswered: false,
+    sortBase: "none",
+    errorPriority: false,
+    shuffleExtra: false,
+  });
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
   const [playInfinite, setPlayInfinite] = useState(false);
   const linkedModules = collection.modules ?? [];
@@ -134,7 +153,12 @@ export function CollectionCard({
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
           <p class="w-full text-xs font-medium text-base-content/55 sm:text-end">Mode de jeu</p>
           <div class="w-full rounded-xl border border-base-content/10 bg-base-100/50 p-2 sm:max-w-[14rem]">
-            <PlayModePicker idPrefix={`col-${collection.id}`} neverAnswered={neverAnswered} onNeverAnswered={setNeverAnswered} sortBase={sortBase} onSortBase={setSortBase} errorPriority={errorPriority} onErrorPriority={setErrorPriority} shuffleExtra={shuffleExtra} onShuffleExtra={setShuffleExtra} labelAlignClass="sm:text-end" />
+            <PlayModePicker
+              idPrefix={`col-${collection.id}`}
+              settings={playMode}
+              onChange={(patch) => setPlayMode((prev) => ({ ...prev, ...patch }))}
+              labelAlignClass="sm:text-end"
+            />
           </div>
           <label class="w-full text-xs font-medium text-base-content/55 sm:text-end" for={`play-qtype-${collection.id}`}>Type de questions</label>
           <select id={`play-qtype-${collection.id}`} class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:max-w-[11rem]" value={playQtype}
@@ -152,7 +176,7 @@ export function CollectionCard({
           </label>
           <Button variant="outline" class="btn-sm gap-1" onClick={handleQuestionsClick}><ListTree class="h-4 w-4" aria-hidden />Questions</Button>
           <Button variant="flow" class="btn-sm gap-1" onClick={() => {
-            const orders = buildPlayOrdersFromPicker({ neverAnswered, sortBase, errorPriority, shuffleExtra });
+            const orders = buildPlayOrdersFromPicker(playMode);
             route(`/play/${collection.id}${buildPlaySessionQuery({
               orders,
               qtype: playQtype,

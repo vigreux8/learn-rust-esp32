@@ -1,6 +1,3 @@
-/**
- * Centralise les classes Tailwind principales pour `QuestionEditModal`.
- */
 export const QUESTION_EDIT_MODAL_STYLES = {
   overlay: "fixed inset-0 z-100 flex items-center justify-center p-4",
   backdrop: "absolute inset-0 border-0 bg-base-content/40 p-0",

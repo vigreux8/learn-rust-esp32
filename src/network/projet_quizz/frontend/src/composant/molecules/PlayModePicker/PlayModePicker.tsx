@@ -1,19 +1,29 @@
-import { PLAY_MODE_SORT_OPTIONS } from "./PlayModePicker.metier";
+import { PLAY_MODE_SORT_OPTIONS, type PlayModeSettings } from "./PlayModePicker.types";
 import { PLAY_MODE_PICKER_STYLES } from "./PlayModePicker.styles";
-import type { PlayModePickerProps } from "./PlayModePicker.types";
+
+/**
+ * Props du panneau de choix du mode de lecture (filtres, tri, options KPI, mélange).
+ *
+ * @property idPrefix - Préfixe pour les attributs `id` et `name` des champs, afin d’éviter les collisions lorsque plusieurs pickers coexistent.
+ * @property settings - Objet d’état courant du mode de jeu (`PlayModeSettings`).
+ * @property onChange - Callback appelée avec un **patch partiel** à fusionner dans l’état parent après chaque interaction utilisateur.
+ * @property labelAlignClass - Classes Tailwind additionnelles pour l’alignement des libellés de section (ex. `text-center`, `sm:text-end`).
+ */
+export type PlayModePickerProps = {
+  idPrefix: string;
+  settings: PlayModeSettings;
+  onChange: (newSettings: Partial<PlayModeSettings>) => void;
+  labelAlignClass?: string;
+};
+
 
 export function PlayModePicker({
   idPrefix,
-  neverAnswered,
-  onNeverAnswered,
-  sortBase,
-  onSortBase,
-  errorPriority,
-  onErrorPriority,
-  shuffleExtra,
-  onShuffleExtra,
+  settings,
+  onChange,
   labelAlignClass = "text-center",
 }: PlayModePickerProps) {
+  const { neverAnswered, sortBase, errorPriority, shuffleExtra } = settings;
   const lab = `${PLAY_MODE_PICKER_STYLES.optionLabelBase} ${labelAlignClass}`;
 
   return (
@@ -25,7 +35,7 @@ export function PlayModePicker({
           type="checkbox"
           class="checkbox checkbox-sm checkbox-primary"
           checked={neverAnswered}
-          onChange={(e) => onNeverAnswered((e.target as HTMLInputElement).checked)}
+          onChange={(e) => onChange({ neverAnswered: (e.target as HTMLInputElement).checked })}
         />
         Jamais répondues (par moi)
       </label>
@@ -39,7 +49,7 @@ export function PlayModePicker({
               name={`${idPrefix}-sort`}
               class="radio radio-sm radio-primary"
               checked={sortBase === value}
-              onChange={() => onSortBase(value)}
+              onChange={() => onChange({ sortBase: value })}
             />
             {label}
           </label>
@@ -53,7 +63,7 @@ export function PlayModePicker({
           type="checkbox"
           class="checkbox checkbox-sm checkbox-primary"
           checked={errorPriority}
-          onChange={(e) => onErrorPriority((e.target as HTMLInputElement).checked)}
+          onChange={(e) => onChange({ errorPriority: (e.target as HTMLInputElement).checked })}
         />
         Priorité aux erreurs (KPI)
       </label>
@@ -65,7 +75,7 @@ export function PlayModePicker({
           type="checkbox"
           class="checkbox checkbox-sm checkbox-primary"
           checked={shuffleExtra}
-          onChange={(e) => onShuffleExtra((e.target as HTMLInputElement).checked)}
+          onChange={(e) => onChange({ shuffleExtra: (e.target as HTMLInputElement).checked })}
         />
         Mélange aléatoire en fin de chaîne
       </label>

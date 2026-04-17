@@ -79,7 +79,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "b280e03abeacaf7b",
@@ -185,5 +186,8 @@
     }
   },
   "active": "38a522587e224bf1",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "Capture d’écran 2026-04-17 à 15.35.52 1.png",
+    "Capture d’écran 2026-04-17 à 15.35.52.png"
+  ]
 }

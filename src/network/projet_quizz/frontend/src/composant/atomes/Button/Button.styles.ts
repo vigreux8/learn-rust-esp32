@@ -1,8 +1,3 @@
-/**
- * Centralise les classes Tailwind pour `Button`.
- * Les variantes restent statiques pour préserver l'analyse Tailwind et éviter
- * les concaténations dynamiques non détectées au build.
- */
 export const BUTTON_STYLES = {
   base: "btn rounded-full border-0 shadow-md transition-all duration-300 ease-out hover:shadow-lg active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none",
   variants: {

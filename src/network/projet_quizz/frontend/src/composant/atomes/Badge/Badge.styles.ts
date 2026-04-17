@@ -1,8 +1,3 @@
-/**
- * Centralise les classes Tailwind pour `Badge`.
- * Ce fichier évite la duplication de chaînes de classes et garde le JSX lisible,
- * sans contourner Tailwind (classes statiques, détectables au build).
- */
 export const BADGE_STYLES = {
   base: "inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium",
   tones: {

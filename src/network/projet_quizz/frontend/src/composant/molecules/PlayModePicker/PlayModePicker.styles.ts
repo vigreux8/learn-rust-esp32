@@ -1,6 +1,3 @@
-/**
- * Centralise les classes Tailwind pour `PlayModePicker`.
- */
 export const PLAY_MODE_PICKER_STYLES = {
   wrapper: "grid w-full gap-3 text-left",
   optionLabelBase: "mb-1 block text-xs font-semibold uppercase tracking-wide text-base-content/45",

@@ -1,6 +1,3 @@
-/**
- * Centralise les classes Tailwind pour `PopUpInformation`.
- */
 export const POPUP_INFORMATION_STYLES = {
   overlay: "fixed inset-0 z-[110] flex items-center justify-center p-4",
   backdrop: "absolute inset-0 border-0 bg-base-content/45 p-0",

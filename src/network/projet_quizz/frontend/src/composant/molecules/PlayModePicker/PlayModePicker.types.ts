@@ -1,14 +1,17 @@
 import type { PlaySortBase } from "../../../lib/playOrder";
 
-export type PlayModePickerProps = {
-  idPrefix: string;
+export type PlayModeSettings = {
   neverAnswered: boolean;
-  onNeverAnswered: (v: boolean) => void;
   sortBase: PlaySortBase;
-  onSortBase: (v: PlaySortBase) => void;
   errorPriority: boolean;
-  onErrorPriority: (v: boolean) => void;
   shuffleExtra: boolean;
-  onShuffleExtra: (v: boolean) => void;
-  labelAlignClass?: string;
 };
+
+export const PLAY_MODE_SORT_OPTIONS = [
+  ["none", "Par défaut (ordre collection / id)"],
+  ["linear", "Linéaire (ordre stable)"],
+  ["recent", "Ajout récent d’abord"],
+  ["ancien", "Plus anciennes d’abord"],
+] as const satisfies ReadonlyArray<readonly [PlaySortBase, string]>;
+
+

@@ -6,26 +6,28 @@ import {
   buildPlaySessionQuery,
   playOrdersRequireUserId,
   type PlayQtype,
-  type PlaySortBase,
 } from "../../../lib/playOrder";
 import { useUserSession } from "../../../lib/userSession";
 import { AppHeader } from "../../molecules/AppHeader/AppHeader";
 import { AppFooter } from "../../molecules/AppFooter/AppFooter";
 import { Button } from "../../atomes/Button/Button";
 import { PlayModePicker } from "../../molecules/PlayModePicker/PlayModePicker";
+import type { PlayModeSettings } from "../../molecules/PlayModePicker/PlayModePicker.types";
 import { HOME_VIEW_STYLES } from "./HomeView.styles";
 
 export function HomeView() {
   const { userId } = useUserSession();
-  const [neverAnswered, setNeverAnswered] = useState(false);
-  const [sortBase, setSortBase] = useState<PlaySortBase>("none");
-  const [errorPriority, setErrorPriority] = useState(false);
-  const [shuffleExtra, setShuffleExtra] = useState(false);
+  const [playMode, setPlayMode] = useState<PlayModeSettings>({
+    neverAnswered: false,
+    sortBase: "none",
+    errorPriority: false,
+    shuffleExtra: false,
+  });
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
   const [playInfinite, setPlayInfinite] = useState(false);
 
   const goPlay = () => {
-    const orders = buildPlayOrdersFromPicker({ neverAnswered, sortBase, errorPriority, shuffleExtra });
+    const orders = buildPlayOrdersFromPicker(playMode);
     const q = buildPlaySessionQuery({
       orders,
       qtype: playQtype,
@@ -52,14 +54,8 @@ export function HomeView() {
           <div class="mx-auto mb-8 w-full max-w-xs space-y-5 text-left">
             <PlayModePicker
               idPrefix="home"
-              neverAnswered={neverAnswered}
-              onNeverAnswered={setNeverAnswered}
-              sortBase={sortBase}
-              onSortBase={setSortBase}
-              errorPriority={errorPriority}
-              onErrorPriority={setErrorPriority}
-              shuffleExtra={shuffleExtra}
-              onShuffleExtra={setShuffleExtra}
+              settings={playMode}
+              onChange={(patch) => setPlayMode((prev) => ({ ...prev, ...patch }))}
             />
             <div>
               <label class="mb-1 block text-center text-xs font-semibold uppercase tracking-wide text-base-content/45" for="home-play-qtype">
