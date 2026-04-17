@@ -2,16 +2,16 @@
 
 ## Technologies
 
-| Couche | Choix |
-|--------|--------|
-| Framework UI | **Preact** 10 (API React-compatible, bundle léger) |
-| Routage | **preact-router** 4 |
-| Build | **Vite** 8, preset **@preact/preset-vite** |
-| Langage | **TypeScript** 5.9 |
-| Styles | **Tailwind CSS** 4 (plugin Vite `@tailwindcss/vite`) |
-| Composants UI | **DaisyUI** 5 (thème, formulaires, cartes, onglets) |
-| Icônes | **lucide-preact** |
-| Classes conditionnelles | **clsx** + **tailwind-merge** (helper `lib/cn.ts`) |
+| Couche                  | Choix                                                |
+| ----------------------- | ---------------------------------------------------- |
+| Framework UI            | **Preact** 10 (API React-compatible, bundle léger)   |
+| Routage                 | **preact-router** 4                                  |
+| Build                   | **Vite** 8, preset **@preact/preset-vite**           |
+| Langage                 | **TypeScript** 5.9                                   |
+| Styles                  | **Tailwind CSS** 4 (plugin Vite `@tailwindcss/vite`) |
+| Composants UI           | **DaisyUI** 5 (thème, formulaires, cartes, onglets)  |
+| Icônes                  | **lucide-preact**                                    |
+| Classes conditionnelles | **clsx** + **tailwind-merge** (helper `lib/cn.ts`)   |
 
 Les appels HTTP vers l’API Nest se font depuis `lib/api.ts` (URL de base configurable via `lib/config.ts`).
 
@@ -42,10 +42,10 @@ frontend/
     ├── lib/                     # logique non-UI (API, session, import LLM, etc.)
     └── composant/
         ├── atomes/              # briques visuelles minimales (dossier par composant)
-        │   ├── Badge/           # Badge.tsx, Badge.styles.ts, index.ts
-        │   ├── Button/          # Button.tsx, Button.styles.ts, index.ts
-        │   ├── Card/            # Card.tsx, Card.styles.ts, index.ts
-        │   └── ProgressBar/     # ProgressBar.tsx, ProgressBar.metier.ts, ProgressBar.styles.ts, index.ts
+        │   ├── Badge/
+        │   ├── Button/
+        │   ├── Card/
+        │   └── ProgressBar/
         ├── molecules/           # blocs réutilisables composés (dossier par composant)
         │   ├── AnswerOption/
         │   ├── AppFooter/
@@ -95,63 +95,63 @@ Ici le pattern est le même, mais **découpé davantage** :
 
 Composants visuels de bas niveau, sans logique métier lourde. Chaque composant est isolé dans son dossier.
 
-| Dossier | Rôle |
-|---------|------|
-| `Button/` | Bouton stylé cohérent avec le thème. |
-| `Card/` | Conteneur carte (titres, corps). |
-| `Badge/` | Pastille / libellé court. |
+| Dossier        | Rôle                                      |
+| -------------- | ----------------------------------------- |
+| `Button/`      | Bouton stylé cohérent avec le thème.      |
+| `Card/`        | Conteneur carte (titres, corps).          |
+| `Badge/`       | Pastille / libellé court.                 |
 | `ProgressBar/` | Barre de progression (quiz, chargements). |
 
 ### `composant/molecules/`
 
 Blocs réutilisables entre plusieurs pages, structurés en dossiers.
 
-| Dossier | Rôle |
-|---------|------|
-| `AppHeader/` / `AppFooter/` | En-tête et pied de page communs. |
-| `PageMain/` | Mise en page centrale des pages. |
-| `CollectionCard/` | Carte d’une collection (aperçu, actions). |
-| `PlayModePicker/` | Choix du mode de lecture (ordre des questions). |
-| `AnswerOption/` | Affichage / sélection d’une réponse pendant le jeu. |
-| `QuestionEditModal/` | Modale d’édition d’une question. |
-| `KpiCard/` | Carte indicateur pour le tableau de bord stats. |
-| `PopUpInformation/` | Boîte d’information / alerte légère. |
-| `QuestionsLlmImport*/` | Panneaux et options pour l’import assisté (prompts, options, JSON). |
+| Dossier                     | Rôle                                                                |
+| --------------------------- | ------------------------------------------------------------------- |
+| `AppHeader/` / `AppFooter/` | En-tête et pied de page communs.                                    |
+| `PageMain/`                 | Mise en page centrale des pages.                                    |
+| `CollectionCard/`           | Carte d’une collection (aperçu, actions).                           |
+| `PlayModePicker/`           | Choix du mode de lecture (ordre des questions).                     |
+| `AnswerOption/`             | Affichage / sélection d’une réponse pendant le jeu.                 |
+| `QuestionEditModal/`        | Modale d’édition d’une question.                                    |
+| `KpiCard/`                  | Carte indicateur pour le tableau de bord stats.                     |
+| `PopUpInformation/`         | Boîte d’information / alerte légère.                                |
+| `QuestionsLlmImport*/`      | Panneaux et options pour l’import assisté (prompts, options, JSON). |
 
 ### `composant/organismes/`
 
 Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 
-| Dossier | Rôle |
-|---------|------|
-| `DeviceAuthGate/` | Vérifie / enregistre l’appareil (MAC) avant d’afficher l’app. |
-| `HomeView/` | Accueil et navigation vers collections, jeu, stats. |
-| `CollectionsView/` | Liste et gestion des collections (découpé en sections). |
-| `QuestionsView/` | Liste / édition des questions (filtrage par collection). |
-| `QuestionsTable/` | Table détaillée des questions (tri, actions). |
-| `QuestionsCollectionContextBar/` | Barre de contexte (collection courante, raccourcis). |
-| `QuestionsLlmImportCard/` | Carte dédiée au flux d’import type LLM. |
-| `QuizSessionView.tsx` | Déroulé d’une partie (questions, réponses, progression). |
-| `QuizResultsView/` | Résumé à la fin d’un quiz. |
-| `StatsDashboard/` | Vue d’ensemble des statistiques / KPI. |
-| `SessionDetailsView/` | Détail d’une session de jeu. |
-| `DatabaseTransferView/` | Écran d’import / export de données (admin côté UI). |
+| Dossier                          | Rôle                                                          |
+| -------------------------------- | ------------------------------------------------------------- |
+| `DeviceAuthGate/`                | Vérifie / enregistre l’appareil (MAC) avant d’afficher l’app. |
+| `HomeView/`                      | Accueil et navigation vers collections, jeu, stats.           |
+| `CollectionsView/`               | Liste et gestion des collections (découpé en sections).       |
+| `QuestionsView/`                 | Liste / édition des questions (filtrage par collection).      |
+| `QuestionsTable/`                | Table détaillée des questions (tri, actions).                 |
+| `QuestionsCollectionContextBar/` | Barre de contexte (collection courante, raccourcis).          |
+| `QuestionsLlmImportCard/`        | Carte dédiée au flux d’import type LLM.                       |
+| `QuizSessionView.tsx`            | Déroulé d’une partie (questions, réponses, progression).      |
+| `QuizResultsView/`               | Résumé à la fin d’un quiz.                                    |
+| `StatsDashboard/`                | Vue d’ensemble des statistiques / KPI.                        |
+| `SessionDetailsView/`            | Détail d’une session de jeu.                                  |
+| `DatabaseTransferView/`          | Écran d’import / export de données (admin côté UI).           |
 
 ### `lib/`
 
-| Fichier | Rôle |
-|---------|------|
-| `api.ts` | Fonctions fetch vers le backend (collections, questions, stats, admin, devices). |
-| `config.ts` | URL d’API et constantes d’environnement côté client. |
-| `cn.ts` | Fusion de classes Tailwind (`clsx` + `tailwind-merge`). |
-| `routePathContext.tsx` | Contexte React/Preact exposant le chemin courant (pour liens actifs, etc.). |
-| `userSession.tsx` | État et helpers de session utilisateur / appareil côté client. |
-| `lastQuizResult.ts` | Persistance locale du dernier résultat de quiz. |
-| `playOrder.ts` | Ordre de lecture (aléatoire, séquentiel, etc.). |
-| `collectionAppJson.ts` | Format JSON applicatif des collections (import/export côté client). |
-| `appCollectionImportNormalize.ts` | Normalisation des données importées au format app. |
-| `llmImportPrompts.ts` / `llmImportNormalize.ts` / `questionCreateLlmJson.ts` | Chaîne d’import « LLM » : prompts, normalisation, construction JSON. |
-| `questionCategories.ts` | Catégories ou labels pour classifier les questions. |
+| Fichier                                                                      | Rôle                                                                             |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `api.ts`                                                                     | Fonctions fetch vers le backend (collections, questions, stats, admin, devices). |
+| `config.ts`                                                                  | URL d’API et constantes d’environnement côté client.                             |
+| `cn.ts`                                                                      | Fusion de classes Tailwind (`clsx` + `tailwind-merge`).                          |
+| `routePathContext.tsx`                                                       | Contexte React/Preact exposant le chemin courant (pour liens actifs, etc.).      |
+| `userSession.tsx`                                                            | État et helpers de session utilisateur / appareil côté client.                   |
+| `lastQuizResult.ts`                                                          | Persistance locale du dernier résultat de quiz.                                  |
+| `playOrder.ts`                                                               | Ordre de lecture (aléatoire, séquentiel, etc.).                                  |
+| `collectionAppJson.ts`                                                       | Format JSON applicatif des collections (import/export côté client).              |
+| `appCollectionImportNormalize.ts`                                            | Normalisation des données importées au format app.                               |
+| `llmImportPrompts.ts` / `llmImportNormalize.ts` / `questionCreateLlmJson.ts` | Chaîne d’import « LLM » : prompts, normalisation, construction JSON.             |
+| `questionCategories.ts`                                                      | Catégories ou labels pour classifier les questions.                              |
 
 ### `types/`
 
