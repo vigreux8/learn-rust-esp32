@@ -167,7 +167,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     setListFilterQtype(value);
   }, []);
 
-  const llmImport = {
+  const questionsActionBoutons = {
     data: {
       targetCollectionNumeric,
       collections,
@@ -230,7 +230,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   };
 
   return {
-    llmImport,
+    questionsActionBoutons,
     operationError,
     contextBar,
     filtres,

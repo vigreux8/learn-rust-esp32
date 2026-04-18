@@ -1,6 +1,6 @@
 import type { CollectionUi, QuizzModuleRow, QuizzQuestionRow } from "../../../types/quizz";
 
-export type QuestionsLlmImportCardProps = {
+export type QuestionsActionBoutonsProps = {
   data: {
     targetCollectionNumeric: number | null;
     collections: CollectionUi[];

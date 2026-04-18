@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { importQuestionsJson } from "../../../lib/api";
 import { normalizeAndValidateImportText } from "../../../lib/llmImportNormalize";
-import { downloadCollectionAsAppJson } from "../../../lib/collectionAppJson";
 import {
   LLM_QUESTION_COUNT_OPTIONS,
   formatExistingQuestionStemsForPrompt,
@@ -15,17 +14,15 @@ import {
   SUBJECT_OPTION_ID,
   buildImportSuccessMessage,
   buildLlmImportPrompt,
-} from "./QuestionsLlmImportCard.metier";
-import type { QuestionsLlmImportCardProps } from "./QuestionsLlmImportCard.types";
-import { getOptionValue } from "./QuestionsLlmImportCard.utils";
+} from "./QuestionsActionBoutons.metier";
+import type { QuestionsActionBoutonsProps } from "./QuestionsActionBoutons.types";
+import { getOptionValue } from "./QuestionsActionBoutons.utils";
 
-export function useQuestionsLlmImportCard(props: QuestionsLlmImportCardProps) {
+export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
   const { data, actions } = props;
   const { targetCollectionNumeric, collections, allModules, importTargetModuleId, questions } = data;
 
   const [importOpen, setImportOpen] = useState(false);
-  const [exportBusy, setExportBusy] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
   const [options, setOptions] = useState<LlmImportOption[]>([]);
   const importLlmLastSyncedCollectionId = useRef<number | null>(null);
   const optionsRef = useRef<LlmImportOption[]>([]);
@@ -122,34 +119,16 @@ export function useQuestionsLlmImportCard(props: QuestionsLlmImportCardProps) {
     [buildPrompt, options, targetCollectionNumeric, importTargetModuleId, actions],
   );
 
-  const handleExportCollectionJson = () => {
-    if (targetCollectionNumeric == null) return;
-    setExportBusy(true);
-    setExportError(null);
-    try {
-      const col = collections.find((entry) => entry.id === targetCollectionNumeric);
-      if (!col) throw new Error("Collection introuvable dans la liste chargee.");
-      downloadCollectionAsAppJson(col);
-    } catch (e) {
-      setExportError(e instanceof Error ? e.message : "Export JSON impossible.");
-    } finally {
-      setExportBusy(false);
-    }
-  };
-
   const toggleImport = () => setImportOpen((o) => !o);
 
   return {
     state: {
       importOpen,
-      exportBusy,
-      exportError,
       options,
       llmImportWorkflow,
     },
     actions: {
       setOptions,
-      handleExportCollectionJson,
       toggleImport,
     },
   };

@@ -1,5 +1,5 @@
 import { QuestionsCollectionContextBar } from "../../atomes/QuestionsCollectionContextBar/QuestionsCollectionContextBar";
-import { QuestionsLlmImportCard } from "../QuestionsLlmImportCard/QuestionsLlmImportCard";
+import { QuestionsActionBoutons } from "../QuestionsActionBoutons/QuestionsActionBoutons";
 import { QuestionEditModal } from "../QuestionEditModal/QuestionEditModal";
 import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import { AppFooter } from "../../atomes/AppFooter/AppFooter";
@@ -14,13 +14,13 @@ import { QUESTIONS_VIEW_STYLES } from "./QuestionsView.styles";
 import type { QuestionsViewProps } from "./QuestionsView.types";
 
 export function QuestionsView(props: QuestionsViewProps) {
-  const { llmImport, operationError, contextBar, filtres, liste, editModal } = useQuestionsView(props);
+  const { questionsActionBoutons, operationError, contextBar, filtres, liste, editModal } = useQuestionsView(props);
 
   return (
     <div class={QUESTIONS_VIEW_STYLES.root}>
       <AppHeader />
       <PageMain>
-        <QuestionsLlmImportCard data={llmImport.data} actions={llmImport.actions} />
+        <QuestionsActionBoutons data={questionsActionBoutons.data} actions={questionsActionBoutons.actions} />
 
         {operationError.visible ? <QuestionsViewOperationErrorBanner onDismiss={operationError.onDismiss} /> : null}
 
