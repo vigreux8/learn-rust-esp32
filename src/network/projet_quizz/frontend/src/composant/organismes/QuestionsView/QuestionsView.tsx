@@ -166,14 +166,18 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
       <AppHeader />
       <PageMain>
         <QuestionsLlmImportCard
-          targetCollectionNumeric={targetCollectionNumeric}
-          collections={collections}
-          allModules={allModules}
-          importTargetModuleId={importTargetModuleId}
-          questions={questions}
-          onImportSuccess={() => {
-            reload();
-            fetchCollections().then(setCollections).catch(() => {});
+          data={{
+            targetCollectionNumeric,
+            collections,
+            allModules,
+            importTargetModuleId,
+            questions,
+          }}
+          actions={{
+            onImportSuccess: () => {
+              reload();
+              fetchCollections().then(setCollections).catch(() => {});
+            },
           }}
         />
 
