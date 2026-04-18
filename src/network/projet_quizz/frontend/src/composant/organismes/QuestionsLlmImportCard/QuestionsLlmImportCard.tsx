@@ -38,9 +38,8 @@ export function QuestionsLlmImportCard(props: QuestionsLlmImportCardProps) {
       {state.exportError && <p class="mb-3 text-xs text-error">{state.exportError}</p>}
       {state.importOpen && (
         <QuestionsLlmImportPanel
-          options={state.options}
-          setOptions={actions.setOptions}
-          llmImportWorkflow={state.llmImportWorkflow}
+          data={{ options: state.options, llmImportWorkflow: state.llmImportWorkflow }}
+          actions={{ onOptionsChange: actions.setOptions }}
         />
       )}
     </>

@@ -1,53 +1,17 @@
-import { useEffect, useState } from "preact/hooks";
-import { route } from "preact-router";
 import { ArrowLeft } from "lucide-preact";
-import { fetchSessionDetail } from "../../../lib/api";
-import { useUserSession } from "../../../lib/userSession";
-import type { SessionDetail } from "../../../types/quizz";
 import { AppHeader } from "../../molecules/AppHeader/AppHeader";
 import { AppFooter } from "../../molecules/AppFooter/AppFooter";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { Badge } from "../../atomes/Badge/Badge";
+import { useSessionDetailsView } from "./SessionDetailsView.hook";
 import { SESSION_DETAILS_VIEW_STYLES } from "./SessionDetailsView.styles";
+import type { SessionDetailsViewProps } from "./SessionDetailsView.types";
 
-export type SessionDetailsViewProps = {
-  sessionId?: string;
-};
+export function SessionDetailsView(props: SessionDetailsViewProps) {
+  const { status, navigation, session } = useSessionDetailsView(props);
 
-export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
-  const { userId } = useUserSession();
-  const [session, setSession] = useState<SessionDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    if (sessionId == null || sessionId === "") {
-      setNotFound(true);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setNotFound(false);
-      try {
-        const detail = await fetchSessionDetail(sessionId, userId);
-        if (cancelled) return;
-        if (detail == null) setNotFound(true);
-        else setSession(detail);
-      } catch {
-        if (!cancelled) setNotFound(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, userId]);
-
-  if (loading) {
+  if (status.loading) {
     return (
       <div class={SESSION_DETAILS_VIEW_STYLES.root}>
         <AppHeader />
@@ -59,13 +23,13 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
     );
   }
 
-  if (notFound || !session) {
+  if (status.notFound || session == null) {
     return (
       <div class={SESSION_DETAILS_VIEW_STYLES.root}>
         <AppHeader />
         <main class={SESSION_DETAILS_VIEW_STYLES.centeredMain}>
           <p class="text-base text-base-content/70">Session introuvable.</p>
-          <Button variant="flow" onClick={() => route("/dashboard")}>
+          <Button variant="flow" onClick={navigation.toDashboard}>
             Retour au dashboard
           </Button>
         </main>
@@ -78,7 +42,7 @@ export function SessionDetailsView({ sessionId }: SessionDetailsViewProps) {
     <div class={SESSION_DETAILS_VIEW_STYLES.root}>
       <AppHeader />
       <main class={SESSION_DETAILS_VIEW_STYLES.contentMain}>
-        <Button variant="ghost" class="btn-sm mb-6 gap-1 px-3" onClick={() => route("/dashboard")}>
+        <Button variant="ghost" class="btn-sm mb-6 gap-1 px-3" onClick={navigation.toDashboard}>
           <ArrowLeft class="h-4 w-4" aria-hidden />
           Dashboard
         </Button>

@@ -1,118 +1,13 @@
-import { useRef, useState } from "preact/hooks";
 import { Download, FileUp, HardDriveDownload, Replace, Shuffle } from "lucide-preact";
-import {
-  downloadDatabaseJsonExport,
-  downloadDatabaseSqlExport,
-  postDatabaseJsonMerge,
-  postDatabaseSqlReplace,
-  type DatabaseJsonMergeResult,
-  type DatabaseSqlReplaceResult,
-} from "../../../lib/api";
 import { AppFooter } from "../../molecules/AppFooter/AppFooter";
 import { AppHeader } from "../../molecules/AppHeader/AppHeader";
 import { PageMain } from "../../molecules/PageMain/PageMain";
 import { Button } from "../../atomes/Button/Button";
-import { readFileAsText, triggerFileDownload } from "./DatabaseTransferView.metier";
+import { useDatabaseTransferView } from "./DatabaseTransferView.hook";
 import { DATABASE_TRANSFER_VIEW_STYLES } from "./DatabaseTransferView.styles";
 
 export function DatabaseTransferView() {
-  const [sqlBusy, setSqlBusy] = useState(false);
-  const [jsonBusy, setJsonBusy] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [lastFilename, setLastFilename] = useState<string | null>(null);
-
-  const sqlImportInputRef = useRef<HTMLInputElement | null>(null);
-  const jsonImportInputRef = useRef<HTMLInputElement | null>(null);
-
-  const [sqlImportFile, setSqlImportFile] = useState<File | null>(null);
-  const [jsonImportFile, setJsonImportFile] = useState<File | null>(null);
-
-  const [sqlImportBusy, setSqlImportBusy] = useState(false);
-  const [jsonImportBusy, setJsonImportBusy] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [sqlImportResult, setSqlImportResult] = useState<DatabaseSqlReplaceResult | null>(null);
-  const [jsonImportResult, setJsonImportResult] = useState<DatabaseJsonMergeResult | null>(null);
-
-  const handleExportSql = async () => {
-    setSqlBusy(true);
-    setExportError(null);
-    try {
-      const { blob, filename } = await downloadDatabaseSqlExport();
-      triggerFileDownload(blob, filename);
-      setLastFilename(filename);
-    } catch (error) {
-      setExportError(error instanceof Error ? error.message : "Export impossible.");
-    } finally {
-      setSqlBusy(false);
-    }
-  };
-
-  const handleExportJson = async () => {
-    setJsonBusy(true);
-    setExportError(null);
-    try {
-      const { blob, filename } = await downloadDatabaseJsonExport();
-      triggerFileDownload(blob, filename);
-      setLastFilename(filename);
-    } catch (error) {
-      setExportError(error instanceof Error ? error.message : "Export impossible.");
-    } finally {
-      setJsonBusy(false);
-    }
-  };
-
-  const handleSqlImport = async () => {
-    if (sqlImportFile == null) return;
-    const ok = window.confirm(
-      "Remplacement SQL : cette operation peut detruire ou remplacer des donnees.\n\n" +
-        "Tape OK seulement si tu viens de choisir un dump .sql fiable.",
-    );
-    if (!ok) return;
-
-    const token = window.prompt("Confirmation requise : saisir exactement REMPLACE_TOUT");
-    if (token !== "REMPLACE_TOUT") {
-      setImportError("Import SQL annule : confirmation invalide.");
-      return;
-    }
-
-    setSqlImportBusy(true);
-    setImportError(null);
-    setSqlImportResult(null);
-    setJsonImportResult(null);
-    try {
-      const script = await readFileAsText(sqlImportFile);
-      const result = await postDatabaseSqlReplace(script);
-      setSqlImportResult(result);
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Import SQL impossible.");
-    } finally {
-      setSqlImportBusy(false);
-    }
-  };
-
-  const handleJsonImport = async () => {
-    if (jsonImportFile == null) return;
-    const ok = window.confirm(
-      "Fusion JSON : les donnees seront ajoutees / reconciliees dans la base courante.\n\n" +
-        "Les identifiants importes seront remappes pour eviter les collisions.",
-    );
-    if (!ok) return;
-
-    setJsonImportBusy(true);
-    setImportError(null);
-    setJsonImportResult(null);
-    setSqlImportResult(null);
-    try {
-      const text = await readFileAsText(jsonImportFile);
-      const payload = JSON.parse(text) as unknown;
-      const result = await postDatabaseJsonMerge(payload);
-      setJsonImportResult(result);
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Import JSON impossible.");
-    } finally {
-      setJsonImportBusy(false);
-    }
-  };
+  const { exporting, importing } = useDatabaseTransferView();
 
   return (
     <div class={DATABASE_TRANSFER_VIEW_STYLES.root}>
@@ -150,32 +45,34 @@ export function DatabaseTransferView() {
             <Button
               variant="flow"
               class="btn-lg min-h-16 w-full min-w-[240px] justify-center gap-2 px-8 text-base shadow-xl shadow-flow/20 sm:flex-1"
-              disabled={sqlBusy}
-              onClick={() => void handleExportSql()}
+              disabled={exporting.sqlBusy}
+              onClick={exporting.handleExportSql}
             >
               <Replace class="h-5 w-5 shrink-0" aria-hidden />
               <span class="flex min-w-0 flex-col items-center leading-tight">
                 <span class="font-semibold">Remplacement</span>
-                <span class="text-xs font-normal opacity-90">{sqlBusy ? "Preparation..." : "fichier .sql"}</span>
+                <span class="text-xs font-normal opacity-90">{exporting.sqlBusy ? "Preparation..." : "fichier .sql"}</span>
               </span>
             </Button>
 
             <Button
               variant="learn"
               class="btn-lg min-h-16 w-full min-w-[240px] justify-center gap-2 px-8 text-base shadow-xl shadow-learn/20 sm:flex-1"
-              disabled={jsonBusy}
-              onClick={() => void handleExportJson()}
+              disabled={exporting.jsonBusy}
+              onClick={exporting.handleExportJson}
             >
               <Shuffle class="h-5 w-5 shrink-0" aria-hidden />
               <span class="flex min-w-0 flex-col items-center leading-tight">
                 <span class="font-semibold">Fusion</span>
-                <span class="text-xs font-normal opacity-90">{jsonBusy ? "Preparation..." : "fichier .json"}</span>
+                <span class="text-xs font-normal opacity-90">{exporting.jsonBusy ? "Preparation..." : "fichier .json"}</span>
               </span>
             </Button>
           </div>
 
-          {lastFilename ? <p class="mt-6 text-center text-xs text-success">Dernier export telecharge : {lastFilename}</p> : null}
-          {exportError ? <p class="mt-3 text-center text-xs text-error">{exportError}</p> : null}
+          {exporting.lastFilename ? (
+            <p class="mt-6 text-center text-xs text-success">Dernier export telecharge : {exporting.lastFilename}</p>
+          ) : null}
+          {exporting.exportError ? <p class="mt-3 text-center text-xs text-error">{exporting.exportError}</p> : null}
         </section>
 
         <section class="rounded-box border border-dashed border-base-content/15 bg-base-200/20 p-5">
@@ -200,32 +97,29 @@ export function DatabaseTransferView() {
               </p>
 
               <input
-                ref={sqlImportInputRef}
+                ref={importing.sqlImportInputRef}
                 type="file"
                 accept=".sql,text/sql,application/sql"
                 class="hidden"
-                onChange={(e) => {
-                  const f = (e.target as HTMLInputElement).files?.[0] ?? null;
-                  setSqlImportFile(f);
-                }}
+                onChange={(e) => importing.onPickSqlImportFile((e.target as HTMLInputElement).files?.[0] ?? null)}
               />
 
               <div class="flex flex-col gap-2">
                 <button
                   type="button"
                   class="btn btn-outline btn-sm rounded-full border-base-content/15"
-                  disabled={sqlImportBusy}
-                  onClick={() => sqlImportInputRef.current?.click()}
+                  disabled={importing.sqlImportBusy}
+                  onClick={importing.openSqlFilePicker}
                 >
-                  {sqlImportFile ? sqlImportFile.name : "Choisir un fichier .sql"}
+                  {importing.sqlImportFile ? importing.sqlImportFile.name : "Choisir un fichier .sql"}
                 </button>
                 <Button
                   variant="flow"
                   class="btn-sm"
-                  disabled={sqlImportBusy || sqlImportFile == null}
-                  onClick={() => void handleSqlImport()}
+                  disabled={importing.sqlImportBusy || importing.sqlImportFile == null}
+                  onClick={importing.handleSqlImport}
                 >
-                  {sqlImportBusy ? "Import SQL..." : "Importer (remplacement)"}
+                  {importing.sqlImportBusy ? "Import SQL..." : "Importer (remplacement)"}
                 </Button>
               </div>
             </div>
@@ -237,55 +131,52 @@ export function DatabaseTransferView() {
               </p>
 
               <input
-                ref={jsonImportInputRef}
+                ref={importing.jsonImportInputRef}
                 type="file"
                 accept=".json,application/json"
                 class="hidden"
-                onChange={(e) => {
-                  const f = (e.target as HTMLInputElement).files?.[0] ?? null;
-                  setJsonImportFile(f);
-                }}
+                onChange={(e) => importing.onPickJsonImportFile((e.target as HTMLInputElement).files?.[0] ?? null)}
               />
 
               <div class="flex flex-col gap-2">
                 <button
                   type="button"
                   class="btn btn-outline btn-sm rounded-full border-base-content/15"
-                  disabled={jsonImportBusy}
-                  onClick={() => jsonImportInputRef.current?.click()}
+                  disabled={importing.jsonImportBusy}
+                  onClick={importing.openJsonFilePicker}
                 >
-                  {jsonImportFile ? jsonImportFile.name : "Choisir un fichier .json"}
+                  {importing.jsonImportFile ? importing.jsonImportFile.name : "Choisir un fichier .json"}
                 </button>
                 <Button
                   variant="learn"
                   class="btn-sm"
-                  disabled={jsonImportBusy || jsonImportFile == null}
-                  onClick={() => void handleJsonImport()}
+                  disabled={importing.jsonImportBusy || importing.jsonImportFile == null}
+                  onClick={importing.handleJsonImport}
                 >
-                  {jsonImportBusy ? "Import JSON..." : "Importer (fusion)"}
+                  {importing.jsonImportBusy ? "Import JSON..." : "Importer (fusion)"}
                 </Button>
               </div>
             </div>
           </div>
 
-          {importError ? <p class="mt-4 text-xs text-error">{importError}</p> : null}
+          {importing.importError ? <p class="mt-4 text-xs text-error">{importing.importError}</p> : null}
 
-          {sqlImportResult ? (
+          {importing.sqlImportResult ? (
             <p class="mt-3 text-xs text-success">
-              SQL : {sqlImportResult.statementsExecuted} instruction(s) executee(s). Prisma a ete reconnecte.
+              SQL : {importing.sqlImportResult.statementsExecuted} instruction(s) executee(s). Prisma a ete reconnecte.
             </p>
           ) : null}
 
-          {jsonImportResult ? (
+          {importing.jsonImportResult ? (
             <div class="mt-3 rounded-box border border-base-content/10 bg-base-100/40 p-3 text-xs text-base-content/70">
               <p class="font-semibold text-base-content">Fusion JSON</p>
               <p class="mt-1">
-                Inserees : {jsonImportResult.insertedRows} · Ignorees : {jsonImportResult.skippedRows} · Remap d ids :{" "}
-                {jsonImportResult.remappedIds}
+                Inserees : {importing.jsonImportResult.insertedRows} · Ignorees : {importing.jsonImportResult.skippedRows} · Remap d ids :{" "}
+                {importing.jsonImportResult.remappedIds}
               </p>
-              {jsonImportResult.warnings.length > 0 ? (
+              {importing.jsonImportResult.warnings.length > 0 ? (
                 <ul class="mt-2 list-disc space-y-1 pl-4">
-                  {jsonImportResult.warnings.map((w) => (
+                  {importing.jsonImportResult.warnings.map((w) => (
                     <li key={w}>{w}</li>
                   ))}
                 </ul>

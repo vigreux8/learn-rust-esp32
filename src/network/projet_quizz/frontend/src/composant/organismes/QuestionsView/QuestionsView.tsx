@@ -248,7 +248,11 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
             </Button>
           </Card>
         ) : (
-          <QuestionsTable questions={questionsForTable} saving={saving} onEdit={openEditModal} onRemove={remove} />
+          <QuestionsTable
+            data={{ questions: questionsForTable }}
+            actions={{ onEdit: openEditModal, onRemove: remove }}
+            status={{ saving }}
+          />
         )}
 
         <QuestionEditModal

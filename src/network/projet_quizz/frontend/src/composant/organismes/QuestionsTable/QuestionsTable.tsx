@@ -1,18 +1,16 @@
 import { Pencil, Trash2 } from "lucide-preact";
-import type { QuizzQuestionRow } from "../../../types/quizz";
 import { Badge } from "../../atomes/Badge/Badge";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { QUESTIONS_TABLE_STYLES } from "./QuestionsTable.styles";
+import type { QuestionsTableProps } from "./QuestionsTable.types";
 
-export type QuestionsTableProps = {
-  questions: QuizzQuestionRow[];
-  saving: boolean;
-  onEdit: (q: QuizzQuestionRow) => void;
-  onRemove: (id: number) => void;
-};
+export function QuestionsTable(props: QuestionsTableProps) {
+  const { data, actions, status } = props;
+  const { questions } = data;
+  const { onEdit, onRemove } = actions;
+  const { saving } = status;
 
-export function QuestionsTable({ questions, saving, onEdit, onRemove }: QuestionsTableProps) {
   return (
     <Card>
       <p class="mb-4 text-sm text-base-content/60">
