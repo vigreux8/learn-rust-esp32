@@ -6,7 +6,9 @@ import {
   deleteQuestion,
   fetchRandomQuiz,
   fetchRefCategories,
+  fetchSousCollections,
   patchQuestion,
+  postAttachQuestionToSousCollection,
   postCreateQuestion,
   postQuizKpi,
   type HttpError,
@@ -56,6 +58,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const [nextBusy, setNextBusy] = useState(false);
   const [fetchingMore, setFetchingMore] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<{ id: number; nom: string }[]>([]);
+  const [draftSousCollectionId, setDraftSousCollectionId] = useState<number | null>(null);
 
   useEffect(() => {
     void fetchRefCategories()
@@ -201,9 +205,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     setQuestionModalError(null);
     setQuestionModalDetail(null);
     setCreateParentQuestionId(null);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
   };
 
   const openEditQuestionModal = (current: QuestionUi) => {
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
     setQuestionModalVariant("edit");
     setQuestionModalOpen(true);
     setQuestionModalLoading(true);
@@ -225,6 +233,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setActionMessage("Catégories indisponibles : impossible de créer une question pour l’instant.");
       return;
     }
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
     setQuestionModalVariant("create");
     setCreateParentQuestionId(parent.id);
     setQuestionModalOpen(true);
@@ -237,6 +247,15 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       ? parent.categorie_id
       : refCategories[0]!.id;
     setDraftCategorieId(cat);
+    const session = data;
+    if (session?.mode === "collection" && session.collectionId != null) {
+      void fetchSousCollections(session.collectionId).then((rows) => {
+        setSousCollectionsForCreateModal(rows.map((r) => ({ id: r.id, nom: r.nom })));
+        const playSous = session.playSousCollectionId;
+        const defId = playSous != null && rows.some((r) => r.id === playSous) ? playSous : null;
+        setDraftSousCollectionId(defId);
+      });
+    }
   };
 
   const refreshQuestionModalDetail = async () => {
@@ -294,7 +313,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     if (createParentQuestionId == null) return;
     setQuestionModalSaving(true);
     try {
-      await postCreateQuestion({
+      const created = await postCreateQuestion({
         user_id: userId,
         categorie_id: payload.categorie_id,
         question: payload.question,
@@ -303,7 +322,17 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         parent_question_id: createParentQuestionId,
         collection_id: data?.collectionId ?? undefined,
       });
-      setActionMessage("Question créée et liée à la question affichée (parent).");
+      if (payload.sous_collection_id != null) {
+        await postAttachQuestionToSousCollection(payload.sous_collection_id, {
+          user_id: userId,
+          question_id: created.id,
+        });
+      }
+      setActionMessage(
+        payload.sous_collection_id != null
+          ? "Question créée, liée au parent et à la sous-collection choisie."
+          : "Question créée et liée à la question affichée (parent).",
+      );
       closeQuestionModal();
     } catch {
       throw new Error("create failed");
@@ -581,6 +610,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       onDraftQuestion: setDraftQuestion,
       onDraftCommentaire: setDraftCommentaire,
       onDraftCategorieId: setDraftCategorieId,
+      onDraftSousCollectionId: setDraftSousCollectionId,
       onReponseUpdated: () => void refreshQuestionModalDetail(),
       onCreateSave: (payload: QuestionCreateSavePayload) => saveCreateQuestionModal(payload),
     },
@@ -589,11 +619,16 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       saving: questionModalSaving,
       error: questionModalError,
     },
-    data: { questionDetail: questionModalDetail, categorieOptions: refCategories },
+    data: {
+      questionDetail: questionModalDetail,
+      categorieOptions: refCategories,
+      sousCollectionsForCreate: sousCollectionsForCreateModal,
+    },
     drafts: {
       question: draftQuestion,
       commentaire: draftCommentaire,
       categorieId: draftCategorieId,
+      sousCollectionId: draftSousCollectionId,
     },
   };
 
