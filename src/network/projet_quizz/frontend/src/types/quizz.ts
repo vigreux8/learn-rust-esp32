@@ -78,6 +78,22 @@ export interface RefCategorieRow {
   type: string;
 }
 
+/** Aligné sur `SousCollectionUi` côté API Nest. */
+export interface SousCollectionQuestionRef {
+  relation_id: number;
+  question_id: number;
+  question: string;
+  categorie_type: string;
+}
+
+export interface SousCollectionUi {
+  id: number;
+  collection_id: number;
+  nom: string;
+  description: string;
+  questions: SousCollectionQuestionRef[];
+}
+
 export interface UserKpiRow {
   id: number;
   user_id: number;

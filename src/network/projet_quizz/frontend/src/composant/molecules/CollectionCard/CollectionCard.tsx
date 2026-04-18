@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { route } from "preact-router";
 import type { JSX } from "preact";
-import { ChevronRight, FolderTree, ListTree, Trash2, X } from "lucide-preact";
+import { ChevronRight, FolderTree, LayoutGrid, ListTree, Trash2, X } from "lucide-preact";
 
 import {
   buildPlayOrdersFromPicker,
@@ -13,7 +13,7 @@ import { Card } from "../../atomes/Card";
 import { Badge } from "../../atomes/Badge";
 import { Button } from "../../atomes/Button";
 
-import { buildQuestionsRoutePath } from "./CollectionCard.metier";
+import { buildQuestionsRoutePath, buildSousCollectionsRoutePath } from "./CollectionCard.metier";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";
 import type { CollectionCardProps } from "./CollectionCard.types";
 
@@ -130,6 +130,19 @@ export function CollectionCard({
         </div>
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
           <Button variant="outline" class="btn-sm gap-1" onClick={handleQuestionsClick}><ListTree class="h-4 w-4" aria-hidden />Questions</Button>
+          {isMine && n > 0 ? (
+            <Button
+              variant="outline"
+              class="btn-sm gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                route(buildSousCollectionsRoutePath(collection.id));
+              }}
+            >
+              <LayoutGrid class="h-4 w-4" aria-hidden />
+              Sous-collections
+            </Button>
+          ) : null}
           <Button variant="flow" class="btn-sm gap-1" onClick={() => {
             const orders = buildPlayOrdersFromPicker(playMode);
             route(`/play/${collection.id}${buildPlaySessionQuery({

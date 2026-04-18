@@ -155,5 +155,6 @@ model relation_sous_collections {
   sous_collections   sous_collections @relation(fields: [sous_collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   quizz_question     quizz_question   @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@unique([sous_collection_id, question_id], map: "relation_sous_collections_sous_question_key")
   @@map("relation_sous-collections")
 }

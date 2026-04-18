@@ -18,7 +18,8 @@
 - déplacement des organisme sans organisme qui n'importer aucun molécules
 -  j'ai mal découper mon projet atome [[découpage-projet-atome]]
 
-- dnd-kit pour rendre les chose dropable 
+- dnd-kit pour rendre les chose dropable
+- react flow 
 ### La règle d'or du `.metier.ts`
 
 Le fichier métier doit idéalement contenir de la logique qui pourrait fonctionner **même si tu changeais de framework** (si tu passais de React à Vue, par exemple).

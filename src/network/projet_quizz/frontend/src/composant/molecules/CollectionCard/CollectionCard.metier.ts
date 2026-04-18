@@ -5,3 +5,7 @@ export function buildQuestionsRoutePath(collectionId: number, linkedModules: Lin
   const q = first != null ? `?module=${first.id}` : "";
   return `/questions/${collectionId}${q}`;
 }
+
+export function buildSousCollectionsRoutePath(collectionId: number): string {
+  return `/collections/${collectionId}/sous-collections`;
+}

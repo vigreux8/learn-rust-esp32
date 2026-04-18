@@ -17,9 +17,11 @@ import { AppCollectionImportBodyDto } from './dto/import-collection.dto';
 import { LlmImportBodyDto } from './dto/import-llm.dto';
 import {
   AssignCollectionToModuleDto,
+  AttachQuestionToSousCollectionDto,
   CreateCollectionInModuleDto,
   CreateQuestionDto,
   CreateQuizzModuleDto,
+  CreateSousCollectionDto,
   CreateStandaloneCollectionDto,
   UpdateQuestionDto,
   UpdateReponseDto,
@@ -186,6 +188,51 @@ export class QuizzController {
       nom: body.nom,
       moduleId: body.moduleId,
     });
+  }
+
+  @Get('collections/:id/sous-collections')
+  listSousCollections(@Param('id', ParseIntPipe) collectionId: number) {
+    return this.quizz.listSousCollectionsByCollection(collectionId);
+  }
+
+  @Post('collections/:id/sous-collections')
+  createSousCollection(
+    @Param('id', ParseIntPipe) collectionId: number,
+    @Body() body: CreateSousCollectionDto,
+  ) {
+    return this.quizz.createSousCollection(collectionId, body);
+  }
+
+  @Delete('sous-collections/:sousId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.deleteSousCollection(sousId, userId);
+  }
+
+  @Post('sous-collections/:sousId/questions')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  attachQuestionToSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Body() body: AttachQuestionToSousCollectionDto,
+  ) {
+    return this.quizz.attachQuestionToSousCollection(sousId, body);
+  }
+
+  @Delete('sous-collections/:sousId/questions/:questionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  detachQuestionFromSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.detachQuestionFromSousCollection(
+      sousId,
+      userId,
+      questionId,
+    );
   }
 
   @Get('collections/:id')

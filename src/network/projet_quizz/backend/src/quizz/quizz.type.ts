@@ -78,3 +78,19 @@ export type QuizzModuleRow = {
   create_at: string;
   update_at: string;
 };
+
+/** Question rattachée à une sous-collection (UI drag-drop). */
+export type SousCollectionQuestionRef = {
+  relation_id: number;
+  question_id: number;
+  question: string;
+  categorie_type: string;
+};
+
+export type SousCollectionUi = {
+  id: number;
+  collection_id: number;
+  nom: string;
+  description: string;
+  questions: SousCollectionQuestionRef[];
+};

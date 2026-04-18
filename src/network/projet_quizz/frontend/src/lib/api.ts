@@ -9,6 +9,7 @@ import type {
   RefCategorieRow,
   SessionDetail,
   SessionSummary,
+  SousCollectionUi,
   UserKpiRow,
 } from "../types/quizz";
 import type { LlmImportPayload } from "../composant/molecules/QuestionsLlmImportPanel";
@@ -204,6 +205,58 @@ export async function fetchQuestions(
   const res = await fetch(apiUrl(`/quizz/questions${suffix}`));
   await assertResponseOk(res);
   return res.json() as Promise<QuizzQuestionRow[]>;
+}
+
+export async function fetchSousCollections(collectionId: number): Promise<SousCollectionUi[]> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/sous-collections`));
+  await assertResponseOk(res);
+  return res.json() as Promise<SousCollectionUi[]>;
+}
+
+export async function postCreateSousCollection(
+  collectionId: number,
+  body: { user_id: number; nom: string; description: string },
+): Promise<SousCollectionUi> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/sous-collections`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<SousCollectionUi>;
+}
+
+export async function deleteSousCollection(sousId: number, userId: number): Promise<void> {
+  const q = new URLSearchParams({ userId: String(userId) });
+  const res = await fetch(apiUrl(`/quizz/sous-collections/${sousId}?${q.toString()}`), {
+    method: "DELETE",
+  });
+  await assertResponseOk(res);
+}
+
+export async function postAttachQuestionToSousCollection(
+  sousId: number,
+  body: { user_id: number; question_id: number },
+): Promise<void> {
+  const res = await fetch(apiUrl(`/quizz/sous-collections/${sousId}/questions`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+}
+
+export async function deleteDetachQuestionFromSousCollection(
+  sousId: number,
+  questionId: number,
+  userId: number,
+): Promise<void> {
+  const q = new URLSearchParams({ userId: String(userId) });
+  const res = await fetch(
+    apiUrl(`/quizz/sous-collections/${sousId}/questions/${questionId}?${q.toString()}`),
+    { method: "DELETE" },
+  );
+  await assertResponseOk(res);
 }
 
 export async function patchQuestion(

@@ -10,6 +10,7 @@ import {
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieRow,
+  SousCollectionUi,
 } from '../quizz.type';
 
 export type QuizPlayOrder =
@@ -415,5 +416,44 @@ export class QuizzReadService {
       );
     }
     return this.listQuestions(n);
+  }
+
+  async listSousCollectionsByCollection(
+    collectionId: number,
+  ): Promise<SousCollectionUi[]> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+
+    const rows = await this.prisma.prisma.sous_collections.findMany({
+      where: { collection_id: collectionId },
+      orderBy: { id: 'asc' },
+      include: {
+        relation_sous_collections: {
+          orderBy: { id: 'asc' },
+          include: {
+            quizz_question: {
+              include: { ref_categorie: true },
+            },
+          },
+        },
+      },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      collection_id: r.collection_id,
+      nom: r.nom,
+      description: r.description ?? '',
+      questions: r.relation_sous_collections.map((rel) => ({
+        relation_id: rel.id,
+        question_id: rel.quizz_question.id,
+        question: rel.quizz_question.question,
+        categorie_type: rel.quizz_question.ref_categorie.type,
+      })),
+    }));
   }
 }
