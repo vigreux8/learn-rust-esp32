@@ -1,4 +1,4 @@
-import type { LlmImportOption } from "../QuestionsLlmImportOptionsPanel";
+import type { LlmImportOption } from "../../atomes/QuestionsLlmImportOptionsPanel";
 
 export type LlmImportReponse = { texte: string; correcte: boolean };
 

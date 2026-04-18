@@ -14,8 +14,8 @@ import { Card } from "../../atomes/Card";
 import { Badge } from "../../atomes/Badge";
 import { Button } from "../../atomes/Button";
 
-import { PlayModePicker } from "../PlayModePicker";
-import type { PlayModeSettings } from "../PlayModePicker/PlayModePicker.types";
+import { PlayModePicker } from "../../atomes/PlayModePicker";
+import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 
 import { buildQuestionsRoutePath } from "./CollectionCard.metier";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";

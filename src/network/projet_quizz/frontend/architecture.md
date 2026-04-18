@@ -41,25 +41,25 @@ frontend/
     │   └── quizz.ts             # types TS alignés sur l’API quizz
     ├── lib/                     # logique non-UI (API, session, import LLM, etc.)
     └── composant/
-        ├── atomes/              # briques visuelles minimales (dossier par composant)
-        │   ├── Badge/
-        │   ├── Button/
-        │   ├── Card/
-        │   └── ProgressBar/
-        ├── molecules/           # blocs réutilisables composés (dossier par composant)
+        ├── atomes/              # composants UI sans import d’autre atome du projet (dossier par composant)
         │   ├── AnswerOption/
         │   ├── AppFooter/
         │   ├── AppHeader/
-        │   ├── CollectionCard/
-        │   ├── KpiCard/
+        │   ├── Badge/
+        │   ├── Button/
+        │   ├── Card/
         │   ├── PageMain/
         │   ├── PlayModePicker/
+        │   ├── ProgressBar/
+        │   ├── QuestionsCollectionContextBar/
+        │   └── QuestionsLlmImportOptionsPanel/
+        ├── molecules/           # blocs composés important au moins un atome local (dossier par composant)
+        │   ├── CollectionCard/
+        │   ├── DeviceAuthGate/
+        │   ├── KpiCard/
         │   ├── PopUpInformation/
-        │   ├── QuestionsLlmImportOptionsPanel/
         │   ├── QuestionsLlmImportPanel/
         │   ├── QuestionsLlmImportPromptPanel/
-        │   ├── DeviceAuthGate/
-        │   ├── QuestionsCollectionContextBar/
         │   └── QuestionsTable/
         └── organismes/          # pages / écrans complets (dossier par composant)
             ├── CollectionsView/
@@ -92,32 +92,32 @@ Ici le pattern est le même, mais **découpé davantage** :
 
 ### `composant/atomes/`
 
-Composants visuels de bas niveau, sans logique métier lourde. Chaque composant est isolé dans son dossier.
+Composants UI **sans import** d’un autre dossier `atomes/*` (feuilles de l’arbre local). Peuvent utiliser `lib/`, `types/`, Lucide, etc.
 
-| Dossier        | Rôle                                      |
-| -------------- | ----------------------------------------- |
-| `Button/`      | Bouton stylé cohérent avec le thème.      |
-| `Card/`        | Conteneur carte (titres, corps).          |
-| `Badge/`       | Pastille / libellé court.                 |
-| `ProgressBar/` | Barre de progression (quiz, chargements). |
+| Dossier                          | Rôle                                                                |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `Button/` / `Card/` / `Badge/`   | Briques de base (bouton, carte, pastille).                          |
+| `ProgressBar/`                   | Barre de progression (quiz, chargements).                           |
+| `AppHeader/` / `AppFooter/`      | En-tête et pied de page communs.                                    |
+| `PageMain/`                      | Mise en page centrale des pages.                                    |
+| `PlayModePicker/`                | Choix du mode de lecture (ordre des questions).                     |
+| `AnswerOption/`                  | Affichage / sélection d’une réponse pendant le jeu.                 |
+| `QuestionsCollectionContextBar/` | Barre de contexte collection / import LLM sur l’écran questions.  |
+| `QuestionsLlmImportOptionsPanel/` | Options de l’import LLM (sans atome projet dans ce dossier).     |
 
 ### `composant/molecules/`
 
-Blocs réutilisables entre plusieurs pages, structurés en dossiers.
+Blocs composés qui **importent au moins un** composant sous `atomes/`.
 
 | Dossier                     | Rôle                                                                |
 | --------------------------- | ------------------------------------------------------------------- |
-| `AppHeader/` / `AppFooter/` | En-tête et pied de page communs.                                    |
-| `PageMain/`                 | Mise en page centrale des pages.                                    |
 | `CollectionCard/`           | Carte d’une collection (aperçu, actions).                           |
-| `PlayModePicker/`           | Choix du mode de lecture (ordre des questions).                     |
-| `AnswerOption/`             | Affichage / sélection d’une réponse pendant le jeu.                 |
 | `KpiCard/`                  | Carte indicateur pour le tableau de bord stats.                     |
 | `PopUpInformation/`         | Boîte d’information / alerte légère.                                |
-| `QuestionsLlmImport*/`      | Panneaux et options pour l’import assisté (prompts, options, JSON). |
-| `DeviceAuthGate/`           | Vérifie / enregistre l’appareil (MAC) avant l’app (utilisé depuis `app.tsx`). |
-| `QuestionsTable/`         | Table détaillée des questions (tri, actions). |
-| `QuestionsCollectionContextBar/` | Barre de contexte collection / import LLM sur l’écran questions. |
+| `QuestionsLlmImportPanel/`  | Panneau regroupant options + prompt import LLM.                     |
+| `QuestionsLlmImportPromptPanel/` | Zone prompt / JSON pour l’import LLM.                            |
+| `DeviceAuthGate/`           | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`).       |
+| `QuestionsTable/`          | Table détaillée des questions (tri, actions).                       |
 
 ### `composant/organismes/`
 

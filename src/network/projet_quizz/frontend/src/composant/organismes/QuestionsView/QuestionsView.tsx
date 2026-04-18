@@ -1,9 +1,9 @@
-import { QuestionsCollectionContextBar } from "../../molecules/QuestionsCollectionContextBar/QuestionsCollectionContextBar";
+import { QuestionsCollectionContextBar } from "../../atomes/QuestionsCollectionContextBar/QuestionsCollectionContextBar";
 import { QuestionsLlmImportCard } from "../QuestionsLlmImportCard/QuestionsLlmImportCard";
 import { QuestionEditModal } from "../QuestionEditModal/QuestionEditModal";
-import { AppHeader } from "../../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../../molecules/AppFooter/AppFooter";
-import { PageMain } from "../../molecules/PageMain/PageMain";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
+import { PageMain } from "../../atomes/PageMain/PageMain";
 import { useQuestionsView } from "./QuestionsView.hook";
 import {
   QuestionsViewFiltersSection,

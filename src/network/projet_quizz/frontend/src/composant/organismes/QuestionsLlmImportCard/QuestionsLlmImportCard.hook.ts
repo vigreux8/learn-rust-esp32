@@ -6,7 +6,7 @@ import {
   LLM_QUESTION_COUNT_OPTIONS,
   formatExistingQuestionStemsForPrompt,
 } from "../../../lib/llmImportPrompts";
-import { CATEGORY_OPTION_ID, type LlmImportOption } from "../../molecules/QuestionsLlmImportOptionsPanel";
+import { CATEGORY_OPTION_ID, type LlmImportOption } from "../../atomes/QuestionsLlmImportOptionsPanel";
 import type { LlmImportWorkflow } from "../../molecules/QuestionsLlmImportPanel";
 import {
   COLLECTION_NAME_OPTION_ID,

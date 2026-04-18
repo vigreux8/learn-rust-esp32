@@ -14,9 +14,8 @@
 - je dois faire attention dans question modale j'ai une structure qui oblige d'avoir 4 réponse
 - j'ai découvert [[#le custom hook]] se qui me donne l'idée de pouvoir aussi organisé mes  QuestionEditModalProps
 - dans les régle de bonne pratique on sépare tout mais dans react il recommande garder les action visible
-- le format destruction et assignation classique
-
-[[destruction et assignation classique]]
+- le format destruction et assignation classique [[destruction et assignation classique]]
+- déplacement des organisme sans organisme qui n'importer aucun molécules
 ### La règle d'or du `.metier.ts`
 
 Le fichier métier doit idéalement contenir de la logique qui pourrait fonctionner **même si tu changeais de framework** (si tu passais de React à Vue, par exemple).

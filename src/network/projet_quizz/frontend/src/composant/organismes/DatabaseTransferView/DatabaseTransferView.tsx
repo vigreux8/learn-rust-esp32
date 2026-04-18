@@ -1,7 +1,7 @@
 import { Download, FileUp, HardDriveDownload, Replace, Shuffle } from "lucide-preact";
-import { AppFooter } from "../../molecules/AppFooter/AppFooter";
-import { AppHeader } from "../../molecules/AppHeader/AppHeader";
-import { PageMain } from "../../molecules/PageMain/PageMain";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
+import { PageMain } from "../../atomes/PageMain/PageMain";
 import { Button } from "../../atomes/Button/Button";
 import { useDatabaseTransferView } from "./DatabaseTransferView.hook";
 import { DATABASE_TRANSFER_VIEW_STYLES } from "./DatabaseTransferView.styles";

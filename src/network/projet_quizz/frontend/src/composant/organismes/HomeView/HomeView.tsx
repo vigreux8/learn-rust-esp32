@@ -8,11 +8,11 @@ import {
   type PlayQtype,
 } from "../../../lib/playOrder";
 import { useUserSession } from "../../../lib/userSession";
-import { AppHeader } from "../../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../../molecules/AppFooter/AppFooter";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { Button } from "../../atomes/Button/Button";
-import { PlayModePicker } from "../../molecules/PlayModePicker/PlayModePicker";
-import type { PlayModeSettings } from "../../molecules/PlayModePicker/PlayModePicker.types";
+import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
+import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 import { HOME_VIEW_STYLES } from "./HomeView.styles";
 
 export function HomeView() {

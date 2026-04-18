@@ -1,6 +1,6 @@
 import { Trophy } from "lucide-preact";
-import { AppHeader } from "../../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../../molecules/AppFooter/AppFooter";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { Card } from "../../atomes/Card/Card";
 import { Button } from "../../atomes/Button/Button";
 import { Badge } from "../../atomes/Badge/Badge";

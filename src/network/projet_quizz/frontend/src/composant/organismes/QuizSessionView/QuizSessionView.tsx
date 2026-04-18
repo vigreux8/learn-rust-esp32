@@ -1,6 +1,6 @@
 import { QuestionEditModal } from "../QuestionEditModal/QuestionEditModal";
-import { AppFooter } from "../../molecules/AppFooter/AppFooter";
-import { AppHeader } from "../../molecules/AppHeader/AppHeader";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import { useQuizSessionView } from "./QuizSessionView.hook";
 import {
   QuizSessionError,

@@ -1,6 +1,6 @@
-import { AppHeader } from "../../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../../molecules/AppFooter/AppFooter";
-import { PageMain } from "../../molecules/PageMain/PageMain";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
+import { PageMain } from "../../atomes/PageMain/PageMain";
 import { Button } from "../../atomes/Button/Button";
 import { PopUpInformation } from "../../molecules/PopUpInformation/PopUpInformation";
 import { useCollectionsView } from "./CollectionsView.hook";

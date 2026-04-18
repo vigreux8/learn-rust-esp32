@@ -6,9 +6,9 @@ import { Badge } from "../../atomes/Badge/Badge";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { ProgressBar } from "../../atomes/ProgressBar/ProgressBar";
-import { AnswerOption } from "../../molecules/AnswerOption/AnswerOption";
-import { AppFooter } from "../../molecules/AppFooter/AppFooter";
-import { AppHeader } from "../../molecules/AppHeader/AppHeader";
+import { AnswerOption } from "../../atomes/AnswerOption/AnswerOption";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import type {
   QuizSessionHeaderProps,
   QuizSessionProgressProps,

@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-preact";
-import { AppHeader } from "../../molecules/AppHeader/AppHeader";
-import { AppFooter } from "../../molecules/AppFooter/AppFooter";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { Badge } from "../../atomes/Badge/Badge";
