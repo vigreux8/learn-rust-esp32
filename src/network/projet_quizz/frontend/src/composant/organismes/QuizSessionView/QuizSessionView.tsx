@@ -22,7 +22,7 @@ import type { QuestionUi, QuizzQuestionDetail, RefCategorieRow } from "../../../
 import {
   QuestionEditModal,
   type QuestionCreateSavePayload,
-} from "../../molecules/QuestionEditModal/QuestionEditModal";
+} from "../QuestionEditModal/QuestionEditModal";
 import {
   buildQuestionCopyJson,
   isPickedCorrect,

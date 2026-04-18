@@ -12,8 +12,8 @@ import {
 import { QUESTION_CATEGORIE_DEFINITIONS } from "../../../lib/questionCategories";
 import type { CollectionUi, QuizzModuleRow, QuizzQuestionRow } from "../../../types/quizz";
 import { Button } from "../../atomes/Button/Button";
-import { CATEGORY_OPTION_ID, type LlmImportOption } from "../../molecules/QuestionsLlmImportOptionsPanel/QuestionsLlmImportOptionsPanel";
-import { QuestionsLlmImportPanel } from "../../molecules/QuestionsLlmImportPanel/QuestionsLlmImportPanel";
+import { CATEGORY_OPTION_ID, type LlmImportOption } from "../../molecules/QuestionsLlmImportOptionsPanel";
+import { QuestionsLlmImportPanel } from "../../molecules/QuestionsLlmImportPanel";
 import { QUESTIONS_LLM_IMPORT_CARD_STYLES } from "./QuestionsLlmImportCard.styles";
 
 export type QuestionsLlmImportCardProps = {
@@ -81,7 +81,7 @@ export function QuestionsLlmImportCard({
         description: targetCollectionNumeric == null ? "Disponible lorsque tu filtres sur une collection." : "Lister les intitules deja en base.",
         disabled: targetCollectionNumeric == null,
         value: targetCollectionNumeric == null ? false : (previousExistingValue ?? false),
-        function: () => {
+        action: () => {
           const selectedCategory = getOptionValue(optionsRef.current, CATEGORY_OPTION_ID) || "histoire";
           const filteredQuestions = questions.filter((q) => q.categorie_type === selectedCategory);
           return filteredQuestions.length > 0 ? formatExistingQuestionStemsForPrompt(filteredQuestions) : "";

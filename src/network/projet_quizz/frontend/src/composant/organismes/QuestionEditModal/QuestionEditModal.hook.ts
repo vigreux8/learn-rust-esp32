@@ -3,6 +3,8 @@ import { patchReponse } from "../../../lib/api";
 
 import { buildLlmCreateQuestionPrompt, parseCreateQuestionLlmJson } from "../../../lib/questionCreateLlmJson";
 
+import type { QuestionsLlmImportPromptPanelProps } from "../../molecules/QuestionsLlmImportPromptPanel/QuestionsLlmImportPromptPanel.types";
+
 import { defaultCreateReponses } from "./QuestionEditModal.metier";
 import type { QuestionEditModalProps } from "./QuestionEditModal.types";
 
@@ -22,8 +24,6 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
   const [reponseError, setReponseError] = useState<string | null>(null);
   const [createReponses, setCreateReponses] = useState(defaultCreateReponses);
   const [createFormError, setCreateFormError] = useState<string | null>(null);
-  const [llmJsonDraft, setLlmJsonDraft] = useState("");
-  const [llmHint, setLlmHint] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
 
   const isCreate = variant === "create";
   const title = settings.modalTitle ?? (isCreate ? "Nouvelle question" : "Modifier la question");
@@ -33,8 +33,6 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     if (isCreate) {
       setCreateReponses(defaultCreateReponses());
       setCreateFormError(null);
-      setLlmJsonDraft("");
-      setLlmHint(null);
     }
   }, [settings.open, isCreate]);
 
@@ -75,23 +73,18 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     );
   };
 
-  const applyLlmJsonPaste = () => {
-    const res = parseCreateQuestionLlmJson(llmJsonDraft, { categorieOptions, fallbackCategorieId: drafts.categorieId });
-    if (!res.ok) return void setLlmHint({ tone: "err", text: res.error });
+  const applyCreateJsonFromPaste = async (importText: string): Promise<string> => {
+    const res = parseCreateQuestionLlmJson(importText, { categorieOptions, fallbackCategorieId: drafts.categorieId });
+    if (!res.ok) throw new Error(res.error);
     actions.onDraftQuestion(res.value.question);
     actions.onDraftCommentaire(res.value.commentaire);
     actions.onDraftCategorieId(res.value.categorie_id);
     setCreateReponses(res.value.reponses);
-    setLlmJsonDraft("");
-    setLlmHint({ tone: "ok", text: "Champs mis à jour à partir du JSON." });
+    return "Champs mis à jour à partir du JSON.";
   };
 
   const onBackdropClick = () => {
     if (!status.saving && !reponseBusy) settings.onClose();
-  };
-
-  const copyLlmPrompt = () => {
-    void navigator.clipboard.writeText(buildLlmCreateQuestionPrompt(drafts.question, categorieOptions));
   };
 
   const setCreateReponseCorrectAt = (idx: number) => {
@@ -121,12 +114,23 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     setCreateReponseTexteAt,
   };
 
-  const llm = {
-    llmHint,
-    llmJsonDraft,
-    setLlmJsonDraft,
-    applyLlmJsonPaste,
-    copyLlmPrompt,
+  const importPromptPanel: QuestionsLlmImportPromptPanelProps = {
+    class: "w-full min-w-0 max-w-full",
+    data: { prompt: buildLlmCreateQuestionPrompt(drafts.question, categorieOptions) },
+    actions: { importFromJson: applyCreateJsonFromPaste },
+    settings: {
+      submitLabel: "Appliquer le JSON", 
+      submitBusyLabel: "Application…",
+      pasteAreaInstruction:
+        "Colle le JSON renvoyé par le LLM (objet unique, format décrit dans le prompt). L’énoncé, le commentaire, la catégorie et les quatre réponses du formulaire seront remplis.",
+      jsonPastePlaceholder:
+        '{ "question": "…", "commentaire": "…", "categorie_type": "histoire", "reponses": [ { "texte": "…", "correcte": false }, … ] }',
+      disabled: status.saving,
+    },
+  };
+
+  const llmPanel = {
+    argProp: importPromptPanel,
   };
 
   const editionReponses = {
@@ -142,7 +146,7 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
   return {
     dialogue,
     creation,
-    llm,
+    composantExterne: llmPanel,
     editionReponses,
   };
 }

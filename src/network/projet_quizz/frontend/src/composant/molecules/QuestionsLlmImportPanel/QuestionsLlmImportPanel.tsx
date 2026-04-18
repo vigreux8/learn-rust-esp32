@@ -16,8 +16,8 @@ export function QuestionsLlmImportPanel({ options, setOptions, llmImportWorkflow
   return (
     <Card class={QUESTIONS_LLM_IMPORT_PANEL_STYLES.card}>
       <div class={QUESTIONS_LLM_IMPORT_PANEL_STYLES.layout}>
-        <QuestionsLlmImportOptionsPanel options={options} onOptionsChange={setOptions} />
-        <QuestionsLlmImportPromptPanel prompt={llmPromptFull} importFromJson={llmImportWorkflow.importFromJson} />
+        <QuestionsLlmImportOptionsPanel data={{ options }} actions={{ onOptionsChange: setOptions }} />
+        <QuestionsLlmImportPromptPanel data={{ prompt: llmPromptFull }} actions={{ importFromJson: llmImportWorkflow.importFromJson }} />
       </div>
     </Card>
   );

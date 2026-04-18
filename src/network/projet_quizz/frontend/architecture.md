@@ -55,7 +55,6 @@ frontend/
         │   ├── PageMain/
         │   ├── PlayModePicker/
         │   ├── PopUpInformation/
-        │   ├── QuestionEditModal/
         │   ├── QuestionsLlmImportOptionsPanel/
         │   ├── QuestionsLlmImportPanel/
         │   └── QuestionsLlmImportPromptPanel/
@@ -64,6 +63,7 @@ frontend/
             ├── DatabaseTransferView/
             ├── DeviceAuthGate/
             ├── HomeView/
+            ├── QuestionEditModal/
             ├── QuestionsCollectionContextBar/
             ├── QuestionsLlmImportCard/
             ├── QuestionsTable/
@@ -112,7 +112,6 @@ Blocs réutilisables entre plusieurs pages, structurés en dossiers.
 | `CollectionCard/`           | Carte d’une collection (aperçu, actions).                           |
 | `PlayModePicker/`           | Choix du mode de lecture (ordre des questions).                     |
 | `AnswerOption/`             | Affichage / sélection d’une réponse pendant le jeu.                 |
-| `QuestionEditModal/`        | Modale d’édition d’une question.                                    |
 | `KpiCard/`                  | Carte indicateur pour le tableau de bord stats.                     |
 | `PopUpInformation/`         | Boîte d’information / alerte légère.                                |
 | `QuestionsLlmImport*/`      | Panneaux et options pour l’import assisté (prompts, options, JSON). |
@@ -126,6 +125,7 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 | `DeviceAuthGate/`                | Vérifie / enregistre l’appareil (MAC) avant d’afficher l’app. |
 | `HomeView/`                      | Accueil et navigation vers collections, jeu, stats.           |
 | `CollectionsView/`               | Liste et gestion des collections (découpé en sections).       |
+| `QuestionEditModal/`             | Modale d’édition ou de création d’une question (QCM).         |
 | `QuestionsView/`                 | Liste / édition des questions (filtrage par collection).      |
 | `QuestionsTable/`                | Table détaillée des questions (tri, actions).                 |
 | `QuestionsCollectionContextBar/` | Barre de contexte (collection courante, raccourcis).          |
@@ -164,7 +164,7 @@ Ressources statiques servies par Vite (illustrations, logos).
 
 ### dans arborecence
 
-À appliquer à chaque composant sous `composant/` (atomes, molécules, organismes). **Référence** : dossier `QuestionEditModal/`.
+À appliquer à chaque composant sous `composant/` (atomes, molécules, organismes).
 
 - **Un composant = un dossier** nommé comme le composant.
 - **`NomComposant.tsx`** : JSX et câblage ; pas de logique métier.
@@ -191,6 +191,7 @@ Ressources statiques servies par Vite (illustrations, logos).
 ##### `NomComposant.types.ts`, `NomComposant.hook.ts`, `NomComposant.tsx`
 
 - **Contrat de données (`.types.ts`)** :
+  - Interdiction de créer des props "plates"
   - Centraliser les entrées dans une interface unique découpée en **sous-objets thématiques** (ex: `settings` pour la config, `data` pour le brut, `actions` pour les callbacks).
   - Cette structure sert de "contrat stable" entre le parent et l'enfant, facilitant la maintenance et la lecture.
 
@@ -202,6 +203,52 @@ Ressources statiques servies par Vite (illustrations, logos).
   - Le fichier doit rester **purement déclaratif**.
   - Il se contente de déstructurer les blocs fournis par le hook et de les "brancher" sur le JSX.
   - Aucun calcul complexe ou gestion d'état ne doit apparaître ici : si le JSX devient difficile à lire, c'est que la logique doit être mieux découpée dans le hook ou le métier.
+
+#### Exemple de structure type (Ex: `UserProfile`)
+
+**`UserProfile.types.ts`**
+
+```ts
+export type UserProfileProps = {
+  settings: { theme: "dark" | "light"; editable: boolean };
+  data: { user: User | null };
+  actions: { onUpdate: (data: UserUpdate) => void };
+  status: { loading: boolean; error: string | null };
+};
+```
+
+**`UserProfile.hook.ts`**
+
+```ts
+export function useUserProfile(props: UserProfileProps) {
+  const { data, actions } = props; // 1. Déstructuration des entrées
+
+  // ... logique, états internes ...
+
+  return {
+    // 2. Regroupement par blocs fonctionnels
+    header: { name: data.user?.name, avatar: data.user?.img },
+    form: { onSubmit: actions.onUpdate, isDirty },
+  };
+}
+```
+
+**`UserProfile.tsx`**
+
+```ts
+export function UserProfile(props: UserProfileProps) {
+  const { settings, status } = props;
+  const { header, form } = useUserProfile(props);
+
+  if (status.loading) return <Loader />;
+  return (
+    <div class={settings.theme}>
+      <HeaderSection data={header} />
+      <FormSection logic={form} />
+    </div>
+  );
+}
+```
 
 ## Flux typique
 

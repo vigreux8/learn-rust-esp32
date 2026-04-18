@@ -1,9 +1,8 @@
-import { ClipboardCopy } from "lucide-preact";
 import { Button } from "../../atomes/Button";
+import { QuestionsLlmImportPromptPanel } from "../../molecules/QuestionsLlmImportPromptPanel";
 import { useQuestionEditModal } from "./QuestionEditModal.hook";
 import { QUESTION_EDIT_MODAL_STYLES } from "./QuestionEditModal.styles";
 import type { QuestionEditModalProps } from "./QuestionEditModal.types";
-
 export type { QuestionCreateSavePayload } from "./QuestionEditModal.types";
 
 export function QuestionEditModal(props: QuestionEditModalProps) {
@@ -16,9 +15,14 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
   const modal = useQuestionEditModal(props);
   const dialogue = modal.dialogue;
   const creation = modal.creation;
-  const llm = modal.llm;
+  const composantExterne = modal.composantExterne;
   const editionReponses = modal.editionReponses;
   if (!settings.open) return null;
+
+
+
+  
+
 
   return (
     <div class={QUESTION_EDIT_MODAL_STYLES.overlay} role="presentation">
@@ -38,13 +42,8 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
             <textarea id="qm-question" class="textarea textarea-bordered mb-4 w-full rounded-xl border-base-content/15 text-sm" rows={4} value={drafts.question} onInput={(e) => actions.onDraftQuestion((e.target as HTMLTextAreaElement).value)} />
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qm-commentaire">Commentaire</label>
             <textarea id="qm-commentaire" class="textarea textarea-bordered mb-4 w-full rounded-xl border-base-content/15 text-sm" rows={3} value={drafts.commentaire} onInput={(e) => actions.onDraftCommentaire((e.target as HTMLTextAreaElement).value)} />
-            <div class="mb-4 rounded-xl border border-learn/20 bg-learn/6 p-4">
-              {llm.llmHint ? <p class={`mb-3 text-sm ${llm.llmHint.tone === "ok" ? "text-flow" : "text-error"}`}>{llm.llmHint.text}</p> : null}
-              <Button variant="outline" class="btn-sm gap-1 mb-2" type="button" disabled={status.saving} onClick={llm.copyLlmPrompt}>
-                <ClipboardCopy class="h-3.5 w-3.5 shrink-0" aria-hidden />Copier prompt pour le LLM
-              </Button>
-              <textarea id="qm-llm-json" class="textarea textarea-bordered mb-2 w-full rounded-xl border-base-content/15 font-mono text-xs" rows={5} value={llm.llmJsonDraft} onInput={(e) => llm.setLlmJsonDraft((e.target as HTMLTextAreaElement).value)} />
-              <Button variant="learn" class="btn-sm" type="button" disabled={status.saving} onClick={llm.applyLlmJsonPaste}>Appliquer le JSON</Button>
+            <div class="mb-4 rounded-xl border border-learn/20 bg-learn/6 p-3">
+              <QuestionsLlmImportPromptPanel {...composantExterne.argProp} />
             </div>
             <ul class="mb-6 space-y-3 rounded-xl border border-base-content/10 bg-base-200/30 p-3">
               {creation.createReponses.map((r, idx) => (

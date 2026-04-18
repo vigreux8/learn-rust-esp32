@@ -1,76 +1,48 @@
-import { useEffect, useState } from "preact/hooks";
-import { fetchRefCategories } from "../../../lib/api";
-import {
-  getQuestionCategorieSyncWarning,
-  getSupportedQuestionCategories,
-  QUESTION_CATEGORIE_KEYS,
-  type QuestionCategorieKey,
-} from "../../../lib/questionCategories";
+import { useQuestionsLlmImportOptionsPanel } from "./QuestionsLlmImportOptionsPanel.hook";
 import { QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES } from "./QuestionsLlmImportOptionsPanel.styles";
+import type { QuestionsLlmImportOptionsPanelProps } from "./QuestionsLlmImportOptionsPanel.types";
 
-export const CATEGORY_OPTION_ID = "categorie";
-export type LlmImportOptionValue = string | number | boolean | null;
-export type LlmImportOptionParent = { id: string; titre: string; value: LlmImportOptionValue };
-export type LlmImportListeSelectionOption = LlmImportOptionParent & { type: "liste_selection"; liste_choix: string[] };
-export type LlmImportTexteOption = LlmImportOptionParent & { type: "texte"; contenus: string; multiline?: boolean };
-export type LlmImportCaseACocherOption = LlmImportOptionParent & {
-  type: "case_a_cocher";
-  description: string;
-  function: () => Promise<LlmImportOptionValue> | LlmImportOptionValue;
-  disabled?: boolean;
-};
-export type LlmImportOption = LlmImportListeSelectionOption | LlmImportTexteOption | LlmImportCaseACocherOption;
-export type QuestionsLlmImportOptionsPanelProps = { options: LlmImportOption[]; onOptionsChange: (options: LlmImportOption[]) => void };
+export type {
+  BaseOption,
+  LlmImportCaseACocherOption,
+  LlmImportListeSelectionOption,
+  LlmImportOption,
+  LlmImportOptionValue,
+  LlmImportTexteOption,
+  QuestionsLlmImportOptionsPanelProps,
+} from "./QuestionsLlmImportOptionsPanel.types";
 
-function buildCategoryOption(currentValue: LlmImportOptionValue, listeChoix: readonly QuestionCategorieKey[]): LlmImportListeSelectionOption {
-  const fallbackValue = listeChoix[0] ?? QUESTION_CATEGORIE_KEYS[0];
-  const normalizedValue = typeof currentValue === "string" && listeChoix.includes(currentValue as QuestionCategorieKey) ? currentValue : fallbackValue;
-  return { id: CATEGORY_OPTION_ID, titre: "Catégorie (enregistrée en base)", type: "liste_selection", liste_choix: [...listeChoix], value: normalizedValue };
-}
+export { CATEGORY_OPTION_ID } from "./QuestionsLlmImportOptionsPanel.types";
 
-export function QuestionsLlmImportOptionsPanel({ options, onOptionsChange }: QuestionsLlmImportOptionsPanelProps) {
-  const [categoryChoices, setCategoryChoices] = useState<readonly QuestionCategorieKey[]>(QUESTION_CATEGORIE_KEYS);
-  const [categoryWarning, setCategoryWarning] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchRefCategories().then((rows) => {
-      setCategoryChoices(getSupportedQuestionCategories(rows));
-      setCategoryWarning(getQuestionCategorieSyncWarning(rows));
-    }).catch(() => setCategoryChoices(QUESTION_CATEGORIE_KEYS));
-  }, []);
-
-  useEffect(() => {
-    const currentCategoryOption = options.find((option) => option.id === CATEGORY_OPTION_ID);
-    const nextCategoryOption = buildCategoryOption(currentCategoryOption?.value ?? null, categoryChoices);
-    if (currentCategoryOption == null) return void onOptionsChange([nextCategoryOption, ...options]);
-    if (currentCategoryOption.type !== "liste_selection") return;
-    const sameValue = currentCategoryOption.value === nextCategoryOption.value;
-    const sameChoices = currentCategoryOption.liste_choix.length === nextCategoryOption.liste_choix.length && currentCategoryOption.liste_choix.every((value, index) => value === nextCategoryOption.liste_choix[index]);
-    if (sameValue && sameChoices) return;
-    onOptionsChange(options.map((option) => (option.id === CATEGORY_OPTION_ID ? { ...option, ...nextCategoryOption } : option)));
-  }, [options, onOptionsChange, categoryChoices]);
-
-  const updateOption = (id: string, updater: (option: LlmImportOption) => LlmImportOption) =>
-    onOptionsChange(options.map((option) => (option.id === id ? updater(option) : option)));
-
-  const runCheckboxOption = async (option: LlmImportCaseACocherOption, checked: boolean) => {
-    if (!checked) return void updateOption(option.id, (current) => ({ ...current, value: false }));
-    const result = await option.function();
-    updateOption(option.id, (current) => ({ ...current, value: result }));
-  };
+export function QuestionsLlmImportOptionsPanel(props: QuestionsLlmImportOptionsPanelProps) {
+  const { bandeauCategories, champs } = useQuestionsLlmImportOptionsPanel(props);
 
   return (
     <aside class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.aside}>
-      <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-base-content/45">Options</p>
-      {categoryWarning ? <div class="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs leading-snug text-warning-content">{categoryWarning}</div> : null}
-      {options.map((option) => {
+      <p class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.titreSection}>Options</p>
+      {bandeauCategories.messageAvertissement ? (
+        <div class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.alerteCategories}>{bandeauCategories.messageAvertissement}</div>
+      ) : null}
+      {champs.options.map((option) => {
         if (option.type === "liste_selection") {
           return (
             <div key={option.id}>
-              <label class="mb-1 block text-xs font-medium text-base-content/70" for={option.id}>{option.titre}</label>
-              <select id={option.id} class="select select-bordered select-sm w-full rounded-lg border-base-content/15 bg-base-100 text-sm" value={String(option.value ?? "")}
-                onChange={(e) => updateOption(option.id, (current) => ({ ...current, value: (e.target as HTMLSelectElement).value }))}>
-                {option.liste_choix.map((choix) => <option key={choix} value={choix}>{choix}</option>)}
+              <label class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.etiquetteChamp} for={option.id}>
+                {option.titre}
+              </label>
+              <select
+                id={option.id}
+                class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.select}
+                value={String(option.value ?? "")}
+                onChange={(e) =>
+                  champs.updateOption(option.id, (current) => ({ ...current, value: (e.target as HTMLSelectElement).value }))
+                }
+              >
+                {option.liste_choix.map((choix) => (
+                  <option key={choix} value={choix}>
+                    {choix}
+                  </option>
+                ))}
               </select>
             </div>
           );
@@ -78,26 +50,58 @@ export function QuestionsLlmImportOptionsPanel({ options, onOptionsChange }: Que
         if (option.type === "texte") {
           return (
             <div key={option.id}>
-              <label class="mb-1 block text-xs font-medium text-base-content/70" for={option.id}>{option.titre}</label>
+              <label class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.etiquetteChamp} for={option.id}>
+                {option.titre}
+              </label>
               {option.multiline ? (
-                <textarea id={option.id} class="textarea textarea-bordered w-full min-h-20 rounded-lg border-base-content/15 bg-base-100 text-sm" placeholder={option.contenus} value={String(option.value ?? "")}
-                  onInput={(e) => updateOption(option.id, (current) => ({ ...current, value: (e.target as HTMLTextAreaElement).value }))} />
+                <textarea
+                  id={option.id}
+                  class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.textarea}
+                  placeholder={option.contenus}
+                  value={String(option.value ?? "")}
+                  onInput={(e) =>
+                    champs.updateOption(option.id, (current) => ({ ...current, value: (e.target as HTMLTextAreaElement).value }))
+                  }
+                />
               ) : (
-                <input id={option.id} type="text" class="input input-bordered input-sm w-full rounded-lg border-base-content/15 bg-base-100 text-sm" placeholder={option.contenus} value={String(option.value ?? "")}
-                  onInput={(e) => updateOption(option.id, (current) => ({ ...current, value: (e.target as HTMLInputElement).value }))} />
+                <input
+                  id={option.id}
+                  type="text"
+                  class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.inputTexte}
+                  placeholder={option.contenus}
+                  value={String(option.value ?? "")}
+                  onInput={(e) =>
+                    champs.updateOption(option.id, (current) => ({ ...current, value: (e.target as HTMLInputElement).value }))
+                  }
+                />
               )}
             </div>
           );
         }
         return (
-          <label key={option.id} class={`flex items-start gap-2 rounded-lg border border-base-content/10 p-2 text-xs leading-snug ${option.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
-            <input type="checkbox" class="checkbox checkbox-sm mt-0.5 shrink-0 border-base-content/30" checked={Boolean(option.value)} disabled={option.disabled}
-              onChange={(e) => void runCheckboxOption(option, (e.target as HTMLInputElement).checked)} />
-            <span><span class="mb-1 block font-medium text-base-content/70">{option.titre}</span>{option.description}</span>
+          <label
+            key={option.id}
+            class={`${QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.etiquetteCaseBase} ${
+              option.disabled
+                ? QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.etiquetteCaseDesactivee
+                : QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.etiquetteCaseActive
+            }`}
+          >
+            <input
+              type="checkbox"
+              class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.caseACocher}
+              checked={Boolean(option.value)}
+              disabled={option.disabled}
+              onChange={(e) => void champs.runCheckboxOption(option, (e.target as HTMLInputElement).checked)}
+            />
+            <span>
+              <span class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.etiquetteCaseTitre}>{option.titre}</span>
+              {option.description}
+            </span>
           </label>
         );
       })}
-      <p class="text-[0.65rem] leading-snug text-base-content/50">Ces champs sont injectés dans le prompt copié pour le LLM.</p>
+      <p class={QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES.piedAide}>Ces champs sont injectés dans le prompt copié pour le LLM.</p>
     </aside>
   );
 }

@@ -14,7 +14,7 @@ import type { PlayQtype } from "../../../lib/playOrder";
 import { QuestionsCollectionContextBar } from "../QuestionsCollectionContextBar/QuestionsCollectionContextBar";
 import { QuestionsTable } from "../QuestionsTable/QuestionsTable";
 import { QuestionsLlmImportCard } from "../QuestionsLlmImportCard/QuestionsLlmImportCard";
-import { QuestionEditModal } from "../../molecules/QuestionEditModal/QuestionEditModal";
+import { QuestionEditModal } from "../QuestionEditModal/QuestionEditModal";
 import { AppHeader } from "../../molecules/AppHeader/AppHeader";
 import { AppFooter } from "../../molecules/AppFooter/AppFooter";
 import { PageMain } from "../../molecules/PageMain/PageMain";
