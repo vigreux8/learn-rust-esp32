@@ -3,19 +3,15 @@ import { route } from "preact-router";
 import type { JSX } from "preact";
 import { ChevronRight, FolderTree, ListTree, Trash2, X } from "lucide-preact";
 
-import { 
-  buildPlayOrdersFromPicker, 
-  buildPlaySessionQuery, 
-  playOrdersRequireUserId 
+import {
+  buildPlayOrdersFromPicker,
+  buildPlaySessionQuery,
+  playOrdersRequireUserId,
 } from "../../../lib/playOrder";
-import type { PlayQtype } from "../../../lib/playOrder";
 
 import { Card } from "../../atomes/Card";
 import { Badge } from "../../atomes/Badge";
 import { Button } from "../../atomes/Button";
-
-import { PlayModePicker } from "../../atomes/PlayModePicker";
-import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 
 import { buildQuestionsRoutePath } from "./CollectionCard.metier";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";
@@ -28,6 +24,9 @@ export function CollectionCard({
   assignBusyCollectionId,
   deleteBusyCollectionId,
   interactionLocked = false,
+  playMode,
+  playQtype,
+  playInfinite,
   onAssign,
   onUnassign,
   onDeleteCollection,
@@ -37,14 +36,6 @@ export function CollectionCard({
   const counts = collection.question_counts_by_type;
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
-  const [playMode, setPlayMode] = useState<PlayModeSettings>({
-    neverAnswered: false,
-    sortBase: "none",
-    errorPriority: false,
-    shuffleExtra: false,
-  });
-  const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
-  const [playInfinite, setPlayInfinite] = useState(false);
   const linkedModules = collection.modules ?? [];
 
   const handleQuestionsClick = () => route(buildQuestionsRoutePath(collection.id, linkedModules));
@@ -138,29 +129,6 @@ export function CollectionCard({
           {isMine && allModules.length === 0 ? <p class="border-t border-base-content/10 pt-3 text-xs text-base-content/50">Crée d’abord une supercollection (bloc ci-dessus) pour pouvoir rattacher cette collection.</p> : null}
         </div>
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
-          <p class="w-full text-xs font-medium text-base-content/55 sm:text-end">Mode de jeu</p>
-          <div class="w-full rounded-xl border border-base-content/10 bg-base-100/50 p-2 sm:max-w-[14rem]">
-            <PlayModePicker
-              idPrefix={`col-${collection.id}`}
-              settings={playMode}
-              onChange={(patch) => setPlayMode((prev) => ({ ...prev, ...patch }))}
-              labelAlignClass="sm:text-end"
-            />
-          </div>
-          <label class="w-full text-xs font-medium text-base-content/55 sm:text-end" for={`play-qtype-${collection.id}`}>Type de questions</label>
-          <select id={`play-qtype-${collection.id}`} class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:max-w-[11rem]" value={playQtype}
-            onChange={(e) => {
-              const v = (e.target as HTMLSelectElement).value;
-              if (v === "histoire" || v === "pratique" || v === "melanger") setPlayQtype(v);
-            }}>
-            <option value="melanger">Mélanger</option>
-            <option value="histoire">Histoire</option>
-            <option value="pratique">Pratique</option>
-          </select>
-          <label class="flex cursor-pointer items-center justify-end gap-2 text-xs text-base-content/70">
-            <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" checked={playInfinite} onChange={(e) => setPlayInfinite((e.target as HTMLInputElement).checked)} />
-            Session infinie (15)
-          </label>
           <Button variant="outline" class="btn-sm gap-1" onClick={handleQuestionsClick}><ListTree class="h-4 w-4" aria-hidden />Questions</Button>
           <Button variant="flow" class="btn-sm gap-1" onClick={() => {
             const orders = buildPlayOrdersFromPicker(playMode);

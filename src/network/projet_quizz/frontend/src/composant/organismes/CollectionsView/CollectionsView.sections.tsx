@@ -1,7 +1,10 @@
 import { FileJson, Layers, Trash2 } from "lucide-preact";
+import type { PlayQtype } from "../../../lib/playOrder";
 import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
+import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
+import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 import { CollectionCard } from "../../molecules/CollectionCard/CollectionCard";
 import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 
@@ -134,6 +137,12 @@ export function CollectionsContent({
   onChangeModuleFilter,
   filtered,
   userId,
+  playMode,
+  onPlayModeChange,
+  playQtype,
+  onPlayQtypeChange,
+  playInfinite,
+  onPlayInfiniteChange,
   onAssign,
   onUnassign,
   onRequestDeleteCollection,
@@ -166,12 +175,63 @@ export function CollectionsContent({
   onChangeModuleFilter: (value: number | "all") => void;
   filtered: CollectionUi[];
   userId: number;
+  playMode: PlayModeSettings;
+  onPlayModeChange: (patch: Partial<PlayModeSettings>) => void;
+  playQtype: PlayQtype;
+  onPlayQtypeChange: (value: PlayQtype) => void;
+  playInfinite: boolean;
+  onPlayInfiniteChange: (value: boolean) => void;
   onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onRequestDeleteCollection: (collection: CollectionUi) => void;
 }) {
   return (
     <>
+      <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
+        <h2 class="text-sm font-semibold tracking-tight text-base-content">Mode de jeu (toutes les collections)</h2>
+        <p class="mt-1 max-w-2xl text-xs text-base-content/55">
+          Un seul réglage pour la page : le bouton « Jouer » de chaque carte utilise ces options.
+        </p>
+        <div class="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+          <div class="w-full min-w-0 flex-1 rounded-xl border border-base-content/10 bg-base-100/50 p-3 lg:max-w-xl">
+            <PlayModePicker
+              idPrefix="collections-play"
+              settings={playMode}
+              onChange={onPlayModeChange}
+            />
+          </div>
+          <div class="flex w-full shrink-0 flex-col gap-3 sm:max-w-xs">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-base-content/55" for="collections-play-qtype">
+                Type de questions
+              </label>
+              <select
+                id="collections-play-qtype"
+                class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100"
+                value={playQtype}
+                onChange={(e) => {
+                  const v = (e.target as HTMLSelectElement).value;
+                  if (v === "histoire" || v === "pratique" || v === "melanger") onPlayQtypeChange(v);
+                }}
+              >
+                <option value="melanger">Mélanger</option>
+                <option value="histoire">Histoire</option>
+                <option value="pratique">Pratique</option>
+              </select>
+            </div>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-base-content/70">
+              <input
+                type="checkbox"
+                class="checkbox checkbox-xs checkbox-primary"
+                checked={playInfinite}
+                onChange={(e) => onPlayInfiniteChange((e.target as HTMLInputElement).checked)}
+              />
+              Session infinie (15)
+            </label>
+          </div>
+        </div>
+      </section>
+
       <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
         <h2 class="text-sm font-semibold tracking-tight text-base-content">Supercollections</h2>
         {modules.length > 0 ? (
@@ -270,6 +330,9 @@ export function CollectionsContent({
                 allModules={modules}
                 assignBusyCollectionId={assignBusyCollectionId}
                 deleteBusyCollectionId={deleteCollectionBusyId}
+                playMode={playMode}
+                playQtype={playQtype}
+                playInfinite={playInfinite}
                 onAssign={onAssign}
                 onUnassign={onUnassign}
                 interactionLocked={pendingDelete !== null}
