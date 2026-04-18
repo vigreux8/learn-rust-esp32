@@ -85,37 +85,6 @@ Ici le pattern est le même, mais **découpé davantage** :
 
 ## Rôle des dossiers et fichiers
 
-### régle a respecter :
-
-- **`composant/*`** : l’UI est structurée en **atomes / molécules / organismes**. Chaque composant possède son propre dossier contenant son code (`.tsx`), ses styles Tailwind (`.styles.ts`), sa logique métier éventuelle (`.metier.ts`) et un point d’entrée (`index.ts`). Les types de props (`ComposantProps`) restent définis dans le fichier `*.tsx` du composant.
-
-#### Organisation des fonctions publiques et privées
-
-> Un fichier doit se lire comme un article de presse : l’information principale en haut (titre, résumé), et les détails techniques en bas.
-
-**Règle de présentation dans les fichiers helpers :**
-
-1. **En haut : Fonctions exportées (publiques)**
-   - Ce sont les fonctions `export` utilisées par votre composant `.tsx`.
-   - Quand un développeur ouvre le fichier `*.helper.ts`, il doit voir d’un coup d’œil ce que ce module sait « faire » (API publique), sans avoir à scroller.
-2. **En bas : Fonctions privées (détails techniques)**
-   - Fonctions non-exportées (`function ...`) servant de support, utilitaires internes.
-   - Elles sont rangées après les fonctions publiques, comme les annexes d’un article.
-
-**Résumé :**
-
-- Commencez toujours par les fonctions publiques (exportées), suivi des fonctions privées utilisées « sous le capot ».
-
-### arborecence composant :
-
-composant/
-├── index.ts
-├── composant.tsx
-├── composant.métier.ts (contient le code métier)
-└── composant.styles.ts <-- On met les chaînes Tailwind ici (sans être un contre-patterne de tailwind)
-└── composant.types.ts
-└── composant.helper.ts (La "Boîte à outils" technique contient la logique d'interface)
-
 ### Racine `src/`
 
 - **`main.tsx`** : point d’entrée ; rend `<App />` dans le document.
@@ -190,6 +159,49 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 ### `assets/`
 
 Ressources statiques servies par Vite (illustrations, logos).
+
+## Règles à respecter Strictement
+
+### dans arborecence
+
+À appliquer à chaque composant sous `composant/` (atomes, molécules, organismes). **Référence** : dossier `QuestionEditModal/`.
+
+- **Un composant = un dossier** nommé comme le composant.
+- **`NomComposant.tsx`** : JSX et câblage ; pas de logique métier.
+- **`NomComposant.types.ts`** : composantProp et type partager
+- **`NomComposant.hook.ts`** : état, effets et handlers, tout la logique de vue.
+- **`NomComposant.metier.ts`** : règles / calculs sans dépendance UI.
+- **`NomComposant.styles.ts`** : chaînes de classes Tailwind regroupées ici.
+- **`NomComposant.utils.ts`** : calcule qui ne contient pas de code métier et indépendant de react
+- **`index.ts`** : seul export public du dossier `export * from "./NomComposant"`
+
+### dans le placement du code dans les fichiers
+
+#### tout les fichier
+
+- **Lecture d’un fichier technique** :
+  - **placement des functions :**
+    - en haut les public (API du module),
+    - en bas les fonctions internes privé
+  - **placement des import :**
+    - plus l'import et en bas plus il est spécifique au composant plus il est haut plus il est global
+
+#### spécifique :
+
+##### `NomComposant.types.ts`, `NomComposant.hook.ts`, `NomComposant.tsx`
+
+- **Contrat de données (`.types.ts`)** :
+  - Centraliser les entrées dans une interface unique découpée en **sous-objets thématiques** (ex: `settings` pour la config, `data` pour le brut, `actions` pour les callbacks).
+  - Cette structure sert de "contrat stable" entre le parent et l'enfant, facilitant la maintenance et la lecture.
+
+- **Logique de vue (`.hook.ts`)** :
+  - Extraire toute la complexité (états, effets, calculs) dans un hook dédié qui reçoit les props du composant.
+  - **Organisation du retour** : Ne pas renvoyer une liste plate de variables. Regrouper les données et fonctions par **blocs fonctionnels** (ex: `formulaire`, `navigation`, `filtres`) correspondant aux sections logiques de l'interface.
+
+- **Rendu et Assemblage (`.tsx`)** :
+  - Le fichier doit rester **purement déclaratif**.
+  - Il se contente de déstructurer les blocs fournis par le hook et de les "brancher" sur le JSX.
+  - Aucun calcul complexe ou gestion d'état ne doit apparaître ici : si le JSX devient difficile à lire, c'est que la logique doit être mieux découpée dans le hook ou le métier.
 
 ## Flux typique
 
