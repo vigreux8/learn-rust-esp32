@@ -1,5 +1,5 @@
 import { cn } from "../../../lib/cn";
-import { getAnswerOptionState } from "./AnswerOption.helper";
+import { getAnswerOptionState } from "./AnswerOption.hook";
 import { ANSWER_OPTION_STYLES } from "./AnswerOption.styles";
 
 export type AnswerOptionProps = {

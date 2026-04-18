@@ -2,7 +2,7 @@ import { route } from "preact-router";
 import { GraduationCap } from "lucide-preact";
 import { cn } from "../../../lib/cn";
 import { useRoutePath } from "../../../lib/routePathContext";
-import { isActivePath } from "./AppHeader.helper";
+import { isActivePath } from "./AppHeader.metier";
 import { HEADER_LINKS } from "./AppHeader.types";
 import { APP_HEADER_STYLES } from "./AppHeader.styles";
 

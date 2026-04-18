@@ -18,7 +18,7 @@ import { Button } from "../../atomes/Button";
 import { PlayModePicker } from "../PlayModePicker";
 import type { PlayModeSettings } from "../PlayModePicker/PlayModePicker.types";
 
-import { buildQuestionsRoutePath } from "./CollectionCard.helper";
+import { buildQuestionsRoutePath } from "./CollectionCard.metier";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";
 
 

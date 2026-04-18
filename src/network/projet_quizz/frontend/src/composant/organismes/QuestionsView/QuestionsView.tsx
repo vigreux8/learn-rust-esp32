@@ -248,21 +248,21 @@ export function QuestionsView({ collectionId }: QuestionsViewProps) {
         )}
 
         <QuestionEditModal
-          open={editModalOpen}
-          loading={editModalLoading}
-          loadError={editModalError}
-          detail={editDetail}
-          categorieOptions={refCategories}
-          draftQuestion={editDraftQuestion}
-          draftCommentaire={editDraftCommentaire}
-          draftCategorieId={editDraftCategorieId}
-          saving={saving}
-          onClose={closeEditModal}
-          onDraftQuestion={setEditDraftQuestion}
-          onDraftCommentaire={setEditDraftCommentaire}
-          onDraftCategorieId={setEditDraftCategorieId}
-          onSave={() => void saveEditModal()}
-          onReponseUpdated={() => void refreshEditDetail()}
+          settings={{ open: editModalOpen, onClose: closeEditModal }}
+          actions={{
+            onSave: () => void saveEditModal(),
+            onDraftQuestion: setEditDraftQuestion,
+            onDraftCommentaire: setEditDraftCommentaire,
+            onDraftCategorieId: setEditDraftCategorieId,
+            onReponseUpdated: () => void refreshEditDetail(),
+          }}
+          status={{ loading: editModalLoading, saving, error: editModalError }}
+          data={{ questionDetail: editDetail, categorieOptions: refCategories }}
+          drafts={{
+            question: editDraftQuestion,
+            commentaire: editDraftCommentaire,
+            categorieId: editDraftCategorieId,
+          }}
         />
       </PageMain>
       <AppFooter />

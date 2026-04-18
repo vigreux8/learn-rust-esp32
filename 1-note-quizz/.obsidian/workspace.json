@@ -79,8 +79,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "b280e03abeacaf7b",
@@ -185,7 +184,7 @@
       "bases:Créer une nouvelle base": false
     }
   },
-  "active": "38a522587e224bf1",
+  "active": "b95a2d78b9aa4f4c",
   "lastOpenFiles": [
     "Capture d’écran 2026-04-17 à 15.35.52 1.png",
     "Capture d’écran 2026-04-17 à 15.35.52.png"

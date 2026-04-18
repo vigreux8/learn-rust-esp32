@@ -536,24 +536,31 @@ export function QuizSessionView({ collectionId }: QuizSessionViewProps) {
       <AppFooter />
 
       <QuestionEditModal
-        open={questionModalOpen}
-        variant={questionModalVariant}
-        modalTitle={questionModalVariant === "create" ? "Nouvelle question liée" : undefined}
-        loading={questionModalLoading}
-        loadError={questionModalError}
-        detail={questionModalDetail}
-        categorieOptions={refCategories}
-        draftQuestion={draftQuestion}
-        draftCommentaire={draftCommentaire}
-        draftCategorieId={draftCategorieId}
-        saving={questionModalSaving}
-        onClose={closeQuestionModal}
-        onDraftQuestion={setDraftQuestion}
-        onDraftCommentaire={setDraftCommentaire}
-        onDraftCategorieId={setDraftCategorieId}
-        onSave={() => void saveEditQuestionModal()}
-        onReponseUpdated={() => void refreshQuestionModalDetail()}
-        onCreateSave={(payload) => saveCreateQuestionModal(payload)}
+        settings={{
+          open: questionModalOpen,
+          onClose: closeQuestionModal,
+          variant: questionModalVariant,
+          modalTitle: questionModalVariant === "create" ? "Nouvelle question liée" : undefined,
+        }}
+        actions={{
+          onSave: () => void saveEditQuestionModal(),
+          onDraftQuestion: setDraftQuestion,
+          onDraftCommentaire: setDraftCommentaire,
+          onDraftCategorieId: setDraftCategorieId,
+          onReponseUpdated: () => void refreshQuestionModalDetail(),
+          onCreateSave: (payload) => saveCreateQuestionModal(payload),
+        }}
+        status={{
+          loading: questionModalLoading,
+          saving: questionModalSaving,
+          error: questionModalError,
+        }}
+        data={{ questionDetail: questionModalDetail, categorieOptions: refCategories }}
+        drafts={{
+          question: draftQuestion,
+          commentaire: draftCommentaire,
+          categorieId: draftCategorieId,
+        }}
       />
     </div>
   );
