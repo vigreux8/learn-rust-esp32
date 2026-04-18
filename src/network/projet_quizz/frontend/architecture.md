@@ -57,16 +57,16 @@ frontend/
         │   ├── PopUpInformation/
         │   ├── QuestionsLlmImportOptionsPanel/
         │   ├── QuestionsLlmImportPanel/
-        │   └── QuestionsLlmImportPromptPanel/
+        │   ├── QuestionsLlmImportPromptPanel/
+        │   ├── DeviceAuthGate/
+        │   ├── QuestionsCollectionContextBar/
+        │   └── QuestionsTable/
         └── organismes/          # pages / écrans complets (dossier par composant)
             ├── CollectionsView/
             ├── DatabaseTransferView/
-            ├── DeviceAuthGate/
             ├── HomeView/
             ├── QuestionEditModal/
-            ├── QuestionsCollectionContextBar/
             ├── QuestionsLlmImportCard/
-            ├── QuestionsTable/
             ├── QuestionsView/
             ├── QuizResultsView/
             ├── QuizSessionView/
@@ -115,6 +115,9 @@ Blocs réutilisables entre plusieurs pages, structurés en dossiers.
 | `KpiCard/`                  | Carte indicateur pour le tableau de bord stats.                     |
 | `PopUpInformation/`         | Boîte d’information / alerte légère.                                |
 | `QuestionsLlmImport*/`      | Panneaux et options pour l’import assisté (prompts, options, JSON). |
+| `DeviceAuthGate/`           | Vérifie / enregistre l’appareil (MAC) avant l’app (utilisé depuis `app.tsx`). |
+| `QuestionsTable/`         | Table détaillée des questions (tri, actions). |
+| `QuestionsCollectionContextBar/` | Barre de contexte collection / import LLM sur l’écran questions. |
 
 ### `composant/organismes/`
 
@@ -122,13 +125,10 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 
 | Dossier                          | Rôle                                                          |
 | -------------------------------- | ------------------------------------------------------------- |
-| `DeviceAuthGate/`                | Vérifie / enregistre l’appareil (MAC) avant d’afficher l’app. |
 | `HomeView/`                      | Accueil et navigation vers collections, jeu, stats.           |
 | `CollectionsView/`               | Liste et gestion des collections (découpé en sections).       |
 | `QuestionEditModal/`             | Modale d’édition ou de création d’une question (QCM).         |
 | `QuestionsView/`                 | Liste / édition des questions (filtrage par collection).      |
-| `QuestionsTable/`                | Table détaillée des questions (tri, actions).                 |
-| `QuestionsCollectionContextBar/` | Barre de contexte (collection courante, raccourcis).          |
 | `QuestionsLlmImportCard/`        | Carte dédiée au flux d’import type LLM.                       |
 | `QuizSessionView/`               | Déroulé d’une partie (questions, réponses, progression).      |
 | `QuizResultsView/`               | Résumé à la fin d’un quiz.                                    |

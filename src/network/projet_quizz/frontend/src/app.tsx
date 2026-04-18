@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import Router, { Route } from "preact-router";
-import { DeviceAuthGate } from "./composant/organismes/DeviceAuthGate/DeviceAuthGate";
+import { DeviceAuthGate } from "./composant/molecules/DeviceAuthGate/DeviceAuthGate";
 import { RoutePathContext } from "./lib/routePathContext";
 import { CollectionsView } from "./composant/organismes/CollectionsView/CollectionsView";
 import { DatabaseTransferView } from "./composant/organismes/DatabaseTransferView/DatabaseTransferView";

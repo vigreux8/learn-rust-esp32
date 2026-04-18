@@ -1,4 +1,4 @@
-import { QuestionsCollectionContextBar } from "../QuestionsCollectionContextBar/QuestionsCollectionContextBar";
+import { QuestionsCollectionContextBar } from "../../molecules/QuestionsCollectionContextBar/QuestionsCollectionContextBar";
 import { QuestionsLlmImportCard } from "../QuestionsLlmImportCard/QuestionsLlmImportCard";
 import { QuestionEditModal } from "../QuestionEditModal/QuestionEditModal";
 import { AppHeader } from "../../molecules/AppHeader/AppHeader";
