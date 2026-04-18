@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import {
+  ImportCollectionHandler,
+  ImportLlmHandler,
   QuizzImportService,
   QuizzReadService,
   QuizzStructureService,
@@ -15,6 +17,8 @@ import { QuizzController } from './quizz.controller';
     QuizzWriteService,
     QuizzStructureService,
     QuizzImportService,
+    ImportLlmHandler,
+    ImportCollectionHandler,
     QuizzService,
   ],
 })

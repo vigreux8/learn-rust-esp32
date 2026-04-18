@@ -1,15 +1,15 @@
 import { useState } from "preact/hooks";
 import Router, { Route } from "preact-router";
-import { DeviceAuthGate } from "./composant/organismes/DeviceAuthGate";
+import { DeviceAuthGate } from "./composant/molecules/DeviceAuthGate/DeviceAuthGate";
 import { RoutePathContext } from "./lib/routePathContext";
-import { CollectionsView } from "./composant/organismes/CollectionsView";
-import { DatabaseTransferView } from "./composant/organismes/DatabaseTransferView";
-import { HomeView } from "./composant/organismes/HomeView";
-import { QuestionsView } from "./composant/organismes/QuestionsView";
-import { QuizResultsView } from "./composant/organismes/QuizResultsView";
-import { QuizSessionView } from "./composant/organismes/QuizSessionView";
-import { SessionDetailsView } from "./composant/organismes/SessionDetailsView";
-import { StatsDashboard } from "./composant/organismes/StatsDashboard";
+import { CollectionsView } from "./composant/organismes/CollectionsView/CollectionsView";
+import { DatabaseTransferView } from "./composant/organismes/DatabaseTransferView/DatabaseTransferView";
+import { HomeView } from "./composant/organismes/HomeView/HomeView";
+import { QuestionsView } from "./composant/organismes/QuestionsView/QuestionsView";
+import { QuizResultsView } from "./composant/organismes/QuizResultsView/QuizResultsView";
+import { QuizSessionView } from "./composant/organismes/QuizSessionView/QuizSessionView";
+import { SessionDetailsView } from "./composant/organismes/SessionDetailsView/SessionDetailsView";
+import { StatsDashboard } from "./composant/organismes/StatsDashboard/StatsDashboard";
 
 function readPathWithSearch() {
   if (typeof window === "undefined") return "/";

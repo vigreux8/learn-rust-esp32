@@ -1,0 +1,15 @@
+export const QUESTIONS_LLM_IMPORT_OPTIONS_PANEL_STYLES = {
+  aside: "flex w-full shrink-0 flex-col gap-4 rounded-xl border border-base-content/10 bg-base-100/60 p-3 lg:min-w-70 lg:max-w-xs",
+  titreSection: "text-[0.65rem] font-semibold uppercase tracking-wide text-base-content/45",
+  alerteCategories: "rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs leading-snug text-warning-content",
+  etiquetteChamp: "mb-1 block text-xs font-medium text-base-content/70",
+  select: "select select-bordered select-sm w-full rounded-lg border-base-content/15 bg-base-100 text-sm",
+  textarea: "textarea textarea-bordered w-full min-h-20 rounded-lg border-base-content/15 bg-base-100 text-sm",
+  inputTexte: "input input-bordered input-sm w-full rounded-lg border-base-content/15 bg-base-100 text-sm",
+  etiquetteCaseBase: "flex items-start gap-2 rounded-lg border border-base-content/10 p-2 text-xs leading-snug",
+  etiquetteCaseActive: "cursor-pointer",
+  etiquetteCaseDesactivee: "cursor-not-allowed opacity-50",
+  caseACocher: "checkbox checkbox-sm mt-0.5 shrink-0 border-base-content/30",
+  etiquetteCaseTitre: "mb-1 block font-medium text-base-content/70",
+  piedAide: "text-[0.65rem] leading-snug text-base-content/50",
+} as const;

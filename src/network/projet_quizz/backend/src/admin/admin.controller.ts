@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Headers, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { AdminService } from './admin.service';
+import { ImportDatabaseSqlDto } from './dto/admin.dto';
+import { AdminService } from './services';
 
 @Controller('admin')
 export class AdminController {
@@ -44,12 +45,9 @@ export class AdminController {
         : '';
     const confirm = confirmFromHeader || confirmFromBody;
 
+    const dto = typeof body === 'object' && body !== null ? (body as Partial<ImportDatabaseSqlDto>) : undefined;
     const script =
-      typeof body === 'string'
-        ? body
-        : typeof body === 'object' && body !== null && 'script' in body
-          ? String((body as { script?: unknown }).script ?? '')
-          : '';
+      typeof body === 'string' ? body : typeof dto?.script === 'string' ? dto.script : '';
 
     if (!script.trim()) {
       throw new BadRequestException('Corps invalide : fournir le script SQL (texte brut ou champ { "script": "..." }).');

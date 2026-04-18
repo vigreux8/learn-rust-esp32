@@ -1,0 +1,100 @@
+import { useState } from "preact/hooks";
+import { Sparkles } from "lucide-preact";
+import { route } from "preact-router";
+import {
+  buildPlayOrdersFromPicker,
+  buildPlaySessionQuery,
+  playOrdersRequireUserId,
+  type PlayQtype,
+} from "../../../lib/playOrder";
+import { useUserSession } from "../../../lib/userSession";
+import { AppHeader } from "../../atomes/AppHeader/AppHeader";
+import { AppFooter } from "../../atomes/AppFooter/AppFooter";
+import { Button } from "../../atomes/Button/Button";
+import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
+import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
+import { HOME_VIEW_STYLES } from "./HomeView.styles";
+
+export function HomeView() {
+  const { userId } = useUserSession();
+  const [playMode, setPlayMode] = useState<PlayModeSettings>({
+    neverAnswered: false,
+    sortBase: "none",
+    errorPriority: false,
+    shuffleExtra: false,
+  });
+  const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
+  const [playInfinite, setPlayInfinite] = useState(false);
+
+  const goPlay = () => {
+    const orders = buildPlayOrdersFromPicker(playMode);
+    const q = buildPlaySessionQuery({
+      orders,
+      qtype: playQtype,
+      infinite: playInfinite,
+      userId: playOrdersRequireUserId(orders) ? userId : undefined,
+    });
+    route(`/play/random${q}`);
+  };
+
+  return (
+    <div class={HOME_VIEW_STYLES.root}>
+      <AppHeader />
+      <main class={HOME_VIEW_STYLES.main}>
+        <div class="max-w-md text-center">
+          <p class="mb-4 inline-flex items-center gap-2 rounded-full bg-flow/10 px-4 py-1.5 text-xs font-medium text-flow transition duration-300">
+            <Sparkles class="h-4 w-4" aria-hidden />
+            Mode decouverte
+          </p>
+          <h1 class="mb-3 text-3xl font-bold tracking-tight text-base-content sm:text-4xl">Pret a apprendre ?</h1>
+          <p class="mb-6 text-base leading-relaxed text-base-content/65">
+            Les questions viennent de toutes les collections. Combine plusieurs modes (ex. anciennes d abord + priorite
+            aux erreurs), choisis le type de questions, et eventuellement une session infinie par paquets de 15.
+          </p>
+          <div class="mx-auto mb-8 w-full max-w-xs space-y-5 text-left">
+            <PlayModePicker
+              idPrefix="home"
+              settings={playMode}
+              onChange={(patch) => setPlayMode((prev) => ({ ...prev, ...patch }))}
+            />
+            <div>
+              <label class="mb-1 block text-center text-xs font-semibold uppercase tracking-wide text-base-content/45" for="home-play-qtype">
+                Type de questions
+              </label>
+              <select
+                id="home-play-qtype"
+                class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 text-sm"
+                value={playQtype}
+                onChange={(e) => {
+                  const v = (e.target as HTMLSelectElement).value;
+                  if (v === "histoire" || v === "pratique" || v === "melanger") setPlayQtype(v);
+                }}
+              >
+                <option value="melanger">Melanger (tout)</option>
+                <option value="histoire">Histoire</option>
+                <option value="pratique">Pratique</option>
+              </select>
+            </div>
+            <label class="flex cursor-pointer items-center justify-center gap-2 text-sm text-base-content/80">
+              <input
+                type="checkbox"
+                class="checkbox checkbox-sm checkbox-primary"
+                checked={playInfinite}
+                onChange={(e) => setPlayInfinite((e.target as HTMLInputElement).checked)}
+              />
+              Session infinie (paquets de 15 questions)
+            </label>
+          </div>
+          <Button
+            variant="flow"
+            class="btn-lg min-h-14 min-w-[220px] px-10 text-base shadow-xl shadow-flow/25 transition duration-300 hover:scale-[1.03]"
+            onClick={() => goPlay()}
+          >
+            Commencer les quiz
+          </Button>
+        </div>
+      </main>
+      <AppFooter />
+    </div>
+  );
+}
