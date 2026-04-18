@@ -203,6 +203,14 @@ export class QuizzController {
     return this.quizz.createSousCollection(collectionId, body);
   }
 
+  @Patch('sous-collections/:sousId')
+  updateSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Body() body: CreateSousCollectionDto,
+  ) {
+    return this.quizz.updateSousCollection(sousId, body);
+  }
+
   @Delete('sous-collections/:sousId')
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteSousCollection(
@@ -243,13 +251,29 @@ export class QuizzController {
     @Query('userId') userIdRaw?: string,
     @Query('infinite') infiniteRaw?: string,
     @Query('exclude') excludeRaw?: string,
+    @Query('sousCollectionId') sousCollectionIdRaw?: string,
   ) {
+    const parseOptPositiveInt = (label: string, s?: string): number | undefined => {
+      if (s === undefined || s === '') return undefined;
+      const n = Number(s);
+      if (!Number.isInteger(n) || n < 1) {
+        throw new BadRequestException(
+          `Query ${label} : entier ≥ 1 attendu si le paramètre est fourni`,
+        );
+      }
+      return n;
+    };
     const qtype = parsePlayQtypeQuery(qtypeRaw);
+    const sousCollectionId = parseOptPositiveInt(
+      'sousCollectionId',
+      sousCollectionIdRaw,
+    );
     const hasPlay =
       (orderRaw != null && orderRaw !== '') ||
       (userIdRaw != null && userIdRaw !== '') ||
       (infiniteRaw != null && infiniteRaw !== '') ||
-      (excludeRaw != null && excludeRaw !== '');
+      (excludeRaw != null && excludeRaw !== '') ||
+      sousCollectionId != null;
     if (!hasPlay) {
       return this.quizz.getCollection(id, qtype);
     }
@@ -263,6 +287,7 @@ export class QuizzController {
       userId,
       limit: infinite ? 15 : undefined,
       excludeIds,
+      sousCollectionId,
     });
   }
 
@@ -351,6 +376,7 @@ export class QuizzController {
     @Query('collectionId') collectionIdStr?: string,
     @Query('moduleId') moduleIdStr?: string,
     @Query('categorie') categorieRaw?: string,
+    @Query('sousCollectionId') sousCollectionIdStr?: string,
   ) {
     const parseOptInt = (label: string, s?: string): number | undefined => {
       if (s === undefined || s === '') return undefined;
@@ -364,9 +390,15 @@ export class QuizzController {
     };
     const collectionId = parseOptInt('collectionId', collectionIdStr);
     const moduleId = parseOptInt('moduleId', moduleIdStr);
+    const sousCollectionId = parseOptInt('sousCollectionId', sousCollectionIdStr);
     if (moduleId != null && collectionId == null) {
       throw new BadRequestException(
         'Query moduleId sans collectionId : indique collectionId pour rattacher l’import.',
+      );
+    }
+    if (sousCollectionId != null && collectionId == null) {
+      throw new BadRequestException(
+        'Query sousCollectionId sans collectionId : indique collectionId pour rattacher l’import.',
       );
     }
     const categorie = parseImportCategorie(categorieRaw);
@@ -374,6 +406,7 @@ export class QuizzController {
       collectionId,
       moduleId,
       categorie,
+      sousCollectionId,
     });
   }
 

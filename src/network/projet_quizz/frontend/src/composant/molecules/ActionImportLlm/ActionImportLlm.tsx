@@ -9,6 +9,7 @@ export function ActionImportLlm(props: ActionImportLlmProps) {
     <Button
       variant="learn"
       class="gap-2"
+      disabled={data.disabled === true}
       aria-expanded={data.panneauImportOuvert}
       onClick={actions.onBasculerPanneauImport}
     >

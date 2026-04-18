@@ -3,6 +3,7 @@ import { route } from "preact-router";
 import {
   fetchCollection,
   fetchQuestionDetail,
+  deleteQuestion,
   fetchRandomQuiz,
   fetchRefCategories,
   patchQuestion,
@@ -54,6 +55,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const [draftVerifier, setDraftVerifier] = useState(false);
   const [nextBusy, setNextBusy] = useState(false);
   const [fetchingMore, setFetchingMore] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     void fetchRefCategories()
@@ -125,8 +127,9 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 userId: playUserId,
                 infinite: pf.infinite,
                 excludeIds: pf.excludeIds,
+                sousCollectionId: pf.sousCollectionId,
               }
-            : { qtype: pf.qtype },
+            : { qtype: pf.qtype, sousCollectionId: pf.sousCollectionId },
         );
         if (cancelled) return;
         if (col.questions.length === 0) {
@@ -148,6 +151,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           playQtype: qtype,
           playInfinite: pf.infinite,
           playUserId,
+          playSousCollectionId: pf.sousCollectionId,
           useServerPlayModes: pf.useServerPlayModes,
         });
         setIndex(0);
@@ -387,6 +391,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                         userId: data.playUserId,
                         infinite: true,
                         excludeIds,
+                        sousCollectionId: data.playSousCollectionId,
                       })
                     ).questions;
 
@@ -474,6 +479,45 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     })();
   };
 
+  const handleDeleteCurrentQuestion = async (current: QuestionUi) => {
+    const snapshot = data;
+    if (snapshot == null || current.user_id !== userId) return;
+    if (
+      !window.confirm(
+        "Supprimer définitivement cette question ? Elle sera retirée de la base et des collections.",
+      )
+    ) {
+      return;
+    }
+    const idx = index;
+    setDeleteBusy(true);
+    try {
+      await deleteQuestion(current.id);
+      allServedQuestionIdsRef.current = allServedQuestionIdsRef.current.filter((id) => id !== current.id);
+      if (questionModalDetail?.id === current.id) {
+        closeQuestionModal();
+      }
+      const filtered = snapshot.questions.filter((x) => x.id !== current.id);
+      if (filtered.length === 0) {
+        setActionMessage("Dernière question supprimée.");
+        route(snapshot.mode === "random" ? "/" : "/collections");
+        return;
+      }
+      let newIndex = idx;
+      if (idx >= filtered.length) {
+        newIndex = filtered.length - 1;
+      }
+      setData({ ...snapshot, questions: filtered });
+      setIndex(newIndex);
+      setPickedId(null);
+      setActionMessage("Question supprimée.");
+    } catch {
+      setActionMessage("Suppression impossible.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   if (loading) {
     return { kind: "loading" as const };
   }
@@ -513,10 +557,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     draftVerifier,
     nextBusy,
     fetchingMore,
+    canDeleteCurrentQuestion: q.user_id === userId,
+    deleteBusy,
     onPick: handlePick,
     onOpenCreateLinkedQuestionModal: openCreateLinkedQuestionModal,
     onOpenEditQuestionModal: openEditQuestionModal,
     onCopyCurrentQuestionJson: copyCurrentQuestionJson,
+    onDeleteCurrentQuestion: handleDeleteCurrentQuestion,
     onDraftVerifier: setDraftVerifier,
     onNext: handleNext,
     onEndInfiniteSession: handleEndInfiniteSession,

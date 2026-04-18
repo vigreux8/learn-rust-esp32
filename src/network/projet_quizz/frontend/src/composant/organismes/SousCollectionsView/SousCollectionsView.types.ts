@@ -1,3 +1,4 @@
+import type { SousCollectionLlmImportWidgetProps } from "../../molecules/SousCollectionLlmImportWidget";
 import type { QuizzQuestionRow, SousCollectionUi } from "../../../types/quizz";
 
 /** Props injectées par preact-router. */
@@ -16,15 +17,24 @@ export type SousCollectionsListeSectionProps = {
   sousCollections: SousCollectionUi[];
   selectedSousId: number | null;
   createModalOpen: boolean;
+  /** Formulaire modal : création ou édition de la sous-collection sélectionnée. */
+  sousFormMode: "create" | "edit";
   createNom: string;
   createDescription: string;
   createBusy: boolean;
+  deleteBusy: boolean;
+  canDeleteSelected: boolean;
+  canEditSelected: boolean;
   onSelectSous: (id: number) => void;
   onOpenCreate: () => void;
+  onOpenEdit: () => void;
   onCloseCreate: () => void;
   onChangeCreateNom: (v: string) => void;
   onChangeCreateDescription: (v: string) => void;
   onSubmitCreate: () => void;
+  onDeleteSelected: () => void;
+  /** Import LLM (sous-collection sélectionnée, propriétaire uniquement). */
+  llmImport?: SousCollectionLlmImportWidgetProps;
 };
 
 export type SousCollectionsQuestionsPanelProps = {

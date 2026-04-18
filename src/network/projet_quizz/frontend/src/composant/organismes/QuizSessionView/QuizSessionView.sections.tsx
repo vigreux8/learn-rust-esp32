@@ -1,4 +1,4 @@
-import { ArrowLeft, ClipboardCopy, Pencil, Plus } from "lucide-preact";
+import { ArrowLeft, ClipboardCopy, Pencil, Plus, Trash2 } from "lucide-preact";
 import { route } from "preact-router";
 import { playOrdersLabel, playQtypeLabel } from "../../../lib/playOrder";
 import { cn } from "../../../lib/cn";
@@ -94,6 +94,9 @@ export function QuizSessionQuestionCard({
   onOpenCreateLinkedQuestionModal,
   onOpenEditQuestionModal,
   onCopyCurrentQuestionJson,
+  canDeleteCurrentQuestion,
+  deleteBusy,
+  onDeleteCurrentQuestion,
   onDraftVerifier,
   onNext,
   onEndInfiniteSession,
@@ -130,6 +133,25 @@ export function QuizSessionQuestionCard({
         >
           <ClipboardCopy class="h-4 w-4 shrink-0" aria-hidden />
           <span class={QUIZ_SESSION_STYLES.actionButtonText}>Copier</span>
+        </Button>
+        <Button
+          variant="outline"
+          class={`${QUIZ_SESSION_STYLES.actionButton} border-error/40 text-error hover:bg-error/10`}
+          type="button"
+          title={
+            canDeleteCurrentQuestion
+              ? "Supprimer cette question de la base"
+              : "Réservé aux questions que tu as créées (même utilisateur)."
+          }
+          disabled={!canDeleteCurrentQuestion || deleteBusy || nextBusy || fetchingMore}
+          onClick={() => void onDeleteCurrentQuestion(q)}
+        >
+          {deleteBusy ? (
+            <span class="loading loading-spinner loading-sm shrink-0" aria-hidden />
+          ) : (
+            <Trash2 class="h-4 w-4 shrink-0" aria-hidden />
+          )}
+          <span class={QUIZ_SESSION_STYLES.actionButtonText}>{deleteBusy ? "…" : "Supprimer"}</span>
         </Button>
         <label
           aria-label={`Fake-checker, ${draftVerifier ? "oui" : "non"}. Cliquer pour basculer.`}

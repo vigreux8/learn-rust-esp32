@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 import type { DragEndEvent } from "@dnd-kit/dom";
 import {
   deleteDetachQuestionFromSousCollection,
+  deleteSousCollection,
   fetchCollection,
   fetchQuestions,
   fetchSousCollections,
+  patchSousCollection,
   postAttachQuestionToSousCollection,
   postCreateSousCollection,
 } from "../../../lib/api";
@@ -16,6 +18,8 @@ import {
   normalizeCollectionIdParam,
 } from "./SousCollectionsView.metier";
 import type { SousCollectionsViewProps } from "./SousCollectionsView.types";
+
+type SousFormMode = "create" | "edit";
 
 export function useSousCollectionsViewState(props: SousCollectionsViewProps) {
   const { userId } = useUserSession();
@@ -30,9 +34,11 @@ export function useSousCollectionsViewState(props: SousCollectionsViewProps) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [sousFormMode, setSousFormMode] = useState<SousFormMode>("create");
   const [createNom, setCreateNom] = useState("");
   const [createDescription, setCreateDescription] = useState("");
   const [createBusy, setCreateBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const selectedSousIdRef = useRef<number | null>(null);
   useEffect(() => {
@@ -154,10 +160,21 @@ export function useSousCollectionsViewState(props: SousCollectionsViewProps) {
   );
 
   const onOpenCreate = useCallback(() => {
+    setSousFormMode("create");
     setCreateNom("");
     setCreateDescription("");
     setCreateModalOpen(true);
   }, []);
+
+  const onOpenEdit = useCallback(() => {
+    if (selectedSous == null || collection == null || collection.user_id !== userId) {
+      return;
+    }
+    setSousFormMode("edit");
+    setCreateNom(selectedSous.nom);
+    setCreateDescription(selectedSous.description ?? "");
+    setCreateModalOpen(true);
+  }, [selectedSous, collection, userId]);
 
   const onCloseCreate = useCallback(() => {
     if (!createBusy) {
@@ -165,29 +182,87 @@ export function useSousCollectionsViewState(props: SousCollectionsViewProps) {
     }
   }, [createBusy]);
 
+  const onDeleteSelected = useCallback(() => {
+    if (collectionIdNum == null || selectedSousId == null || collection == null || collection.user_id !== userId) {
+      return;
+    }
+    if (
+      !window.confirm(
+        "Supprimer cette sous-collection ? Les questions restent dans la collection ; seuls les rattachements à cette sous-collection sont retirés.",
+      )
+    ) {
+      return;
+    }
+    const sid = selectedSousId;
+    setDeleteBusy(true);
+    setOperationError(null);
+    void deleteSousCollection(sid, userId)
+      .then(() => {
+        reloadAll();
+      })
+      .catch((e: Error) => {
+        setOperationError(e.message ?? "Suppression impossible.");
+      })
+      .finally(() => {
+        setDeleteBusy(false);
+      });
+  }, [collection, collectionIdNum, selectedSousId, userId, reloadAll]);
+
   const onSubmitCreate = useCallback(() => {
-    if (collectionIdNum == null || createNom.trim() === "" || collection == null || collection.user_id !== userId) {
+    if (createNom.trim() === "" || collection == null || collection.user_id !== userId) {
       return;
     }
     setCreateBusy(true);
     setOperationError(null);
-    postCreateSousCollection(collectionIdNum, {
+    const body = {
       user_id: userId,
       nom: createNom.trim(),
       description: createDescription.trim(),
-    })
-      .then((created) => {
+    };
+    if (sousFormMode === "create") {
+      if (collectionIdNum == null) {
+        setCreateBusy(false);
+        return;
+      }
+      postCreateSousCollection(collectionIdNum, body)
+        .then((created) => {
+          setCreateModalOpen(false);
+          setCreateNom("");
+          setCreateDescription("");
+          reloadSousOnly();
+          setSelectedSousId(created.id);
+        })
+        .catch((e: Error) => {
+          setOperationError(e.message ?? "Création impossible.");
+        })
+        .finally(() => setCreateBusy(false));
+      return;
+    }
+    if (selectedSousId == null) {
+      setCreateBusy(false);
+      return;
+    }
+    patchSousCollection(selectedSousId, body)
+      .then(() => {
         setCreateModalOpen(false);
         setCreateNom("");
         setCreateDescription("");
         reloadSousOnly();
-        setSelectedSousId(created.id);
       })
       .catch((e: Error) => {
-        setOperationError(e.message ?? "Création impossible.");
+        setOperationError(e.message ?? "Modification impossible.");
       })
       .finally(() => setCreateBusy(false));
-  }, [collection, collectionIdNum, createDescription, createNom, userId, reloadSousOnly]);
+  }, [
+    collection,
+    collectionIdNum,
+    createDescription,
+    createNom,
+    selectedSousId,
+    sousFormMode,
+    userId,
+    reloadSousOnly,
+  ]);
 
   const dismissOperationError = useCallback(() => setOperationError(null), []);
 
@@ -196,6 +271,8 @@ export function useSousCollectionsViewState(props: SousCollectionsViewProps) {
     status: { loading, loadError, operationError, dismissOperationError, isOwner },
     data: {
       collectionNom: collection?.nom ?? null,
+      collection,
+      questions,
       sousCollections,
       selectedSousId,
       selectedSous,
@@ -205,14 +282,20 @@ export function useSousCollectionsViewState(props: SousCollectionsViewProps) {
     liste: {
       onSelectSous: setSelectedSousId,
       createModalOpen,
+      sousFormMode,
       createNom,
       createDescription,
       createBusy,
+      deleteBusy,
+      canDeleteSelected: isOwner && selectedSousId != null,
+      canEditSelected: isOwner && selectedSousId != null,
       onOpenCreate,
+      onOpenEdit,
       onCloseCreate,
       onChangeCreateNom: setCreateNom,
       onChangeCreateDescription: setCreateDescription,
       onSubmitCreate,
+      onDeleteSelected,
     },
     filtres: {
       search,

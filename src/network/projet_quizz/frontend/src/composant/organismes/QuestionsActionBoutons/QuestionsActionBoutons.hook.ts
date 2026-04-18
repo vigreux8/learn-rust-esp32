@@ -19,7 +19,7 @@ import type { QuestionsActionBoutonsProps } from "./QuestionsActionBoutons.types
 import { getOptionValue } from "./QuestionsActionBoutons.utils";
 
 export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
-  const { data, actions } = props;
+  const { data, actions, llmImportExtras } = props;
   const { targetCollectionNumeric, collections, allModules, importTargetModuleId, questions } = data;
 
   const [importOpen, setImportOpen] = useState(false);
@@ -111,12 +111,18 @@ export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
         const cid = targetCollectionNumeric ?? undefined;
         const mid = cid != null && importTargetModuleId != null ? importTargetModuleId : undefined;
         const categorieApi = getOptionValue(options, CATEGORY_OPTION_ID) === "pratique" ? "pratique" : "histoire";
-        const res = await importQuestionsJson(dataJson, { collectionId: cid, moduleId: mid, categorie: categorieApi });
+        const sousId = llmImportExtras?.sousCollectionId;
+        const res = await importQuestionsJson(dataJson, {
+          collectionId: cid,
+          moduleId: mid,
+          categorie: categorieApi,
+          ...(sousId != null ? { sousCollectionId: sousId } : {}),
+        });
         actions.onImportSuccess();
         return buildImportSuccessMessage(res, cid != null);
       },
     }),
-    [buildPrompt, options, targetCollectionNumeric, importTargetModuleId, actions],
+    [buildPrompt, options, targetCollectionNumeric, importTargetModuleId, actions, llmImportExtras],
   );
 
   const toggleImport = () => setImportOpen((o) => !o);

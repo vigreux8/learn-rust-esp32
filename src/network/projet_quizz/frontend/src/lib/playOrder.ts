@@ -91,6 +91,8 @@ export type PlaySessionQueryOpts = {
   infinite?: boolean;
   userId?: number;
   excludeIds?: number[];
+  /** Jeu limité aux questions d’une sous-collection (GET collection avec filtre serveur). */
+  sousCollectionId?: number;
 };
 
 export function playOrdersFromSearch(): PlayOrder[] {
@@ -122,12 +124,21 @@ function parseExcludeIdsFromSearch(search: URLSearchParams): number[] {
     .filter((n) => Number.isInteger(n) && n > 0);
 }
 
+function parseSousCollectionIdFromSearch(search: URLSearchParams): number | undefined {
+  const raw = search.get("sousCollectionId");
+  if (raw == null || raw === "") return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) return undefined;
+  return n;
+}
+
 export function playFetchParamsFromSearch(): {
   orders: PlayOrder[];
   qtype: PlayQtype;
   infinite: boolean;
   userId?: number;
   excludeIds: number[];
+  sousCollectionId?: number;
   useServerPlayModes: boolean;
 } {
   if (typeof window === "undefined") {
@@ -136,12 +147,18 @@ export function playFetchParamsFromSearch(): {
       qtype: "melanger",
       infinite: false,
       excludeIds: [],
+      sousCollectionId: undefined,
       useServerPlayModes: false,
     };
   }
   const s = new URLSearchParams(window.location.search);
   const hasPlayQuery =
-    s.has("order") || s.has("qtype") || s.has("infinite") || s.has("userId") || s.has("exclude");
+    s.has("order") ||
+    s.has("qtype") ||
+    s.has("infinite") ||
+    s.has("userId") ||
+    s.has("exclude") ||
+    s.has("sousCollectionId");
   const userIdRaw = s.get("userId");
   const userIdParsed = userIdRaw != null && userIdRaw !== "" ? Number(userIdRaw) : NaN;
   return {
@@ -150,6 +167,7 @@ export function playFetchParamsFromSearch(): {
     infinite: playInfiniteFromSearch(),
     userId: Number.isInteger(userIdParsed) && userIdParsed >= 1 ? userIdParsed : undefined,
     excludeIds: parseExcludeIdsFromSearch(s),
+    sousCollectionId: parseSousCollectionIdFromSearch(s),
     useServerPlayModes: hasPlayQuery,
   };
 }
@@ -167,6 +185,9 @@ export function buildPlaySessionQuery(opts: PlaySessionQueryOpts): string {
   }
   if (opts.excludeIds != null && opts.excludeIds.length > 0) {
     p.set("exclude", opts.excludeIds.join(","));
+  }
+  if (opts.sousCollectionId != null) {
+    p.set("sousCollectionId", String(opts.sousCollectionId));
   }
   const s = p.toString();
   return s ? `?${s}` : "";

@@ -183,6 +183,7 @@ export class QuizzService {
       collectionId?: number;
       moduleId?: number;
       categorie?: 'histoire' | 'pratique';
+      sousCollectionId?: number;
     },
   ): Promise<{
     createdQuestions: number;
@@ -209,6 +210,13 @@ export class QuizzService {
     body: { user_id: number; nom: string; description: string },
   ): Promise<SousCollectionUi> {
     return this.write.createSousCollection(collectionId, body);
+  }
+
+  updateSousCollection(
+    sousCollectionId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    return this.write.updateSousCollection(sousCollectionId, body);
   }
 
   deleteSousCollection(sousCollectionId: number, userId: number): Promise<void> {

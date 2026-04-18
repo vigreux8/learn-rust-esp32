@@ -362,6 +362,61 @@ export class QuizzWriteService {
     };
   }
 
+  async updateSousCollection(
+    sousCollectionId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    const sc = await this.prisma.prisma.sous_collections.findUnique({
+      where: { id: sousCollectionId },
+      include: { quizz_collection: true },
+    });
+    if (!sc) {
+      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
+    }
+    if (sc.quizz_collection.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+
+    const t = nowIso();
+    const row = await this.prisma.prisma.sous_collections.update({
+      where: { id: sousCollectionId },
+      data: {
+        nom: body.nom.trim(),
+        description: body.description.trim(),
+      },
+      include: {
+        relation_sous_collections: {
+          orderBy: { id: 'asc' },
+          include: {
+            quizz_question: {
+              include: { ref_categorie: true },
+            },
+          },
+        },
+      },
+    });
+
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: row.collection_id },
+      data: { update_at: t },
+    });
+
+    return {
+      id: row.id,
+      collection_id: row.collection_id,
+      nom: row.nom,
+      description: row.description ?? '',
+      questions: row.relation_sous_collections.map((rel) => ({
+        relation_id: rel.id,
+        question_id: rel.quizz_question.id,
+        question: rel.quizz_question.question,
+        categorie_type: rel.quizz_question.ref_categorie.type,
+      })),
+    };
+  }
+
   async deleteSousCollection(sousCollectionId: number, userId: number): Promise<void> {
     const sc = await this.prisma.prisma.sous_collections.findUnique({
       where: { id: sousCollectionId },

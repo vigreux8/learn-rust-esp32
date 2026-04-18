@@ -67,6 +67,7 @@ export class ImportLlmHandler {
       collectionId?: number;
       moduleId?: number;
       categorie?: 'histoire' | 'pratique';
+      sousCollectionId?: number;
     },
   ): Promise<{
     createdQuestions: number;
@@ -75,6 +76,12 @@ export class ImportLlmHandler {
     const userId = await this.resolveImportUserId(body.user_id);
     const categorieKind = opts?.categorie ?? 'histoire';
     const categorieId = await this.resolveImportCategorieId(categorieKind);
+
+    if (opts?.sousCollectionId != null && opts.collectionId == null) {
+      throw new BadRequestException(
+        'Query sousCollectionId sans collectionId : indique collectionId pour rattacher l’import.',
+      );
+    }
 
     if (opts?.collectionId != null) {
       const col = await this.prisma.prisma.quizz_collection.findUnique({
@@ -88,6 +95,19 @@ export class ImportLlmHandler {
           `La collection ${opts.collectionId} n’appartient pas à l’utilisateur ${userId} (user_id du JSON).`,
         );
       }
+      if (opts.sousCollectionId != null) {
+        const sc = await this.prisma.prisma.sous_collections.findUnique({
+          where: { id: opts.sousCollectionId },
+        });
+        if (!sc) {
+          throw new NotFoundException(`Sous-collection ${opts.sousCollectionId} introuvable`);
+        }
+        if (sc.collection_id !== opts.collectionId) {
+          throw new BadRequestException(
+            `La sous-collection ${opts.sousCollectionId} n’appartient pas à la collection ${opts.collectionId}.`,
+          );
+        }
+      }
       const flat = this.flattenParsedQuestions(body);
       if (flat.length === 0) {
         throw new BadRequestException(
@@ -100,6 +120,7 @@ export class ImportLlmHandler {
         collections: body.collections,
         questionsSansCollection: body.questions_sans_collection,
         collectionId: opts.collectionId,
+        sousCollectionId: opts.sousCollectionId,
       });
       if (opts.moduleId != null) {
         await this.structure.assignCollectionToModule(opts.collectionId, opts.moduleId);

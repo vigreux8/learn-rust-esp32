@@ -29,6 +29,8 @@ export type QuizPlaySessionOpts = {
   userId?: number;
   limit?: number;
   excludeIds: number[];
+  /** Limite les questions à celles liées à cette sous-collection (doit appartenir à la collection). */
+  sousCollectionId?: number;
 };
 
 function shuffle<T>(items: T[]): T[] {
@@ -126,6 +128,13 @@ export class QuizzReadService {
       nom: mc.quizz_module.nom,
     }));
 
+    const sousRows = await this.prisma.prisma.sous_collections.findMany({
+      where: { collection_id: collectionId },
+      orderBy: { id: 'asc' },
+      select: { id: true, nom: true },
+    });
+    const sous_collections = sousRows.map((s) => ({ id: s.id, nom: s.nom }));
+
     return {
       id: col.id,
       user_id: col.user_id,
@@ -136,6 +145,7 @@ export class QuizzReadService {
       question_counts_by_type,
       createur_pseudot: col.user.pseudot,
       modules,
+      sous_collections,
     };
   }
 
@@ -156,8 +166,28 @@ export class QuizzReadService {
     qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
     play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
-    const ui = await this.buildCollectionUi(collectionId, qtype);
-    if (!ui || ui.questions.length === 0) {
+    let ui = await this.buildCollectionUi(collectionId, qtype);
+    if (!ui) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (play?.sousCollectionId != null) {
+      const scId = play.sousCollectionId;
+      const sc = await this.prisma.prisma.sous_collections.findFirst({
+        where: { id: scId, collection_id: collectionId },
+      });
+      if (!sc) {
+        throw new BadRequestException(
+          `Sous-collection ${scId} introuvable pour la collection ${collectionId}.`,
+        );
+      }
+      const rels = await this.prisma.prisma.relation_sous_collections.findMany({
+        where: { sous_collection_id: scId },
+        select: { question_id: true },
+      });
+      const allowed = new Set(rels.map((r) => r.question_id));
+      ui = { ...ui, questions: ui.questions.filter((q) => allowed.has(q.id)) };
+    }
+    if (ui.questions.length === 0) {
       throw new NotFoundException(
         qtype !== 'melanger'
           ? `Aucune question de type « ${qtype} » dans la collection ${collectionId}.`

@@ -36,7 +36,9 @@ export function CollectionCard({
   const counts = collection.question_counts_by_type;
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
+  const [playSousCollectionId, setPlaySousCollectionId] = useState<number | "">("");
   const linkedModules = collection.modules ?? [];
+  const sousForPlay = collection.sous_collections ?? [];
 
   const handleQuestionsClick = () => route(buildQuestionsRoutePath(collection.id, linkedModules));
   const handleCardClick = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
@@ -48,6 +50,7 @@ export function CollectionCard({
   const assignable = allModules.filter((m) => !linkedModules.some((l) => l.id === m.id));
   const moduleLinkKey = linkedModules.map((m) => m.id).join(",");
   useEffect(() => setSelectedModuleId(""), [collection.id, moduleLinkKey]);
+  useEffect(() => setPlaySousCollectionId(""), [collection.id]);
 
   return (
     <Card
@@ -143,13 +146,43 @@ export function CollectionCard({
               Sous-collections
             </Button>
           ) : null}
-          <Button variant="flow" class="btn-sm gap-1" onClick={() => {
+          {n > 0 && sousForPlay.length > 0 ? (
+            <div
+              class="w-full max-w-[16rem] space-y-1 rounded-xl border border-base-content/10 bg-base-100/80 px-2 py-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <label class="block text-[10px] font-medium uppercase tracking-wide text-base-content/50" for={`play-sous-${collection.id}`}>
+                Sous-collection
+              </label>
+              <select
+                id={`play-sous-${collection.id}`}
+                class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 text-xs"
+                value={playSousCollectionId === "" ? "" : String(playSousCollectionId)}
+                disabled={uiLocked}
+                onChange={(e) => {
+                  const v = (e.target as HTMLSelectElement).value;
+                  setPlaySousCollectionId(v === "" ? "" : Number(v));
+                }}
+              >
+                <option value="">Toute la collection</option>
+                {sousForPlay.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <Button variant="flow" class="btn-sm gap-1" onClick={(e) => {
+            e.stopPropagation();
             const orders = buildPlayOrdersFromPicker(playMode);
+            const sousQ = playSousCollectionId === "" ? undefined : playSousCollectionId;
             route(`/play/${collection.id}${buildPlaySessionQuery({
               orders,
               qtype: playQtype,
               infinite: playInfinite,
               userId: playOrdersRequireUserId(orders) ? myUserId : undefined,
+              sousCollectionId: sousQ,
             })}`);
           }}>
             Jouer<ChevronRight class="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />

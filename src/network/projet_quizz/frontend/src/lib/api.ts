@@ -74,6 +74,7 @@ export async function fetchCollection(
     userId?: number;
     infinite?: boolean;
     excludeIds?: number[];
+    sousCollectionId?: number;
   },
 ): Promise<CollectionUi> {
   const p = new URLSearchParams();
@@ -91,6 +92,9 @@ export async function fetchCollection(
   }
   if (opts?.excludeIds != null && opts.excludeIds.length > 0) {
     p.set("exclude", opts.excludeIds.join(","));
+  }
+  if (opts?.sousCollectionId != null) {
+    p.set("sousCollectionId", String(opts.sousCollectionId));
   }
   const q = p.size > 0 ? `?${p.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/collections/${id}${q}`));
@@ -226,6 +230,19 @@ export async function postCreateSousCollection(
   return res.json() as Promise<SousCollectionUi>;
 }
 
+export async function patchSousCollection(
+  sousId: number,
+  body: { user_id: number; nom: string; description: string },
+): Promise<SousCollectionUi> {
+  const res = await fetch(apiUrl(`/quizz/sous-collections/${sousId}`), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<SousCollectionUi>;
+}
+
 export async function deleteSousCollection(sousId: number, userId: number): Promise<void> {
   const q = new URLSearchParams({ userId: String(userId) });
   const res = await fetch(apiUrl(`/quizz/sous-collections/${sousId}?${q.toString()}`), {
@@ -321,7 +338,12 @@ export async function createEmptyCollection(body: {
 
 export async function importQuestionsJson(
   body: LlmImportPayload,
-  options?: { collectionId?: number; moduleId?: number; categorie?: "histoire" | "pratique" },
+  options?: {
+    collectionId?: number;
+    moduleId?: number;
+    categorie?: "histoire" | "pratique";
+    sousCollectionId?: number;
+  },
 ): Promise<{
   createdQuestions: number;
   createdCollections: number;
@@ -335,6 +357,9 @@ export async function importQuestionsJson(
   }
   if (options?.categorie != null) {
     q.set("categorie", options.categorie);
+  }
+  if (options?.sousCollectionId != null) {
+    q.set("sousCollectionId", String(options.sousCollectionId));
   }
   const suffix = q.size > 0 ? `?${q.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/questions/import${suffix}`), {

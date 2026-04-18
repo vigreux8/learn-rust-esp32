@@ -1,6 +1,7 @@
 import { useDraggable, useDroppable } from "@dnd-kit/react";
 import { GripVertical } from "lucide-preact";
 import { Button } from "../../atomes/Button/Button";
+import { SousCollectionLlmImportWidget } from "../../molecules/SousCollectionLlmImportWidget";
 import { SOUS_COLLECTIONS_VIEW_STYLES } from "./SousCollectionsView.styles";
 import type {
   SousCollectionsAssignedPanelProps,
@@ -70,39 +71,64 @@ function AssignedQuestionDraggable({
 
 export function SousCollectionsListeSection(props: SousCollectionsListeSectionProps) {
   return (
-    <div class={SOUS_COLLECTIONS_VIEW_STYLES.panel}>
-      <p class={SOUS_COLLECTIONS_VIEW_STYLES.panelTitle}>Sous-collections</p>
-      {props.collectionNom != null ? (
-        <p class="mb-3 text-xs text-base-content/55">Collection · {props.collectionNom}</p>
-      ) : null}
-      <Button variant="learn" class="btn-sm mb-3 w-full" disabled={!props.canEdit} onClick={props.onOpenCreate}>
-        Créer
-      </Button>
-      <ul class="flex flex-col gap-1">
+    <div class="flex flex-col gap-3">
+      <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p class={SOUS_COLLECTIONS_VIEW_STYLES.panelTitle}>Sous-collections</p>
+          {props.collectionNom != null ? (
+            <p class="text-xs text-base-content/55">Collection · {props.collectionNom}</p>
+          ) : null}
+        </div>
+        <div class="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:self-center">
+          <Button
+            variant="outline"
+            class="btn-sm border-error/40 text-error hover:bg-error/10"
+            disabled={!props.canEdit || !props.canDeleteSelected || props.createBusy || props.deleteBusy}
+            onClick={props.onDeleteSelected}
+          >
+            {props.deleteBusy ? "…" : "Supprimer"}
+          </Button>
+          <Button
+            variant="outline"
+            class="btn-sm"
+            disabled={!props.canEdit || !props.canEditSelected || props.createBusy || props.deleteBusy}
+            onClick={props.onOpenEdit}
+          >
+            Modifier
+          </Button>
+          <Button variant="learn" class="btn-sm shrink-0" disabled={!props.canEdit} onClick={props.onOpenCreate}>
+            Créer
+          </Button>
+        </div>
+      </div>
+      <div class={SOUS_COLLECTIONS_VIEW_STYLES.sousListRow}>
         {props.sousCollections.map((s) => (
-          <li key={s.id}>
-            <button
-              type="button"
-              class={
-                props.selectedSousId === s.id
-                  ? SOUS_COLLECTIONS_VIEW_STYLES.listBtnActive
-                  : SOUS_COLLECTIONS_VIEW_STYLES.listBtn
-              }
-              onClick={() => props.onSelectSous(s.id)}
-            >
-              <span class="truncate text-left font-medium">{s.nom}</span>
-            </button>
-          </li>
+          <button
+            key={s.id}
+            type="button"
+            class={
+              props.selectedSousId === s.id
+                ? `${SOUS_COLLECTIONS_VIEW_STYLES.listBtnActive} max-w-[14rem]`
+                : `${SOUS_COLLECTIONS_VIEW_STYLES.listBtn} max-w-[14rem]`
+            }
+            onClick={() => props.onSelectSous(s.id)}
+          >
+            <span class="truncate font-medium">{s.nom}</span>
+          </button>
         ))}
-      </ul>
+      </div>
       {props.sousCollections.length === 0 ? (
         <p class="mt-2 text-xs text-base-content/50">Aucune sous-collection. Crée-en une pour répartir les questions.</p>
       ) : null}
 
+      {props.llmImport != null ? <SousCollectionLlmImportWidget {...props.llmImport} /> : null}
+
       {props.createModalOpen ? (
         <dialog class="modal modal-open z-50" open>
           <div class="modal-box rounded-2xl border border-base-content/10" onClick={(e) => e.stopPropagation()}>
-            <h3 class="text-lg font-bold">Nouvelle sous-collection</h3>
+            <h3 class="text-lg font-bold">
+              {props.sousFormMode === "edit" ? "Modifier la sous-collection" : "Nouvelle sous-collection"}
+            </h3>
             <label class="label mt-2" for="sc-create-nom">
               <span class="label-text">Nom</span>
             </label>
@@ -216,9 +242,11 @@ export function SousCollectionsDndWorkspace(props: SousCollectionsDndWorkspacePr
   });
 
   return (
-    <div class={SOUS_COLLECTIONS_VIEW_STYLES.grid}>
-      <SousCollectionsListeSection {...props.liste} />
-      <div class={SOUS_COLLECTIONS_VIEW_STYLES.subGrid}>
+    <div class={SOUS_COLLECTIONS_VIEW_STYLES.pageStack}>
+      <div class={SOUS_COLLECTIONS_VIEW_STYLES.topBand}>
+        <SousCollectionsListeSection {...props.liste} />
+      </div>
+      <div class={SOUS_COLLECTIONS_VIEW_STYLES.bottomGrid}>
         <SousCollectionsQuestionsColumn
           search={props.questions.search}
           onSearchChange={props.questions.onSearchChange}

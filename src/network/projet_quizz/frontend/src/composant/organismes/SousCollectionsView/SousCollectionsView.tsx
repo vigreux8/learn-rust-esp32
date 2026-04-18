@@ -125,15 +125,35 @@ export function SousCollectionsView(props: SousCollectionsViewProps) {
                 sousCollections: data.sousCollections,
                 selectedSousId: data.selectedSousId,
                 createModalOpen: liste.createModalOpen,
+                sousFormMode: liste.sousFormMode,
                 createNom: liste.createNom,
                 createDescription: liste.createDescription,
                 createBusy: liste.createBusy,
+                deleteBusy: liste.deleteBusy,
+                canDeleteSelected: liste.canDeleteSelected,
+                canEditSelected: liste.canEditSelected,
                 onSelectSous: liste.onSelectSous,
                 onOpenCreate: liste.onOpenCreate,
+                onOpenEdit: liste.onOpenEdit,
                 onCloseCreate: liste.onCloseCreate,
                 onChangeCreateNom: liste.onChangeCreateNom,
                 onChangeCreateDescription: liste.onChangeCreateDescription,
                 onSubmitCreate: liste.onSubmitCreate,
+                onDeleteSelected: liste.onDeleteSelected,
+                llmImport:
+                  status.isOwner && routing.collectionIdNum != null && data.selectedSous != null
+                    ? {
+                        data: {
+                          collectionId: routing.collectionIdNum,
+                          sousCollectionId: data.selectedSous.id,
+                          collectionNom: data.collectionNom,
+                          selectedSous: data.selectedSous,
+                          assignedQuestions: data.selectedSous.questions,
+                          disabled: false,
+                        },
+                        actions: { onImportSuccess: collect.reload },
+                      }
+                    : undefined,
               }}
               questions={{
                 search: filtres.search,
