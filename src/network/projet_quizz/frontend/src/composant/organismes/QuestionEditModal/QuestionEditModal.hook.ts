@@ -9,11 +9,7 @@ import { defaultCreateReponses } from "./QuestionEditModal.metier";
 import type { QuestionEditModalProps } from "./QuestionEditModal.types";
 
 export function useQuestionEditModal(props: QuestionEditModalProps) {
-  const settings = props.settings;
-  const actions = props.actions;
-  const status = props.status;
-  const data = props.data;
-  const drafts = props.drafts;
+  const { settings, actions, status, data, drafts } = props;
 
   const variant = settings.variant ?? "edit";
   const categorieOptions = data.categorieOptions;

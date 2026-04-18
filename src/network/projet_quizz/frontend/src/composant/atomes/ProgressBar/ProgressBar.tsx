@@ -1,14 +1,7 @@
 import { cn } from "../../../lib/cn";
 import { getProgressPercent } from "./ProgressBar.metier";
 import { PROGRESS_BAR_STYLES } from "./ProgressBar.styles";
-
-
-export type ProgressBarProps = {
-  value: number;
-  max: number;
-  class?: string;
-};
-
+import type { ProgressBarProps } from "./ProgressBar.types";
 
 export function ProgressBar({ value, max, class: className }: ProgressBarProps) {
   const pct = getProgressPercent(value, max);

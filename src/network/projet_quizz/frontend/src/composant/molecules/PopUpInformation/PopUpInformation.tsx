@@ -1,17 +1,6 @@
 import { Button } from "../../atomes/Button";
 import { POPUP_INFORMATION_STYLES } from "./PopUpInformation.styles";
-
-export type PopUpInformationProps = {
-  open: boolean;
-  title: string;
-  message: string;
-  variant?: "info" | "danger";
-  confirmLabel?: string;
-  cancelLabel?: string;
-  busy?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-};
+import type { PopUpInformationProps } from "./PopUpInformation.types";
 
 export function PopUpInformation({
   open,

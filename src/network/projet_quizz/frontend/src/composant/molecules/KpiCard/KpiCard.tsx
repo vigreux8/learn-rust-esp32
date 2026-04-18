@@ -1,15 +1,7 @@
-import type { ComponentChildren } from "preact";
 import { Card } from "../../atomes/Card";
 import { cn } from "../../../lib/cn";
 import { KPI_CARD_STYLES } from "./KpiCard.styles";
-
-export type KpiCardProps = {
-  title: string;
-  value: string;
-  hint?: string;
-  icon?: ComponentChildren;
-  accent?: "flow" | "learn";
-};
+import type { KpiCardProps } from "./KpiCard.types";
 
 export function KpiCard({ title, value, hint, icon, accent = "flow" }: KpiCardProps) {
   return (

@@ -6,23 +6,9 @@ import type { QuestionEditModalProps } from "./QuestionEditModal.types";
 export type { QuestionCreateSavePayload } from "./QuestionEditModal.types";
 
 export function QuestionEditModal(props: QuestionEditModalProps) {
-  const settings = props.settings;
-  const actions = props.actions;
-  const status = props.status;
-  const data = props.data;
-  const drafts = props.drafts;
-
-  const modal = useQuestionEditModal(props);
-  const dialogue = modal.dialogue;
-  const creation = modal.creation;
-  const composantExterne = modal.composantExterne;
-  const editionReponses = modal.editionReponses;
+  const { settings, actions, status, data, drafts } = props;
+  const { dialogue, creation, composantExterne, editionReponses } = useQuestionEditModal(props);
   if (!settings.open) return null;
-
-
-
-  
-
 
   return (
     <div class={QUESTION_EDIT_MODAL_STYLES.overlay} role="presentation">

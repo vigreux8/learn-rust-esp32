@@ -1,12 +1,6 @@
-import type { ComponentChildren } from "preact";
 import { cn } from "../../../lib/cn";
 import { PAGE_MAIN_STYLES } from "./PageMain.styles";
-
-export type PageMainProps = {
-  children: ComponentChildren;
-  class?: string;
-  narrow?: boolean;
-};
+import type { PageMainProps } from "./PageMain.types";
 
 export function PageMain({ children, class: className, narrow }: PageMainProps) {
   return (

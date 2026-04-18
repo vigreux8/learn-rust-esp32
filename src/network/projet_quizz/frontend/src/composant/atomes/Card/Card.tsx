@@ -1,12 +1,6 @@
-import type { ComponentChildren, ComponentProps } from "preact";
 import { cn } from "../../../lib/cn";
 import { CARD_STYLES } from "./Card.styles";
-
-export type CardProps = ComponentProps<"div"> & {
-  children: ComponentChildren;
-  class?: string;
-  padding?: "sm" | "md" | "lg";
-};
+import type { CardProps } from "./Card.types";
 
 export function Card({ children, class: className, padding = "md", ...props }: CardProps) {
   return (

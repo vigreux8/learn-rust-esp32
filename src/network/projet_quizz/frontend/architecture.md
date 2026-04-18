@@ -201,7 +201,7 @@ Ressources statiques servies par Vite (illustrations, logos).
 
 - **Rendu et Assemblage (`.tsx`)** :
   - Le fichier doit rester **purement déclaratif**.
-  - Il se contente de déstructurer les blocs fournis par le hook et de les "brancher" sur le JSX.
+  - Il se contente de déstructurer les blocs fournis par le hook et de les "brancher" sur le JSX. (**interdiction de faire une destructuration imbriqué**)
   - Aucun calcul complexe ou gestion d'état ne doit apparaître ici : si le JSX devient difficile à lire, c'est que la logique doit être mieux découpée dans le hook ou le métier.
 
 #### Exemple de structure type (Ex: `UserProfile`)
@@ -222,7 +222,7 @@ export type UserProfileProps = {
 ```ts
 export function useUserProfile(props: UserProfileProps) {
   const { data, actions } = props; // 1. Déstructuration des entrées
-
+  // 2. interdiction d'une déstruction imbriqué !
   // ... logique, états internes ...
 
   return {

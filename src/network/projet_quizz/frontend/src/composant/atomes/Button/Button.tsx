@@ -1,19 +1,6 @@
-import type { ComponentChildren, JSX } from "preact";
 import { cn } from "../../../lib/cn";
 import { BUTTON_STYLES } from "./Button.styles";
-
-type Variant = "flow" | "learn" | "ghost" | "outline";
-
-export type ButtonProps = {
-  children: ComponentChildren;
-  class?: string;
-  variant?: Variant;
-  disabled?: boolean;
-  type?: "button" | "submit" | "reset";
-  onClick?: JSX.MouseEventHandler<HTMLButtonElement>;
-  title?: string;
-  "aria-label"?: string;
-};
+import type { ButtonProps } from "./Button.types";
 
 export function Button({
   children,

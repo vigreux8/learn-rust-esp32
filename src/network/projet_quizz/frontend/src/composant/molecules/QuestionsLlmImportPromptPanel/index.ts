@@ -1,2 +1,2 @@
+export * from "./QuestionsLlmImportPromptPanel.types";
 export * from "./QuestionsLlmImportPromptPanel";
-export type { QuestionsLlmImportPromptPanelProps } from "./QuestionsLlmImportPromptPanel.types";

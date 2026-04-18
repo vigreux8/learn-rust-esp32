@@ -1,12 +1,6 @@
-import type { ComponentChildren } from "preact";
 import { cn } from "../../../lib/cn";
 import { BADGE_STYLES } from "./Badge.styles";
-
-export type BadgeProps = {
-  children: ComponentChildren;
-  class?: string;
-  tone?: "flow" | "learn" | "neutral";
-};
+import type { BadgeProps } from "./Badge.types";
 
 export function Badge({ children, class: className, tone = "neutral" }: BadgeProps) {
   return (

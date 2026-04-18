@@ -1,1 +1,1 @@
-export type HomeViewTypesPlaceholder = Record<string, never>;
+export type HomeViewProps = Record<string, never>;

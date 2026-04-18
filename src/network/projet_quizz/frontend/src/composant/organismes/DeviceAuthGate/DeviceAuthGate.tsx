@@ -1,4 +1,3 @@
-import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { fetchDeviceLookup, registerDeviceWithPseudot } from "../../../lib/api";
 import { DEMO_DEVICE_MAC } from "../../../lib/config";
@@ -6,6 +5,7 @@ import { UserSessionContext, type UserSession } from "../../../lib/userSession";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { DEVICE_AUTH_GATE_STYLES } from "./DeviceAuthGate.styles";
+import type { DeviceAuthGateProps } from "./DeviceAuthGate.types";
 
 type Phase = "checking" | "api-error" | "need-pseudot" | "welcome" | "ready";
 
@@ -115,7 +115,7 @@ function ApiErrorScreen({ message, onRetry }: { message: string; onRetry: () => 
   );
 }
 
-export function DeviceAuthGate({ children }: { children: ComponentChildren }) {
+export function DeviceAuthGate({ children }: DeviceAuthGateProps) {
   const [session, setSession] = useState<UserSession | null>(null);
   const [phase, setPhase] = useState<Phase>("checking");
   const [formError, setFormError] = useState<string | null>(null);

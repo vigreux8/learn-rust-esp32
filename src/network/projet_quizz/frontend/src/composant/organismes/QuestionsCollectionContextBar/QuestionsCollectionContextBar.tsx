@@ -1,13 +1,5 @@
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
 import { QUESTIONS_COLLECTION_CONTEXT_BAR_STYLES } from "./QuestionsCollectionContextBar.styles";
-
-export type QuestionsCollectionContextBarProps = {
-  targetCollectionNumeric: number | null;
-  collections: CollectionUi[];
-  allModules: QuizzModuleRow[];
-  importTargetModuleId: number | null;
-  setImportTargetModuleId: (id: number | null) => void;
-};
+import type { QuestionsCollectionContextBarProps } from "./QuestionsCollectionContextBar.types";
 
 export function QuestionsCollectionContextBar({
   targetCollectionNumeric,
