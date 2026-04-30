@@ -23,7 +23,7 @@ import { useRoutePath } from "../../../lib/routePathContext";
 import { useUserSession } from "../../../lib/userSession";
 import type { QuestionUi, QuizzQuestionDetail, RefCategorieRow } from "../../../types/quizz";
 import type { QuestionCreateSavePayload } from "../QuestionEditModal/QuestionEditModal";
-import { buildQuestionCopyJson, isPickedCorrect } from "./QuizSessionView.metier";
+import { buildQuestionCopyJson, isPickedCorrect, shuffleQuestionsAnswers } from "./QuizSessionView.metier";
 import type { QuizSessionViewProps, SessionData } from "./QuizSessionView.types";
 
 export function useQuizSessionView(props: QuizSessionViewProps) {
@@ -83,7 +83,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         const playUserId = pf.userId ?? (playOrdersRequireUserId(orders) ? userId : undefined);
 
         if (collectionId === "random") {
-          const questions = await fetchRandomQuiz(
+          const fetchedQuestions = await fetchRandomQuiz(
             pf.useServerPlayModes
               ? {
                   orders: pf.orders,
@@ -94,6 +94,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 }
               : { qtype: pf.qtype },
           );
+          const questions = shuffleQuestionsAnswers(fetchedQuestions);
           if (cancelled) return;
           if (questions.length === 0) {
             setLoadError("empty");
@@ -140,7 +141,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           setLoadError("empty");
           return;
         }
-        let questions = [...col.questions];
+        let questions = shuffleQuestionsAnswers(col.questions);
         if (!pf.useServerPlayModes && orders.length === 1 && orders[0] === "random") {
           questions = shuffleQuestions(questions);
         }
@@ -404,7 +405,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
             setFetchingMore(true);
             try {
               const excludeIds = allServedQuestionIdsRef.current;
-              const nextQuestions =
+              const nextQuestionsRaw =
                 collectionId === "random"
                   ? await fetchRandomQuiz({
                       orders: data.playOrders,
@@ -423,6 +424,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                         sousCollectionId: data.playSousCollectionId,
                       })
                     ).questions;
+              const nextQuestions = shuffleQuestionsAnswers(nextQuestionsRaw);
 
               playedTowardResultsRef.current += 1;
               if (nextQuestions.length === 0) {

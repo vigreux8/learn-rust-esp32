@@ -29,8 +29,12 @@ function PoolQuestionDraggable({
       class={SOUS_COLLECTIONS_VIEW_STYLES.questionRow}
       style={{ opacity: isDragging ? 0.45 : 1 }}
     >
-      <span ref={handleRef} class="mt-0.5 text-base-content/40" aria-hidden>
-        <GripVertical class="h-4 w-4" />
+      <span
+        ref={handleRef}
+        class="mt-0.5 text-base-content/40"
+        aria-label="Déplacer la question (glisser-déposer)"
+      >
+        <GripVertical class="h-4 w-4" aria-hidden />
       </span>
       <div class="min-w-0 flex-1">
         <span class={SOUS_COLLECTIONS_VIEW_STYLES.badge}>{row.categorie_type}</span>
@@ -58,8 +62,12 @@ function AssignedQuestionDraggable({
       class={SOUS_COLLECTIONS_VIEW_STYLES.questionRow}
       style={{ opacity: isDragging ? 0.45 : 1 }}
     >
-      <span ref={handleRef} class="mt-0.5 text-base-content/40" aria-hidden>
-        <GripVertical class="h-4 w-4" />
+      <span
+        ref={handleRef}
+        class="mt-0.5 text-base-content/40"
+        aria-label="Déplacer la question (glisser-déposer)"
+      >
+        <GripVertical class="h-4 w-4" aria-hidden />
       </span>
       <div class="min-w-0 flex-1">
         <span class={SOUS_COLLECTIONS_VIEW_STYLES.badge}>{item.categorie_type}</span>
