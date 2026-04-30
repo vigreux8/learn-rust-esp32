@@ -31,6 +31,7 @@ type QuizPlayOrderQuery =
   | 'random'
   | 'linear'
   | 'jamais_repondu'
+  | 'mal_repondu_filtre'
   | 'recent'
   | 'ancien'
   | 'mal_repondu';
@@ -39,6 +40,7 @@ const ALLOWED_PLAY_ORDER: QuizPlayOrderQuery[] = [
   'random',
   'linear',
   'jamais_repondu',
+  'mal_repondu_filtre',
   'recent',
   'ancien',
   'mal_repondu',
@@ -122,10 +124,12 @@ function assertOrdersRequireUserId(
   userId: number | undefined,
 ): void {
   const needs =
-    orders.includes('jamais_repondu') || orders.includes('mal_repondu');
+    orders.includes('jamais_repondu') ||
+    orders.includes('mal_repondu') ||
+    orders.includes('mal_repondu_filtre');
   if (needs && userId === undefined) {
     throw new BadRequestException(
-      'Query userId (entier ≥ 1) requis si order contient jamais_repondu et/ou mal_repondu',
+      'Query userId (entier ≥ 1) requis si order contient jamais_repondu, mal_repondu et/ou mal_repondu_filtre',
     );
   }
 }

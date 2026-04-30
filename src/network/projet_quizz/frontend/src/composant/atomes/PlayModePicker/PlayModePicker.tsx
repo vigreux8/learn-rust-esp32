@@ -7,7 +7,7 @@ export function PlayModePicker({
   onChange,
   labelAlignClass = "text-center",
 }: PlayModePickerProps) {
-  const { neverAnswered, sortBase, errorPriority, shuffleExtra } = settings;
+  const { neverAnswered, wrongAnswered, sortBase, errorPriority, shuffleExtra } = settings;
   const lab = `${PLAY_MODE_PICKER_STYLES.optionLabelBase} ${labelAlignClass}`;
 
   return (
@@ -22,6 +22,16 @@ export function PlayModePicker({
           onChange={(e) => onChange({ neverAnswered: (e.target as HTMLInputElement).checked })}
         />
         Jamais répondues (par moi)
+      </label>
+      <label class={PLAY_MODE_PICKER_STYLES.checkboxLabel}>
+        <input
+          id={`${idPrefix}-wrong`}
+          type="checkbox"
+          class="checkbox checkbox-sm checkbox-primary"
+          checked={wrongAnswered}
+          onChange={(e) => onChange({ wrongAnswered: (e.target as HTMLInputElement).checked })}
+        />
+        Mal répondues (par moi)
       </label>
 
       <p class={`${lab} mt-1`}>Tri des questions</p>

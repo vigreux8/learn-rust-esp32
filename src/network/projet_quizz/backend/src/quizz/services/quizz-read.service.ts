@@ -17,6 +17,7 @@ export type QuizPlayOrder =
   | 'random'
   | 'linear'
   | 'jamais_repondu'
+  | 'mal_repondu_filtre'
   | 'recent'
   | 'ancien'
   | 'mal_repondu';
@@ -295,6 +296,14 @@ export class QuizzReadService {
         });
         scored.sort((a, b) => a.key - b.key);
         return scored.map((x) => x.q);
+      }
+      case 'mal_repondu_filtre': {
+        if (userId === undefined) {
+          throw new BadRequestException('userId requis pour mal_repondu_filtre');
+        }
+        const ids = copy.map((q) => q.id);
+        const stats = await this.kpiGoodBadCounts(userId, ids);
+        return copy.filter((q) => (stats.get(q.id)?.bad ?? 0) > 0);
       }
       default:
         return shuffle(copy);

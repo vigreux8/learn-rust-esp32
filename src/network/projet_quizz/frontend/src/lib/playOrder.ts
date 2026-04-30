@@ -4,6 +4,7 @@ export type PlayOrder =
   | "random"
   | "linear"
   | "jamais_repondu"
+  | "mal_repondu_filtre"
   | "recent"
   | "ancien"
   | "mal_repondu";
@@ -18,6 +19,7 @@ const PLAY_ORDERS: readonly PlayOrder[] = [
   "random",
   "linear",
   "jamais_repondu",
+  "mal_repondu_filtre",
   "recent",
   "ancien",
   "mal_repondu",
@@ -40,7 +42,9 @@ export function parsePlayOrdersFromString(raw: string): PlayOrder[] {
 }
 
 export function playOrdersRequireUserId(orders: PlayOrder[]): boolean {
-  return orders.some((x) => x === "jamais_repondu" || x === "mal_repondu");
+  return orders.some(
+    (x) => x === "jamais_repondu" || x === "mal_repondu" || x === "mal_repondu_filtre",
+  );
 }
 
 /**
@@ -48,12 +52,14 @@ export function playOrdersRequireUserId(orders: PlayOrder[]): boolean {
  */
 export function buildPlayOrdersFromPicker(opts: {
   neverAnswered: boolean;
+  wrongAnswered: boolean;
   sortBase: PlaySortBase;
   errorPriority: boolean;
   shuffleExtra: boolean;
 }): PlayOrder[] {
   const o: PlayOrder[] = [];
   if (opts.neverAnswered) o.push("jamais_repondu");
+  if (opts.wrongAnswered) o.push("mal_repondu_filtre");
   if (opts.sortBase === "linear") o.push("linear");
   else if (opts.sortBase === "recent") o.push("recent");
   else if (opts.sortBase === "ancien") o.push("ancien");
@@ -66,12 +72,14 @@ export function buildPlayOrdersFromPicker(opts: {
 /** Déduit l’état du sélecteur à partir d’une liste de modes (pour pré-remplissage / rejouer). */
 export function pickerStateFromPlayOrders(orders: PlayOrder[]): {
   neverAnswered: boolean;
+  wrongAnswered: boolean;
   sortBase: PlaySortBase;
   errorPriority: boolean;
   shuffleExtra: boolean;
 } {
   return {
     neverAnswered: orders.includes("jamais_repondu"),
+    wrongAnswered: orders.includes("mal_repondu_filtre"),
     sortBase: orders.includes("linear")
       ? "linear"
       : orders.includes("recent")
@@ -220,6 +228,8 @@ export function playOrderLabel(order: PlayOrder): string {
       return "Plus anciennes d’abord";
     case "mal_repondu":
       return "Priorité aux erreurs";
+    case "mal_repondu_filtre":
+      return "Mal répondues";
     case "random":
     default:
       return "Aléatoire";

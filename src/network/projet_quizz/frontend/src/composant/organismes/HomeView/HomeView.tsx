@@ -19,6 +19,7 @@ export function HomeView() {
   const { userId } = useUserSession();
   const [playMode, setPlayMode] = useState<PlayModeSettings>({
     neverAnswered: false,
+    wrongAnswered: false,
     sortBase: "none",
     errorPriority: false,
     shuffleExtra: false,
