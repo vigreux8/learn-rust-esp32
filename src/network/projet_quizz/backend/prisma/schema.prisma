@@ -55,7 +55,9 @@ model quizz_question {
   create_at                                                                             String
   question                                                                              String
   commentaire                                                                           String
-  /** 0/1 en SQLite : question validée (« fakechecker » côté JSON app). */
+  /**
+   * 0/1 en SQLite : question validée (« fakechecker » côté JSON app).
+   */
   verifier                                                                              Boolean                       @default(false)
   question_collection                                                                   question_collection[]
   ref_categorie                                                                         ref_categorie                 @relation(fields: [categorie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -139,6 +141,7 @@ model sous_collections {
   id                        Int                         @id @default(autoincrement())
   collection_id             Int
   nom                       String
+  description               String
   quizz_collection          quizz_collection            @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   relation_sous_collections relation_sous_collections[]
 
@@ -146,11 +149,12 @@ model sous_collections {
 }
 
 model relation_sous_collections {
-  id                   Int              @id @default(autoincrement())
-  sous_collection_id   Int
-  question_id          Int
-  sous_collections     sous_collections @relation(fields: [sous_collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_question       quizz_question   @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                 Int              @id @default(autoincrement())
+  sous_collection_id Int
+  question_id        Int
+  sous_collections   sous_collections @relation(fields: [sous_collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_question     quizz_question   @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@unique([sous_collection_id, question_id], map: "relation_sous_collections_sous_question_key")
   @@map("relation_sous-collections")
 }

@@ -4,9 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { QuizzQuestionRow } from '../../quizz.type';
+import { QuizzQuestionRow, SousCollectionUi } from '../../quizz.type';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -327,5 +327,197 @@ export class QuizzWriteService {
 
       await tx.quizz_collection.delete({ where: { id: collectionId } });
     });
+  }
+
+  async createSousCollection(
+    collectionId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (col.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+
+    const row = await this.prisma.prisma.sous_collections.create({
+      data: {
+        collection_id: collectionId,
+        nom: body.nom.trim(),
+        description: body.description.trim(),
+      },
+    });
+
+    return {
+      id: row.id,
+      collection_id: row.collection_id,
+      nom: row.nom,
+      description: row.description ?? '',
+      questions: [],
+    };
+  }
+
+  async updateSousCollection(
+    sousCollectionId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    const sc = await this.prisma.prisma.sous_collections.findUnique({
+      where: { id: sousCollectionId },
+      include: { quizz_collection: true },
+    });
+    if (!sc) {
+      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
+    }
+    if (sc.quizz_collection.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+
+    const t = nowIso();
+    const row = await this.prisma.prisma.sous_collections.update({
+      where: { id: sousCollectionId },
+      data: {
+        nom: body.nom.trim(),
+        description: body.description.trim(),
+      },
+      include: {
+        relation_sous_collections: {
+          orderBy: { id: 'asc' },
+          include: {
+            quizz_question: {
+              include: { ref_categorie: true },
+            },
+          },
+        },
+      },
+    });
+
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: row.collection_id },
+      data: { update_at: t },
+    });
+
+    return {
+      id: row.id,
+      collection_id: row.collection_id,
+      nom: row.nom,
+      description: row.description ?? '',
+      questions: row.relation_sous_collections.map((rel) => ({
+        relation_id: rel.id,
+        question_id: rel.quizz_question.id,
+        question: rel.quizz_question.question,
+        categorie_type: rel.quizz_question.ref_categorie.type,
+      })),
+    };
+  }
+
+  async deleteSousCollection(sousCollectionId: number, userId: number): Promise<void> {
+    const sc = await this.prisma.prisma.sous_collections.findUnique({
+      where: { id: sousCollectionId },
+      include: { quizz_collection: true },
+    });
+    if (!sc) {
+      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
+    }
+    if (sc.quizz_collection.user_id !== userId) {
+      throw new ForbiddenException(
+        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${userId}.`,
+      );
+    }
+
+    await this.prisma.prisma.$transaction([
+      this.prisma.prisma.relation_sous_collections.deleteMany({
+        where: { sous_collection_id: sousCollectionId },
+      }),
+      this.prisma.prisma.sous_collections.delete({
+        where: { id: sousCollectionId },
+      }),
+    ]);
+  }
+
+  async attachQuestionToSousCollection(
+    sousCollectionId: number,
+    body: { user_id: number; question_id: number },
+  ): Promise<void> {
+    const sc = await this.prisma.prisma.sous_collections.findUnique({
+      where: { id: sousCollectionId },
+      include: { quizz_collection: true },
+    });
+    if (!sc) {
+      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
+    }
+    if (sc.quizz_collection.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+
+    const inCollection = await this.prisma.prisma.question_collection.findFirst({
+      where: {
+        collection_id: sc.collection_id,
+        question_id: body.question_id,
+      },
+    });
+    if (!inCollection) {
+      throw new BadRequestException(
+        'La question doit être liée à la collection avant d’être ajoutée à une sous-collection.',
+      );
+    }
+
+    try {
+      await this.prisma.prisma.relation_sous_collections.create({
+        data: {
+          sous_collection_id: sousCollectionId,
+          question_id: body.question_id,
+        },
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'Cette question est déjà présente dans cette sous-collection.',
+        );
+      }
+      throw e;
+    }
+  }
+
+  async detachQuestionFromSousCollection(
+    sousCollectionId: number,
+    userId: number,
+    questionId: number,
+  ): Promise<void> {
+    const sc = await this.prisma.prisma.sous_collections.findUnique({
+      where: { id: sousCollectionId },
+      include: { quizz_collection: true },
+    });
+    if (!sc) {
+      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
+    }
+    if (sc.quizz_collection.user_id !== userId) {
+      throw new ForbiddenException(
+        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${userId}.`,
+      );
+    }
+
+    const res = await this.prisma.prisma.relation_sous_collections.deleteMany({
+      where: {
+        sous_collection_id: sousCollectionId,
+        question_id: questionId,
+      },
+    });
+    if (res.count === 0) {
+      throw new NotFoundException(
+        `Aucun lien sous-collection / question pour la question ${questionId}.`,
+      );
+    }
   }
 }

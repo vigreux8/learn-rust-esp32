@@ -13,9 +13,11 @@ const quizzApiProxy = {
 export default defineConfig({
   plugins: [preact(), tailwindcss()],
   server: {
+    port: 5174,
     proxy: quizzApiProxy,
   },
   preview: {
+    port: 5174,
     proxy: quizzApiProxy,
   },
   build: {

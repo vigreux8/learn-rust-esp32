@@ -40,6 +40,12 @@ export interface CollectionQuestionCountsByType {
   pratique: number;
 }
 
+/** Référence légère d’une sous-collection (liste / jeu ciblé). */
+export interface CollectionSousCollectionRef {
+  id: number;
+  nom: string;
+}
+
 export interface CollectionUi {
   id: number;
   user_id: number;
@@ -50,6 +56,8 @@ export interface CollectionUi {
   question_counts_by_type: CollectionQuestionCountsByType;
   createur_pseudot: string;
   modules: { id: number; nom: string }[];
+  /** Présent dès l’API ≥ sous-collections ; défaut `[]` côté client si absent. */
+  sous_collections?: CollectionSousCollectionRef[];
 }
 
 export interface QuizzCollectionRef {
@@ -76,6 +84,22 @@ export interface QuizzQuestionDetail extends QuizzQuestionRow {
 export interface RefCategorieRow {
   id: number;
   type: string;
+}
+
+/** Aligné sur `SousCollectionUi` côté API Nest. */
+export interface SousCollectionQuestionRef {
+  relation_id: number;
+  question_id: number;
+  question: string;
+  categorie_type: string;
+}
+
+export interface SousCollectionUi {
+  id: number;
+  collection_id: number;
+  nom: string;
+  description: string;
+  questions: SousCollectionQuestionRef[];
 }
 
 export interface UserKpiRow {

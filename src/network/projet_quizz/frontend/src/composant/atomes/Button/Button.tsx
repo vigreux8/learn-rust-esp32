@@ -11,6 +11,7 @@ export function Button({
   onClick,
   title,
   "aria-label": ariaLabel,
+  "aria-expanded": ariaExpanded,
 }: ButtonProps) {
   return (
     <button
@@ -20,6 +21,7 @@ export function Button({
       class={cn(BUTTON_STYLES.base, BUTTON_STYLES.variants[variant], className)}
       title={title}
       aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
     >
       {children}
     </button>

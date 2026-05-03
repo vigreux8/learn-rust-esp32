@@ -14,8 +14,10 @@ import {
 } from "../../../lib/api";
 import { normalizeAndValidateAppCollectionImportText } from "../../../lib/appCollectionImportNormalize";
 import { normalizeAndValidateImportText } from "../../../lib/llmImportNormalize";
+import type { PlayQtype } from "../../../lib/playOrder";
 import { useUserSession } from "../../../lib/userSession";
 import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
+import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 import { applyModuleFilter, filterCollections, pendingDeleteLabels } from "./CollectionsView.metier";
 import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 
@@ -42,6 +44,16 @@ export function useCollectionsView() {
   const [createCollBusy, setCreateCollBusy] = useState(false);
   const [createCollError, setCreateCollError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
+
+  const [playMode, setPlayMode] = useState<PlayModeSettings>({
+    neverAnswered: false,
+    wrongAnswered: false,
+    sortBase: "none",
+    errorPriority: false,
+    shuffleExtra: false,
+  });
+  const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
+  const [playInfinite, setPlayInfinite] = useState(false);
 
   const jsonImportInputRef = useRef<HTMLInputElement | null>(null);
   const [jsonImportOpen, setJsonImportOpen] = useState(false);
@@ -339,6 +351,12 @@ export function useCollectionsView() {
     onChangeModuleFilter: setModuleFilter,
     filtered,
     userId,
+    playMode,
+    onPlayModeChange: (patch: Partial<PlayModeSettings>) => setPlayMode((prev) => ({ ...prev, ...patch })),
+    playQtype,
+    onPlayQtypeChange: setPlayQtype,
+    playInfinite,
+    onPlayInfiniteChange: setPlayInfinite,
     onAssign: handleAssign,
     onUnassign: handleUnassign,
     onRequestDeleteCollection: (collection: CollectionUi) =>

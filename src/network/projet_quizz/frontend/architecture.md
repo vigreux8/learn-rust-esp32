@@ -13,6 +13,9 @@
 | Icônes                  | **lucide-preact**                                    |
 | Classes conditionnelles | **clsx** + **tailwind-merge** (helper `lib/cn.ts`)   |
 
+## library important  : 
+dnd-kit 
+
 Les appels HTTP vers l’API Nest se font depuis `lib/api.ts` (URL de base configurable via `lib/config.ts`).
 
 ## Arborescence (`frontend/`)
@@ -54,6 +57,8 @@ frontend/
         │   ├── QuestionsCollectionContextBar/
         │   └── QuestionsLlmImportOptionsPanel/
         ├── molecules/           # blocs composés important au moins un atome local (dossier par composant)
+        │   ├── ActionExportCollectionJson/
+        │   ├── ActionImportLlm/
         │   ├── CollectionCard/
         │   ├── DeviceAuthGate/
         │   ├── KpiCard/
@@ -66,8 +71,9 @@ frontend/
             ├── DatabaseTransferView/
             ├── HomeView/
             ├── QuestionEditModal/
-            ├── QuestionsLlmImportCard/
+            ├── QuestionsActionBoutons/
             ├── QuestionsView/
+            ├── SousCollectionsView/
             ├── QuizResultsView/
             ├── QuizSessionView/
             ├── SessionDetailsView/
@@ -88,7 +94,7 @@ Ici le pattern est le même, mais **découpé davantage** :
 ### Racine `src/`
 
 - **`main.tsx`** : point d’entrée ; rend `<App />` dans le document.
-- **`app.tsx`** : définition des routes (`/`, `/collections`, `/play/:collectionId`, `/dashboard`, `/database`, etc.) et fournisseurs (`RoutePathContext`, `DeviceAuthGate`).
+- **`app.tsx`** : définition des routes (`/`, `/collections`, `/collections/:id/sous-collections`, `/play/:collectionId`, `/dashboard`, `/database`, etc.) et fournisseurs (`RoutePathContext`, `DeviceAuthGate`).
 
 ### `composant/atomes/`
 
@@ -111,6 +117,8 @@ Blocs composés qui **importent au moins un** composant sous `atomes/`.
 
 | Dossier                     | Rôle                                                                |
 | --------------------------- | ------------------------------------------------------------------- |
+| `ActionExportCollectionJson/` | Bouton d’export JSON d’une collection (état chargement / erreur). |
+| `ActionImportLlm/`          | Bouton pour ouvrir ou refermer le panneau d’import LLM.              |
 | `CollectionCard/`           | Carte d’une collection (aperçu, actions).                           |
 | `KpiCard/`                  | Carte indicateur pour le tableau de bord stats.                     |
 | `PopUpInformation/`         | Boîte d’information / alerte légère.                                |
@@ -129,7 +137,8 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 | `CollectionsView/`               | Liste et gestion des collections (découpé en sections).       |
 | `QuestionEditModal/`             | Modale d’édition ou de création d’une question (QCM).         |
 | `QuestionsView/`                 | Liste / édition des questions (filtrage par collection).      |
-| `QuestionsLlmImportCard/`        | Carte dédiée au flux d’import type LLM.                       |
+| `SousCollectionsView/`           | Sous-collections d’une collection : grille, modale création, drag-and-drop des questions (`dnd-kit`). |
+| `QuestionsActionBoutons/`        | En-tête Questions : actions export / import LLM + panneau.   |
 | `QuizSessionView/`               | Déroulé d’une partie (questions, réponses, progression).      |
 | `QuizResultsView/`               | Résumé à la fin d’un quiz.                                    |
 | `StatsDashboard/`                | Vue d’ensemble des statistiques / KPI.                        |

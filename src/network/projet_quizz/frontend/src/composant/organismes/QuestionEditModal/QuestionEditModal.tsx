@@ -24,6 +24,30 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
               onChange={(e) => actions.onDraftCategorieId(Number((e.target as HTMLSelectElement).value))}>
               {data.categorieOptions.map((c) => <option key={c.id} value={c.id}>{c.type}</option>)}
             </select>
+            {data.sousCollectionsForCreate != null && data.sousCollectionsForCreate.length > 0 ? (
+              <>
+                <label class="mb-1 block text-xs font-medium text-base-content/60" for="qm-sous-collection">
+                  Sous-collection
+                </label>
+                <select
+                  id="qm-sous-collection"
+                  class="select select-bordered select-sm mb-4 w-full max-w-md rounded-xl border-base-content/15 bg-base-100"
+                  value={drafts.sousCollectionId ?? ""}
+                  disabled={status.saving}
+                  onChange={(e) => {
+                    const raw = (e.target as HTMLSelectElement).value;
+                    actions.onDraftSousCollectionId?.(raw === "" ? null : Number(raw));
+                  }}
+                >
+                  <option value="">Aucune (collection seulement)</option>
+                  {data.sousCollectionsForCreate.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nom}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : null}
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qm-question">Énoncé</label>
             <textarea id="qm-question" class="textarea textarea-bordered mb-4 w-full rounded-xl border-base-content/15 text-sm" rows={4} value={drafts.question} onInput={(e) => actions.onDraftQuestion((e.target as HTMLTextAreaElement).value)} />
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qm-commentaire">Commentaire</label>

@@ -3,9 +3,12 @@ import { route } from "preact-router";
 import {
   fetchCollection,
   fetchQuestionDetail,
+  deleteQuestion,
   fetchRandomQuiz,
   fetchRefCategories,
+  fetchSousCollections,
   patchQuestion,
+  postAttachQuestionToSousCollection,
   postCreateQuestion,
   postQuizKpi,
   type HttpError,
@@ -20,7 +23,7 @@ import { useRoutePath } from "../../../lib/routePathContext";
 import { useUserSession } from "../../../lib/userSession";
 import type { QuestionUi, QuizzQuestionDetail, RefCategorieRow } from "../../../types/quizz";
 import type { QuestionCreateSavePayload } from "../QuestionEditModal/QuestionEditModal";
-import { buildQuestionCopyJson, isPickedCorrect } from "./QuizSessionView.metier";
+import { buildQuestionCopyJson, isPickedCorrect, shuffleQuestionsAnswers } from "./QuizSessionView.metier";
 import type { QuizSessionViewProps, SessionData } from "./QuizSessionView.types";
 
 export function useQuizSessionView(props: QuizSessionViewProps) {
@@ -54,6 +57,9 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const [draftVerifier, setDraftVerifier] = useState(false);
   const [nextBusy, setNextBusy] = useState(false);
   const [fetchingMore, setFetchingMore] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<{ id: number; nom: string }[]>([]);
+  const [draftSousCollectionId, setDraftSousCollectionId] = useState<number | null>(null);
 
   useEffect(() => {
     void fetchRefCategories()
@@ -77,7 +83,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         const playUserId = pf.userId ?? (playOrdersRequireUserId(orders) ? userId : undefined);
 
         if (collectionId === "random") {
-          const questions = await fetchRandomQuiz(
+          const fetchedQuestions = await fetchRandomQuiz(
             pf.useServerPlayModes
               ? {
                   orders: pf.orders,
@@ -88,6 +94,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 }
               : { qtype: pf.qtype },
           );
+          const questions = shuffleQuestionsAnswers(fetchedQuestions);
           if (cancelled) return;
           if (questions.length === 0) {
             setLoadError("empty");
@@ -125,15 +132,16 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 userId: playUserId,
                 infinite: pf.infinite,
                 excludeIds: pf.excludeIds,
+                sousCollectionId: pf.sousCollectionId,
               }
-            : { qtype: pf.qtype },
+            : { qtype: pf.qtype, sousCollectionId: pf.sousCollectionId },
         );
         if (cancelled) return;
         if (col.questions.length === 0) {
           setLoadError("empty");
           return;
         }
-        let questions = [...col.questions];
+        let questions = shuffleQuestionsAnswers(col.questions);
         if (!pf.useServerPlayModes && orders.length === 1 && orders[0] === "random") {
           questions = shuffleQuestions(questions);
         }
@@ -148,6 +156,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           playQtype: qtype,
           playInfinite: pf.infinite,
           playUserId,
+          playSousCollectionId: pf.sousCollectionId,
           useServerPlayModes: pf.useServerPlayModes,
         });
         setIndex(0);
@@ -197,9 +206,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     setQuestionModalError(null);
     setQuestionModalDetail(null);
     setCreateParentQuestionId(null);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
   };
 
   const openEditQuestionModal = (current: QuestionUi) => {
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
     setQuestionModalVariant("edit");
     setQuestionModalOpen(true);
     setQuestionModalLoading(true);
@@ -221,6 +234,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setActionMessage("Catégories indisponibles : impossible de créer une question pour l’instant.");
       return;
     }
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
     setQuestionModalVariant("create");
     setCreateParentQuestionId(parent.id);
     setQuestionModalOpen(true);
@@ -233,6 +248,15 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       ? parent.categorie_id
       : refCategories[0]!.id;
     setDraftCategorieId(cat);
+    const session = data;
+    if (session?.mode === "collection" && session.collectionId != null) {
+      void fetchSousCollections(session.collectionId).then((rows) => {
+        setSousCollectionsForCreateModal(rows.map((r) => ({ id: r.id, nom: r.nom })));
+        const playSous = session.playSousCollectionId;
+        const defId = playSous != null && rows.some((r) => r.id === playSous) ? playSous : null;
+        setDraftSousCollectionId(defId);
+      });
+    }
   };
 
   const refreshQuestionModalDetail = async () => {
@@ -290,7 +314,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     if (createParentQuestionId == null) return;
     setQuestionModalSaving(true);
     try {
-      await postCreateQuestion({
+      const created = await postCreateQuestion({
         user_id: userId,
         categorie_id: payload.categorie_id,
         question: payload.question,
@@ -299,7 +323,17 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         parent_question_id: createParentQuestionId,
         collection_id: data?.collectionId ?? undefined,
       });
-      setActionMessage("Question créée et liée à la question affichée (parent).");
+      if (payload.sous_collection_id != null) {
+        await postAttachQuestionToSousCollection(payload.sous_collection_id, {
+          user_id: userId,
+          question_id: created.id,
+        });
+      }
+      setActionMessage(
+        payload.sous_collection_id != null
+          ? "Question créée, liée au parent et à la sous-collection choisie."
+          : "Question créée et liée à la question affichée (parent).",
+      );
       closeQuestionModal();
     } catch {
       throw new Error("create failed");
@@ -371,7 +405,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
             setFetchingMore(true);
             try {
               const excludeIds = allServedQuestionIdsRef.current;
-              const nextQuestions =
+              const nextQuestionsRaw =
                 collectionId === "random"
                   ? await fetchRandomQuiz({
                       orders: data.playOrders,
@@ -387,8 +421,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                         userId: data.playUserId,
                         infinite: true,
                         excludeIds,
+                        sousCollectionId: data.playSousCollectionId,
                       })
                     ).questions;
+              const nextQuestions = shuffleQuestionsAnswers(nextQuestionsRaw);
 
               playedTowardResultsRef.current += 1;
               if (nextQuestions.length === 0) {
@@ -474,6 +510,45 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     })();
   };
 
+  const handleDeleteCurrentQuestion = async (current: QuestionUi) => {
+    const snapshot = data;
+    if (snapshot == null || current.user_id !== userId) return;
+    if (
+      !window.confirm(
+        "Supprimer définitivement cette question ? Elle sera retirée de la base et des collections.",
+      )
+    ) {
+      return;
+    }
+    const idx = index;
+    setDeleteBusy(true);
+    try {
+      await deleteQuestion(current.id);
+      allServedQuestionIdsRef.current = allServedQuestionIdsRef.current.filter((id) => id !== current.id);
+      if (questionModalDetail?.id === current.id) {
+        closeQuestionModal();
+      }
+      const filtered = snapshot.questions.filter((x) => x.id !== current.id);
+      if (filtered.length === 0) {
+        setActionMessage("Dernière question supprimée.");
+        route(snapshot.mode === "random" ? "/" : "/collections");
+        return;
+      }
+      let newIndex = idx;
+      if (idx >= filtered.length) {
+        newIndex = filtered.length - 1;
+      }
+      setData({ ...snapshot, questions: filtered });
+      setIndex(newIndex);
+      setPickedId(null);
+      setActionMessage("Question supprimée.");
+    } catch {
+      setActionMessage("Suppression impossible.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   if (loading) {
     return { kind: "loading" as const };
   }
@@ -513,10 +588,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     draftVerifier,
     nextBusy,
     fetchingMore,
+    canDeleteCurrentQuestion: q.user_id === userId,
+    deleteBusy,
     onPick: handlePick,
     onOpenCreateLinkedQuestionModal: openCreateLinkedQuestionModal,
     onOpenEditQuestionModal: openEditQuestionModal,
     onCopyCurrentQuestionJson: copyCurrentQuestionJson,
+    onDeleteCurrentQuestion: handleDeleteCurrentQuestion,
     onDraftVerifier: setDraftVerifier,
     onNext: handleNext,
     onEndInfiniteSession: handleEndInfiniteSession,
@@ -534,6 +612,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       onDraftQuestion: setDraftQuestion,
       onDraftCommentaire: setDraftCommentaire,
       onDraftCategorieId: setDraftCategorieId,
+      onDraftSousCollectionId: setDraftSousCollectionId,
       onReponseUpdated: () => void refreshQuestionModalDetail(),
       onCreateSave: (payload: QuestionCreateSavePayload) => saveCreateQuestionModal(payload),
     },
@@ -542,11 +621,16 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       saving: questionModalSaving,
       error: questionModalError,
     },
-    data: { questionDetail: questionModalDetail, categorieOptions: refCategories },
+    data: {
+      questionDetail: questionModalDetail,
+      categorieOptions: refCategories,
+      sousCollectionsForCreate: sousCollectionsForCreateModal,
+    },
     drafts: {
       question: draftQuestion,
       commentaire: draftCommentaire,
       categorieId: draftCategorieId,
+      sousCollectionId: draftSousCollectionId,
     },
   };
 

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/react": "^0.4.0",
     "clsx": "^2.1.1",
     "lucide-preact": "^1.7.0",
     "preact": "^10.29.0",

@@ -24,6 +24,12 @@ export type CollectionModuleRef = {
   nom: string;
 };
 
+/** Sous-collection rattachée à une collection (liste légère pour l’UI). */
+export type CollectionSousCollectionRef = {
+  id: number;
+  nom: string;
+};
+
 /** Comptage des questions liées à la collection, par `ref_categorie.type` (toutes les questions, hors filtre `qtype`). */
 export type CollectionQuestionCountsByType = {
   histoire: number;
@@ -42,6 +48,8 @@ export type CollectionUi = {
   createur_pseudot: string;
   /** Super-collections (`quizz_module`) liées via `quizz_module_collection`. */
   modules: CollectionModuleRef[];
+  /** Sous-collections (`sous_collections`) pour sélection / jeu ciblé. */
+  sous_collections: CollectionSousCollectionRef[];
 };
 
 export type QuizzCollectionRef = {
@@ -77,4 +85,20 @@ export type QuizzModuleRow = {
   nom: string;
   create_at: string;
   update_at: string;
+};
+
+/** Question rattachée à une sous-collection (UI drag-drop). */
+export type SousCollectionQuestionRef = {
+  relation_id: number;
+  question_id: number;
+  question: string;
+  categorie_type: string;
+};
+
+export type SousCollectionUi = {
+  id: number;
+  collection_id: number;
+  nom: string;
+  description: string;
+  questions: SousCollectionQuestionRef[];
 };

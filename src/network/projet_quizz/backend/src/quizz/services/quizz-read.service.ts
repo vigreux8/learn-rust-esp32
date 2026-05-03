@@ -10,12 +10,14 @@ import {
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieRow,
+  SousCollectionUi,
 } from '../quizz.type';
 
 export type QuizPlayOrder =
   | 'random'
   | 'linear'
   | 'jamais_repondu'
+  | 'mal_repondu_filtre'
   | 'recent'
   | 'ancien'
   | 'mal_repondu';
@@ -28,6 +30,8 @@ export type QuizPlaySessionOpts = {
   userId?: number;
   limit?: number;
   excludeIds: number[];
+  /** Limite les questions à celles liées à cette sous-collection (doit appartenir à la collection). */
+  sousCollectionId?: number;
 };
 
 function shuffle<T>(items: T[]): T[] {
@@ -125,6 +129,13 @@ export class QuizzReadService {
       nom: mc.quizz_module.nom,
     }));
 
+    const sousRows = await this.prisma.prisma.sous_collections.findMany({
+      where: { collection_id: collectionId },
+      orderBy: { id: 'asc' },
+      select: { id: true, nom: true },
+    });
+    const sous_collections = sousRows.map((s) => ({ id: s.id, nom: s.nom }));
+
     return {
       id: col.id,
       user_id: col.user_id,
@@ -135,6 +146,7 @@ export class QuizzReadService {
       question_counts_by_type,
       createur_pseudot: col.user.pseudot,
       modules,
+      sous_collections,
     };
   }
 
@@ -155,8 +167,28 @@ export class QuizzReadService {
     qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
     play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
-    const ui = await this.buildCollectionUi(collectionId, qtype);
-    if (!ui || ui.questions.length === 0) {
+    let ui = await this.buildCollectionUi(collectionId, qtype);
+    if (!ui) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (play?.sousCollectionId != null) {
+      const scId = play.sousCollectionId;
+      const sc = await this.prisma.prisma.sous_collections.findFirst({
+        where: { id: scId, collection_id: collectionId },
+      });
+      if (!sc) {
+        throw new BadRequestException(
+          `Sous-collection ${scId} introuvable pour la collection ${collectionId}.`,
+        );
+      }
+      const rels = await this.prisma.prisma.relation_sous_collections.findMany({
+        where: { sous_collection_id: scId },
+        select: { question_id: true },
+      });
+      const allowed = new Set(rels.map((r) => r.question_id));
+      ui = { ...ui, questions: ui.questions.filter((q) => allowed.has(q.id)) };
+    }
+    if (ui.questions.length === 0) {
       throw new NotFoundException(
         qtype !== 'melanger'
           ? `Aucune question de type « ${qtype} » dans la collection ${collectionId}.`
@@ -264,6 +296,14 @@ export class QuizzReadService {
         });
         scored.sort((a, b) => a.key - b.key);
         return scored.map((x) => x.q);
+      }
+      case 'mal_repondu_filtre': {
+        if (userId === undefined) {
+          throw new BadRequestException('userId requis pour mal_repondu_filtre');
+        }
+        const ids = copy.map((q) => q.id);
+        const stats = await this.kpiGoodBadCounts(userId, ids);
+        return copy.filter((q) => (stats.get(q.id)?.bad ?? 0) > 0);
       }
       default:
         return shuffle(copy);
@@ -415,5 +455,44 @@ export class QuizzReadService {
       );
     }
     return this.listQuestions(n);
+  }
+
+  async listSousCollectionsByCollection(
+    collectionId: number,
+  ): Promise<SousCollectionUi[]> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+
+    const rows = await this.prisma.prisma.sous_collections.findMany({
+      where: { collection_id: collectionId },
+      orderBy: { id: 'asc' },
+      include: {
+        relation_sous_collections: {
+          orderBy: { id: 'asc' },
+          include: {
+            quizz_question: {
+              include: { ref_categorie: true },
+            },
+          },
+        },
+      },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      collection_id: r.collection_id,
+      nom: r.nom,
+      description: r.description ?? '',
+      questions: r.relation_sous_collections.map((rel) => ({
+        relation_id: rel.id,
+        question_id: rel.quizz_question.id,
+        question: rel.quizz_question.question,
+        categorie_type: rel.quizz_question.ref_categorie.type,
+      })),
+    }));
   }
 }

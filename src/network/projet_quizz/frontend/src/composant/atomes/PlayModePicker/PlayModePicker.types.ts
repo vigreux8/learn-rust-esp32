@@ -2,6 +2,7 @@ import type { PlaySortBase } from "../../../lib/playOrder";
 
 export type PlayModeSettings = {
   neverAnswered: boolean;
+  wrongAnswered: boolean;
   sortBase: PlaySortBase;
   errorPriority: boolean;
   shuffleExtra: boolean;

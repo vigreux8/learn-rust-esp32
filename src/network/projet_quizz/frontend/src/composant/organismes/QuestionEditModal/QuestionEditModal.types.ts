@@ -13,6 +13,8 @@ export type QuestionEditModalProps = {
   data: {
     questionDetail: QuizzQuestionDetail | null;
     categorieOptions: RefCategorieRow[];
+    /** Liste pour le formulaire de création (liée à une collection). */
+    sousCollectionsForCreate?: { id: number; nom: string }[];
   };
 
   // Les fonctions de mise à jour (State parent)
@@ -21,6 +23,7 @@ export type QuestionEditModalProps = {
     onDraftQuestion: (v: string) => void;
     onDraftCommentaire: (v: string) => void;
     onDraftCategorieId: (id: number) => void;
+    onDraftSousCollectionId?: (id: number | null) => void;
     onReponseUpdated: () => void | Promise<void>;
     onCreateSave?: (payload: QuestionCreateSavePayload) => void | Promise<void>;
   };
@@ -30,6 +33,8 @@ export type QuestionEditModalProps = {
     question: string;
     commentaire: string;
     categorieId: number | null;
+    /** Sélection pour rattacher la nouvelle question à une sous-collection. */
+    sousCollectionId?: number | null;
   };
 
   // Les indicateurs d'UI
@@ -49,5 +54,7 @@ export type QuestionCreateSavePayload = {
   question: string;
   commentaire: string;
   categorie_id: number;
-  reponses: CreateReponseDraft[]
+  reponses: CreateReponseDraft[];
+  /** Après création : rattachement à cette sous-collection (question déjà dans la collection). */
+  sous_collection_id?: number | null;
 };

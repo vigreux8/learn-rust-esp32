@@ -6,7 +6,7 @@ import { buildLlmCreateQuestionPrompt, parseCreateQuestionLlmJson } from "../../
 import type { QuestionsLlmImportPromptPanelProps } from "../../molecules/QuestionsLlmImportPromptPanel/QuestionsLlmImportPromptPanel.types";
 
 import { defaultCreateReponses } from "./QuestionEditModal.metier";
-import type { QuestionEditModalProps } from "./QuestionEditModal.types";
+import type { QuestionCreateSavePayload, QuestionEditModalProps } from "./QuestionEditModal.types";
 
 export function useQuestionEditModal(props: QuestionEditModalProps) {
   const { settings, actions, status, data, drafts } = props;
@@ -59,14 +59,16 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     if (reps.some((r) => !r.texte)) return void setCreateFormError("Toutes les propositions doivent être renseignées.");
     if (reps.filter((r) => r.correcte).length !== 1) return void setCreateFormError("Indique exactement une bonne réponse.");
     if (!actions.onCreateSave) return void setCreateFormError("Configuration interne : onCreateSave manquant.");
-    await Promise.resolve(
-      actions.onCreateSave({
-        question: q,
-        commentaire: drafts.commentaire.trim(),
-        categorie_id: drafts.categorieId,
-        reponses: reps,
-      }),
-    );
+    const payload: QuestionCreateSavePayload = {
+      question: q,
+      commentaire: drafts.commentaire.trim(),
+      categorie_id: drafts.categorieId,
+      reponses: reps,
+    };
+    if (data.sousCollectionsForCreate != null && data.sousCollectionsForCreate.length > 0) {
+      payload.sous_collection_id = drafts.sousCollectionId ?? null;
+    }
+    await Promise.resolve(actions.onCreateSave(payload));
   };
 
   const applyCreateJsonFromPaste = async (importText: string): Promise<string> => {

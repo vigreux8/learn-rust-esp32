@@ -9,6 +9,7 @@ import type {
   RefCategorieRow,
   SessionDetail,
   SessionSummary,
+  SousCollectionUi,
   UserKpiRow,
 } from "../types/quizz";
 import type { LlmImportPayload } from "../composant/molecules/QuestionsLlmImportPanel";
@@ -73,6 +74,7 @@ export async function fetchCollection(
     userId?: number;
     infinite?: boolean;
     excludeIds?: number[];
+    sousCollectionId?: number;
   },
 ): Promise<CollectionUi> {
   const p = new URLSearchParams();
@@ -90,6 +92,9 @@ export async function fetchCollection(
   }
   if (opts?.excludeIds != null && opts.excludeIds.length > 0) {
     p.set("exclude", opts.excludeIds.join(","));
+  }
+  if (opts?.sousCollectionId != null) {
+    p.set("sousCollectionId", String(opts.sousCollectionId));
   }
   const q = p.size > 0 ? `?${p.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/collections/${id}${q}`));
@@ -206,6 +211,71 @@ export async function fetchQuestions(
   return res.json() as Promise<QuizzQuestionRow[]>;
 }
 
+export async function fetchSousCollections(collectionId: number): Promise<SousCollectionUi[]> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/sous-collections`));
+  await assertResponseOk(res);
+  return res.json() as Promise<SousCollectionUi[]>;
+}
+
+export async function postCreateSousCollection(
+  collectionId: number,
+  body: { user_id: number; nom: string; description: string },
+): Promise<SousCollectionUi> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/sous-collections`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<SousCollectionUi>;
+}
+
+export async function patchSousCollection(
+  sousId: number,
+  body: { user_id: number; nom: string; description: string },
+): Promise<SousCollectionUi> {
+  const res = await fetch(apiUrl(`/quizz/sous-collections/${sousId}`), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<SousCollectionUi>;
+}
+
+export async function deleteSousCollection(sousId: number, userId: number): Promise<void> {
+  const q = new URLSearchParams({ userId: String(userId) });
+  const res = await fetch(apiUrl(`/quizz/sous-collections/${sousId}?${q.toString()}`), {
+    method: "DELETE",
+  });
+  await assertResponseOk(res);
+}
+
+export async function postAttachQuestionToSousCollection(
+  sousId: number,
+  body: { user_id: number; question_id: number },
+): Promise<void> {
+  const res = await fetch(apiUrl(`/quizz/sous-collections/${sousId}/questions`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+}
+
+export async function deleteDetachQuestionFromSousCollection(
+  sousId: number,
+  questionId: number,
+  userId: number,
+): Promise<void> {
+  const q = new URLSearchParams({ userId: String(userId) });
+  const res = await fetch(
+    apiUrl(`/quizz/sous-collections/${sousId}/questions/${questionId}?${q.toString()}`),
+    { method: "DELETE" },
+  );
+  await assertResponseOk(res);
+}
+
 export async function patchQuestion(
   id: number,
   body: { question?: string; commentaire?: string; categorie_id?: number; verifier?: boolean },
@@ -268,7 +338,12 @@ export async function createEmptyCollection(body: {
 
 export async function importQuestionsJson(
   body: LlmImportPayload,
-  options?: { collectionId?: number; moduleId?: number; categorie?: "histoire" | "pratique" },
+  options?: {
+    collectionId?: number;
+    moduleId?: number;
+    categorie?: "histoire" | "pratique";
+    sousCollectionId?: number;
+  },
 ): Promise<{
   createdQuestions: number;
   createdCollections: number;
@@ -282,6 +357,9 @@ export async function importQuestionsJson(
   }
   if (options?.categorie != null) {
     q.set("categorie", options.categorie);
+  }
+  if (options?.sousCollectionId != null) {
+    q.set("sousCollectionId", String(options.sousCollectionId));
   }
   const suffix = q.size > 0 ? `?${q.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/questions/import${suffix}`), {

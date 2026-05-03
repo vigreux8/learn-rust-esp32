@@ -11,4 +11,5 @@ export type ButtonProps = {
   onClick?: JSX.MouseEventHandler<HTMLButtonElement>;
   title?: string;
   "aria-label"?: string;
+  "aria-expanded"?: boolean;
 };

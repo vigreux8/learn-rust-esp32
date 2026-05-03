@@ -9,6 +9,13 @@ export function isPickedCorrect(
   return cur?.reponses.some((r) => r.id === reponseId && r.bonne_reponse) ?? false;
 }
 
+export function shuffleQuestionsAnswers(questions: QuestionUi[]): QuestionUi[] {
+  return questions.map((question) => ({
+    ...question,
+    reponses: shuffleQuestionAnswers(question.reponses)
+  }));
+}
+
 export function buildQuestionCopyJson(q: QuestionUi): string {
   return JSON.stringify(
     {
@@ -22,4 +29,13 @@ export function buildQuestionCopyJson(q: QuestionUi): string {
     null,
     2,
   );
+}
+
+function shuffleQuestionAnswers(reponses: QuestionUi["reponses"]): QuestionUi["reponses"] {
+  const out = [...reponses];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
 }

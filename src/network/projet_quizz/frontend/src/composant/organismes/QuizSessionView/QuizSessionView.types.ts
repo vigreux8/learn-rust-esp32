@@ -14,6 +14,8 @@ export type SessionData = {
   playQtype: PlayQtype;
   playInfinite: boolean;
   playUserId?: number;
+  /** Filtrage sous-collection pour les rechargements « infinite » (mode collection). */
+  playSousCollectionId?: number;
   useServerPlayModes: boolean;
 };
 
@@ -38,6 +40,9 @@ export type QuizSessionQuestionCardProps = {
   onOpenCreateLinkedQuestionModal: (q: QuestionUi) => void;
   onOpenEditQuestionModal: (q: QuestionUi) => void;
   onCopyCurrentQuestionJson: (q: QuestionUi) => Promise<void>;
+  canDeleteCurrentQuestion: boolean;
+  deleteBusy: boolean;
+  onDeleteCurrentQuestion: (q: QuestionUi) => void;
   onDraftVerifier: (value: boolean) => void;
   onNext: () => void;
   onEndInfiniteSession: () => void;
