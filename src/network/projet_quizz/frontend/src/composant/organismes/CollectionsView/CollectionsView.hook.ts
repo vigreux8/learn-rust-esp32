@@ -3,7 +3,6 @@ import { route } from "preact-router";
 import {
   collectDescendantCollectionIds,
   computeTreeDepth,
-  depthBelowRoot,
   orderCollectionsHierarchy,
 } from "../../../lib/collectionHierarchyVis";
 import {
@@ -314,14 +313,10 @@ export function useCollectionsView() {
   const showHierarchySuggestPanel =
     hierarchySubtreeRootId != null && hierarchySuggestFocused && hierarchySearchSuggestions.length > 0;
 
+  /** Profondeur réelle dans tout l’arbre (couleurs), pas relative à la vue « sous-arbre ». */
   const getTreeDepth = useCallback(
-    (c: CollectionUi) => {
-      if (hierarchySubtreeRootId != null) {
-        return depthBelowRoot(c.id, hierarchySubtreeRootId, collectionsById);
-      }
-      return computeTreeDepth(c, collectionsById);
-    },
-    [collectionsById, hierarchySubtreeRootId],
+    (c: CollectionUi) => computeTreeDepth(c, collectionsById),
+    [collectionsById],
   );
 
   const clearHierarchySubtree = useCallback(() => {

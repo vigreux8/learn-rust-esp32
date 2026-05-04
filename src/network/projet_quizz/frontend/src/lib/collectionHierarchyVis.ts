@@ -93,28 +93,3 @@ export function collectDescendantCollectionIds(rootId: number, collections: Coll
   }
   return out;
 }
-
-/**
- * Nombre de liens parent entre `collectionId` et `rootId` (exclu).
- * Retourne 0 si `collectionId === rootId`, sinon distance jusqu’à atteindre `rootId`.
- */
-export function depthBelowRoot(
-  collectionId: number,
-  rootId: number,
-  byId: Map<number, CollectionUi>,
-): number {
-  if (collectionId === rootId) return 0;
-  let depth = 0;
-  let cur: number | null | undefined = collectionId;
-  const seen = new Set<number>();
-  while (cur != null) {
-    if (cur === rootId) return depth;
-    if (seen.has(cur)) return depth;
-    seen.add(cur);
-    const p = byId.get(cur)?.parent_collection_id ?? null;
-    if (p == null) return depth;
-    depth += 1;
-    cur = p;
-  }
-  return depth;
-}
