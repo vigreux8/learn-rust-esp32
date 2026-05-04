@@ -4,6 +4,12 @@ import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicke
 
 export type LinkedModule = { id: number };
 
+/** Case à cocher « vue sous-arbre » (cartes ayant au moins une sous-collection). */
+export type CollectionCardHierarchyToggle = {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+};
+
 export type CollectionCardProps = {
   collection: CollectionUi;
   myUserId: number;
@@ -14,6 +20,10 @@ export type CollectionCardProps = {
   playMode: PlayModeSettings;
   playQtype: PlayQtype;
   playInfinite: boolean;
+  /** Profondeur dans l’arbre parent → enfants (couleur de contour). */
+  treeDepth: number;
+  /** Filtrer la page sur les seuls descendants de cette collection (si fourni). */
+  hierarchyViewToggle?: CollectionCardHierarchyToggle;
   onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onDeleteCollection?: (collection: CollectionUi) => void;

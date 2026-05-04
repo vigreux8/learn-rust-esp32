@@ -30,6 +30,15 @@ export type CollectionSousCollectionRef = {
   nom: string;
 };
 
+/** Personnalité affichée au-dessus d’une carte collection (lien direct ou `personnalite_collection`). */
+export type CollectionPersonnaliteRef = {
+  id: number;
+  nom: string;
+  prenom: string;
+  /** `ref_importance_personalite.type` si présent (ex. pionnier, important, secondaire). */
+  importance_type: string | null;
+};
+
 /** Question rattachée à une collection enfant (`question_collection`). */
 export type SousCollectionQuestionRef = {
   relation_id: number;
@@ -73,6 +82,10 @@ export type CollectionUi = {
   modules: CollectionModuleRef[];
   /** v4 : collections enfants (`relation-collection` + `quizz_collection` enfant). */
   sous_collections: CollectionSousCollectionRef[];
+  /** v4 : id parent si cette collection est enfant ; sinon `null`. */
+  parent_collection_id: number | null;
+  /** Personnalités associées à cette collection (affichage au-dessus de la carte). */
+  personnalites: CollectionPersonnaliteRef[];
 };
 
 export type QuizzCollectionRef = {

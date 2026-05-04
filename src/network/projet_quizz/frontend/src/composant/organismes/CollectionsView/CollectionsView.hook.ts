@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
 import {
+  collectDescendantCollectionIds,
+  computeTreeDepth,
+  depthBelowRoot,
+  orderCollectionsHierarchy,
+} from "../../../lib/collectionHierarchyVis";
+import {
   assignCollectionToModule,
   createEmptyCollection,
   createQuizzModule,
@@ -54,6 +60,13 @@ export function useCollectionsView() {
   });
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
   const [playInfinite, setPlayInfinite] = useState(false);
+  /** Racine dont on n’affiche que les descendants (enfants / petits-enfants). */
+  const [hierarchySubtreeRootId, setHierarchySubtreeRootId] = useState<number | null>(null);
+  const [hierarchySubtreeSearch, setHierarchySubtreeSearch] = useState("");
+  const [hierarchySuggestFocused, setHierarchySuggestFocused] = useState(false);
+  /** Recherche globale sur le titre (toutes les collections visibles après filtres créateur / module). */
+  const [collectionListSearch, setCollectionListSearch] = useState("");
+  const [collectionListSuggestFocused, setCollectionListSuggestFocused] = useState(false);
 
   const jsonImportInputRef = useRef<HTMLInputElement | null>(null);
   const [jsonImportOpen, setJsonImportOpen] = useState(false);
@@ -94,6 +107,17 @@ export function useCollectionsView() {
   useEffect(() => {
     if (moduleFilter !== "all" && !modules.some((m) => m.id === moduleFilter)) setModuleFilter("all");
   }, [modules, moduleFilter]);
+
+  useEffect(() => {
+    if (hierarchySubtreeRootId == null) {
+      setHierarchySubtreeSearch("");
+      setHierarchySuggestFocused(false);
+      return;
+    }
+    const root = collections.find((c) => c.id === hierarchySubtreeRootId);
+    const hasKids = (root?.sous_collections?.length ?? 0) > 0;
+    if (!root || !hasKids) setHierarchySubtreeRootId(null);
+  }, [collections, hierarchySubtreeRootId]);
 
   const handleCreateModule = async () => {
     const nom = newModuleName.trim();
@@ -213,6 +237,112 @@ export function useCollectionsView() {
     () => applyModuleFilter(filterCollections(collections, filter, userId), moduleFilter),
     [collections, filter, userId, moduleFilter],
   );
+
+  const filteredSourceCount = filtered.length;
+
+  const filteredByListSearch = useMemo(() => {
+    const q = collectionListSearch.trim().toLowerCase();
+    if (q === "") return filtered;
+    return filtered.filter((c) => c.nom.toLowerCase().includes(q));
+  }, [filtered, collectionListSearch]);
+
+  const collectionListSuggestions = useMemo(() => {
+    const q = collectionListSearch.trim().toLowerCase();
+    return filtered
+      .map((c) => ({ id: c.id, nom: c.nom }))
+      .filter((s) => (q === "" ? true : s.nom.toLowerCase().includes(q)))
+      .slice(0, 12);
+  }, [filtered, collectionListSearch]);
+
+  const showCollectionListSuggestPanel =
+    collectionListSuggestFocused && collectionListSuggestions.length > 0;
+
+  const collectionsById = useMemo(
+    () => new Map(collections.map((c) => [c.id, c])),
+    [collections],
+  );
+
+  const descendantIdSet = useMemo(() => {
+    if (hierarchySubtreeRootId == null) return null;
+    return collectDescendantCollectionIds(hierarchySubtreeRootId, collections);
+  }, [hierarchySubtreeRootId, collections]);
+
+  const baseForDisplayedList = useMemo(() => {
+    if (hierarchySubtreeRootId == null || descendantIdSet == null) return filteredByListSearch;
+    const descendantsInFilter = filteredByListSearch.filter((c) => descendantIdSet.has(c.id));
+    const rootInFilter = filteredByListSearch.find((c) => c.id === hierarchySubtreeRootId);
+    if (!rootInFilter) return descendantsInFilter;
+    const rest = descendantsInFilter.filter((c) => c.id !== hierarchySubtreeRootId);
+    return [rootInFilter, ...rest];
+  }, [filteredByListSearch, hierarchySubtreeRootId, descendantIdSet]);
+
+  const searchNorm = hierarchySubtreeSearch.trim().toLowerCase();
+
+  const afterSearchFilter = useMemo(() => {
+    if (hierarchySubtreeRootId == null) return baseForDisplayedList;
+    if (searchNorm === "") return baseForDisplayedList;
+    const rootId = hierarchySubtreeRootId;
+    const matched = baseForDisplayedList.filter((c) => c.nom.toLowerCase().includes(searchNorm));
+    const root = baseForDisplayedList.find((c) => c.id === rootId);
+    if (root != null && !matched.some((c) => c.id === rootId)) {
+      return [root, ...matched];
+    }
+    return matched;
+  }, [baseForDisplayedList, hierarchySubtreeRootId, searchNorm]);
+
+  const displayCollections = useMemo(() => {
+    if (hierarchySubtreeRootId != null) return orderCollectionsHierarchy(afterSearchFilter);
+    return afterSearchFilter;
+  }, [afterSearchFilter, hierarchySubtreeRootId]);
+
+  const hierarchySubtreeRootNom =
+    hierarchySubtreeRootId != null ? collectionsById.get(hierarchySubtreeRootId)?.nom ?? "" : "";
+
+  const hierarchySearchSuggestions = useMemo(() => {
+    if (hierarchySubtreeRootId == null || descendantIdSet == null) return [] as { id: number; nom: string }[];
+    const pool = filtered.filter(
+      (c) => c.id === hierarchySubtreeRootId || descendantIdSet.has(c.id),
+    );
+    const q = hierarchySubtreeSearch.trim().toLowerCase();
+    const scored = pool
+      .map((c) => ({ id: c.id, nom: c.nom }))
+      .filter((s) => (q === "" ? true : s.nom.toLowerCase().includes(q)))
+      .slice(0, 12);
+    return scored;
+  }, [hierarchySubtreeRootId, descendantIdSet, filtered, hierarchySubtreeSearch]);
+
+  const showHierarchySuggestPanel =
+    hierarchySubtreeRootId != null && hierarchySuggestFocused && hierarchySearchSuggestions.length > 0;
+
+  const getTreeDepth = useCallback(
+    (c: CollectionUi) => {
+      if (hierarchySubtreeRootId != null) {
+        return depthBelowRoot(c.id, hierarchySubtreeRootId, collectionsById);
+      }
+      return computeTreeDepth(c, collectionsById);
+    },
+    [collectionsById, hierarchySubtreeRootId],
+  );
+
+  const clearHierarchySubtree = useCallback(() => {
+    setHierarchySubtreeRootId(null);
+    setHierarchySubtreeSearch("");
+    setHierarchySuggestFocused(false);
+  }, []);
+
+  const setHierarchyRootFromCard = useCallback((collectionId: number, enabled: boolean) => {
+    if (enabled) {
+      setCollectionListSearch("");
+      setCollectionListSuggestFocused(false);
+      setHierarchySubtreeSearch("");
+      setHierarchySuggestFocused(false);
+    }
+    setHierarchySubtreeRootId((prev) => {
+      if (enabled) return collectionId;
+      if (prev === collectionId) return null;
+      return prev;
+    });
+  }, []);
 
   const handleJsonImportRun = async () => {
     setJsonImportBusy(true);
@@ -349,7 +479,37 @@ export function useCollectionsView() {
     autresCreateurs,
     moduleFilter,
     onChangeModuleFilter: setModuleFilter,
-    filtered,
+    filtered: displayCollections,
+    filteredSourceCount,
+    collectionListSearch,
+    onCollectionListSearch: setCollectionListSearch,
+    collectionListSuggestions,
+    showCollectionListSuggestPanel,
+    onCollectionListSuggestFocus: () => setCollectionListSuggestFocused(true),
+    onCollectionListSuggestBlur: () => {
+      setTimeout(() => setCollectionListSuggestFocused(false), 150);
+    },
+    onPickCollectionListSuggestion: (nom: string) => {
+      setCollectionListSearch(nom);
+      setCollectionListSuggestFocused(false);
+    },
+    hierarchySubtreeRootId,
+    hierarchySubtreeRootNom,
+    hierarchySubtreeSearch,
+    onHierarchySubtreeSearch: setHierarchySubtreeSearch,
+    hierarchySearchSuggestions,
+    showHierarchySuggestPanel,
+    onHierarchySuggestFocus: () => setHierarchySuggestFocused(true),
+    onHierarchySuggestBlur: () => {
+      setTimeout(() => setHierarchySuggestFocused(false), 150);
+    },
+    onPickHierarchySuggestion: (nom: string) => {
+      setHierarchySubtreeSearch(nom);
+      setHierarchySuggestFocused(false);
+    },
+    clearHierarchySubtree,
+    setHierarchyRootFromCard,
+    getTreeDepth,
     userId,
     playMode,
     onPlayModeChange: (patch: Partial<PlayModeSettings>) => setPlayMode((prev) => ({ ...prev, ...patch })),

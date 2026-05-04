@@ -1,8 +1,14 @@
+import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { route } from "preact-router";
 import type { JSX } from "preact";
 import { ChevronRight, FolderTree, LayoutGrid, ListTree, Trash2, X } from "lucide-preact";
 
+import {
+  COLLECTION_TREE_LEVEL_BORDER_HEX,
+  personnaliteStripBorderHex,
+  sortPersonnalitesForDisplay,
+} from "../../../lib/collectionHierarchyVis";
 import {
   buildPlayOrdersFromPicker,
   buildPlaySessionQuery,
@@ -27,6 +33,8 @@ export function CollectionCard({
   playMode,
   playQtype,
   playInfinite,
+  treeDepth,
+  hierarchyViewToggle,
   onAssign,
   onUnassign,
   onDeleteCollection,
@@ -39,6 +47,10 @@ export function CollectionCard({
   const [playSousCollectionId, setPlaySousCollectionId] = useState<number | "">("");
   const linkedModules = collection.modules ?? [];
   const sousForPlay = collection.sous_collections ?? [];
+  const sousChildren = collection.sous_collections ?? [];
+  const personnalitesSorted = sortPersonnalitesForDisplay(collection.personnalites ?? []);
+  const levelBorderIdx = Math.min(Math.max(treeDepth, 0), COLLECTION_TREE_LEVEL_BORDER_HEX.length - 1);
+  const collectionBorderHex = COLLECTION_TREE_LEVEL_BORDER_HEX[levelBorderIdx];
 
   const handleQuestionsClick = () => route(buildQuestionsRoutePath(collection.id, linkedModules));
   const handleCardClick = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
@@ -53,8 +65,33 @@ export function CollectionCard({
   useEffect(() => setPlaySousCollectionId(""), [collection.id]);
 
   return (
-    <Card
+    <Fragment>
+      {personnalitesSorted.length > 0 ? (
+        <div class="mb-2 flex flex-col gap-2">
+          {personnalitesSorted.map((p) => (
+            <div
+              key={p.id}
+              class="rounded-2xl border-2 bg-base-100/95 px-3 py-2 shadow-sm"
+              style={{ borderColor: personnaliteStripBorderHex(p.importance_type) }}
+            >
+              <p class="text-[11px] font-medium uppercase tracking-wide text-base-content/45">Personnalité</p>
+              <p class="text-sm font-semibold text-base-content">
+                {p.prenom} {p.nom}
+                {p.importance_type ? (
+                  <span class="ml-2 text-xs font-normal text-base-content/55">· {p.importance_type}</span>
+                ) : null}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <Card
       class={COLLECTION_CARD_STYLES.root}
+      style={{
+        borderWidth: "2px",
+        borderStyle: "solid",
+        borderColor: collectionBorderHex,
+      }}
       onClick={handleCardClick}
       role="button"
       tabIndex={0}
@@ -67,6 +104,18 @@ export function CollectionCard({
     >
       <div class={COLLECTION_CARD_STYLES.headerLayout}>
         <div class="space-y-2">
+          {hierarchyViewToggle ? (
+            <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-base-content/10 bg-base-100/60 px-2 py-1.5 text-xs text-base-content/80">
+              <input
+                type="checkbox"
+                class="checkbox checkbox-xs checkbox-primary"
+                checked={hierarchyViewToggle.checked}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => hierarchyViewToggle.onChange((e.target as HTMLInputElement).checked)}
+              />
+              <span>Afficher uniquement les sous-collections de cette branche</span>
+            </label>
+          ) : null}
           <div class="flex flex-wrap items-center gap-2">
             <Badge tone="flow">{n} question{n > 1 ? "s" : ""}</Badge>
             <Badge tone="learn" class="font-normal opacity-90">Histoire {counts.histoire}</Badge>
@@ -98,6 +147,33 @@ export function CollectionCard({
                   ) : null}
                 </span>
               ))}
+            </div>
+          ) : null}
+          {sousChildren.length > 0 ? (
+            <div
+              class="flex flex-col gap-2 border-t border-base-content/10 pt-3 sm:max-w-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <label class="text-xs font-medium text-base-content/55" for={`sous-coll-pick-${collection.id}`}>
+                Sous-collection
+              </label>
+              <select
+                id={`sous-coll-pick-${collection.id}`}
+                key={`sous-coll-nav-${collection.id}`}
+                class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:min-w-56"
+                defaultValue=""
+                disabled={uiLocked}
+                onChange={(e) => {
+                  const v = (e.target as HTMLSelectElement).value;
+                  (e.target as HTMLSelectElement).value = "";
+                  if (v) route(buildQuestionsRoutePath(Number(v), []));
+                }}
+              >
+                <option value="">Sélectionner une sous-collection…</option>
+                {sousChildren.map((s) => (
+                  <option key={s.id} value={s.id}>{s.nom}</option>
+                ))}
+              </select>
             </div>
           ) : null}
           {isMine && allModules.length > 0 ? (
@@ -197,5 +273,6 @@ export function CollectionCard({
         </div>
       </div>
     </Card>
+    </Fragment>
   );
 }

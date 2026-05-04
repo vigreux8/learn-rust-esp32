@@ -1,4 +1,4 @@
-import { FileJson, Layers, Trash2 } from "lucide-preact";
+import { FileJson, Layers, Search, Trash2 } from "lucide-preact";
 import type { PlayQtype } from "../../../lib/playOrder";
 import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
 import { Button } from "../../atomes/Button/Button";
@@ -141,6 +141,14 @@ export function CollectionsContent({
   moduleFilter,
   onChangeModuleFilter,
   filtered,
+  filteredSourceCount,
+  collectionListSearch,
+  onCollectionListSearch,
+  collectionListSuggestions,
+  showCollectionListSuggestPanel,
+  onCollectionListSuggestFocus,
+  onCollectionListSuggestBlur,
+  onPickCollectionListSuggestion,
   userId,
   playMode,
   onPlayModeChange,
@@ -151,6 +159,18 @@ export function CollectionsContent({
   onAssign,
   onUnassign,
   onRequestDeleteCollection,
+  hierarchySubtreeRootId,
+  hierarchySubtreeRootNom,
+  hierarchySubtreeSearch,
+  onHierarchySubtreeSearch,
+  hierarchySearchSuggestions,
+  showHierarchySuggestPanel,
+  onHierarchySuggestFocus,
+  onHierarchySuggestBlur,
+  onPickHierarchySuggestion,
+  clearHierarchySubtree,
+  setHierarchyRootFromCard,
+  getTreeDepth,
 }: {
   modules: QuizzModuleRow[];
   pendingDelete: PendingDelete;
@@ -179,6 +199,14 @@ export function CollectionsContent({
   moduleFilter: number | "all";
   onChangeModuleFilter: (value: number | "all") => void;
   filtered: CollectionUi[];
+  filteredSourceCount: number;
+  collectionListSearch: string;
+  onCollectionListSearch: (value: string) => void;
+  collectionListSuggestions: { id: number; nom: string }[];
+  showCollectionListSuggestPanel: boolean;
+  onCollectionListSuggestFocus: () => void;
+  onCollectionListSuggestBlur: () => void;
+  onPickCollectionListSuggestion: (nom: string) => void;
   userId: number;
   playMode: PlayModeSettings;
   onPlayModeChange: (patch: Partial<PlayModeSettings>) => void;
@@ -189,6 +217,18 @@ export function CollectionsContent({
   onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onRequestDeleteCollection: (collection: CollectionUi) => void;
+  hierarchySubtreeRootId: number | null;
+  hierarchySubtreeRootNom: string;
+  hierarchySubtreeSearch: string;
+  onHierarchySubtreeSearch: (value: string) => void;
+  hierarchySearchSuggestions: { id: number; nom: string }[];
+  showHierarchySuggestPanel: boolean;
+  onHierarchySuggestFocus: () => void;
+  onHierarchySuggestBlur: () => void;
+  onPickHierarchySuggestion: (nom: string) => void;
+  clearHierarchySubtree: () => void;
+  setHierarchyRootFromCard: (collectionId: number, enabled: boolean) => void;
+  getTreeDepth: (collection: CollectionUi) => number;
 }) {
   return (
     <>
@@ -324,8 +364,106 @@ export function CollectionsContent({
         )}
       </fieldset>
 
-      {filtered.length === 0 ? (
+      <section class="relative mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
+        <h2 class="mb-1 text-sm font-semibold tracking-tight text-base-content">Rechercher une collection</h2>
+        <p class="mb-3 max-w-xl text-xs text-base-content/55">
+          Filtre la liste par titre (insensible à la casse). Suggestions au focus.
+        </p>
+        <div class="relative max-w-xl">
+          <label class="sr-only" for="collections-global-search">Recherche par titre</label>
+          <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-base-content/40">
+            <Search class="h-4 w-4" aria-hidden />
+          </span>
+          <input
+            id="collections-global-search"
+            type="search"
+            autoComplete="off"
+            class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100 pl-9"
+            placeholder="Titre de la collection…"
+            value={collectionListSearch}
+            onFocus={onCollectionListSuggestFocus}
+            onBlur={onCollectionListSuggestBlur}
+            onInput={(e) => onCollectionListSearch((e.target as HTMLInputElement).value)}
+          />
+          {showCollectionListSuggestPanel ? (
+            <ul
+              class="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border border-base-content/15 bg-base-100 py-1 shadow-lg"
+              role="listbox"
+            >
+              {collectionListSuggestions.map((s) => (
+                <li key={s.id} role="option">
+                  <button
+                    type="button"
+                    class="flex w-full px-3 py-2 text-left text-sm hover:bg-base-200"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => onPickCollectionListSuggestion(s.nom)}
+                  >
+                    {s.nom}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </section>
+
+      {hierarchySubtreeRootId != null ? (
+        <section class="relative mb-6 rounded-box border border-flow/25 bg-flow/8 p-4 sm:p-5">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0 flex-1 space-y-2">
+              <p class="text-xs font-medium uppercase tracking-wide text-base-content/50">Vue sous-arbre</p>
+              <p class="text-sm text-base-content/85">
+                Collections affichées : « <span class="font-semibold text-base-content">{hierarchySubtreeRootNom}</span> » et toutes ses sous-collections (descendants).
+              </p>
+              <div class="relative max-w-xl">
+                <label class="mb-1 block text-xs font-medium text-base-content/60" for="collections-hierarchy-search">
+                  Recherche (titre)
+                </label>
+                <input
+                  id="collections-hierarchy-search"
+                  type="search"
+                  autoComplete="off"
+                  class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100"
+                  placeholder="Filtrer par nom de collection…"
+                  value={hierarchySubtreeSearch}
+                  onFocus={onHierarchySuggestFocus}
+                  onBlur={onHierarchySuggestBlur}
+                  onInput={(e) => onHierarchySubtreeSearch((e.target as HTMLInputElement).value)}
+                />
+                {showHierarchySuggestPanel ? (
+                  <ul
+                    class="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border border-base-content/15 bg-base-100 py-1 shadow-lg"
+                    role="listbox"
+                  >
+                    {hierarchySearchSuggestions.map((s) => (
+                      <li key={s.id} role="option">
+                        <button
+                          type="button"
+                          class="flex w-full px-3 py-2 text-left text-sm hover:bg-base-200"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => onPickHierarchySuggestion(s.nom)}
+                        >
+                          {s.nom}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </div>
+            <Button variant="outline" class="btn-sm shrink-0" onClick={clearHierarchySubtree}>
+              Tout afficher
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {filteredSourceCount === 0 ? (
         <p class="rounded-box border border-base-content/10 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/65">Aucune collection pour ce filtre.</p>
+      ) : filtered.length === 0 ? (
+        <p class="rounded-box border border-base-content/10 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/65">
+          Aucune collection ne correspond à cette recherche. Efface le champ ou modifie le titre recherché.
+        </p>
       ) : (
         <ul class="flex flex-col gap-4">
           {filtered.map((c) => (
@@ -339,6 +477,15 @@ export function CollectionsContent({
                 playMode={playMode}
                 playQtype={playQtype}
                 playInfinite={playInfinite}
+                treeDepth={getTreeDepth(c)}
+                hierarchyViewToggle={
+                  (c.sous_collections?.length ?? 0) > 0
+                    ? {
+                        checked: hierarchySubtreeRootId === c.id,
+                        onChange: (v) => setHierarchyRootFromCard(c.id, v),
+                      }
+                    : undefined
+                }
                 onAssign={onAssign}
                 onUnassign={onUnassign}
                 interactionLocked={pendingDelete !== null}

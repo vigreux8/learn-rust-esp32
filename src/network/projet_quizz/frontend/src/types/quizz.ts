@@ -47,6 +47,15 @@ export interface CollectionSousCollectionRef {
   nom: string;
 }
 
+/** Personnalité liée à une collection (affichage au-dessus de la carte). */
+export interface CollectionPersonnaliteRef {
+  id: number;
+  nom: string;
+  prenom: string;
+  /** ex. pionnier, important, secondaire (`ref_importance_personalite.type`). */
+  importance_type: string | null;
+}
+
 export interface CollectionUi {
   id: number;
   user_id: number;
@@ -59,6 +68,10 @@ export interface CollectionUi {
   modules: { id: number; nom: string }[];
   /** v4 : enfants du parent (`relation-collection`) ; défaut `[]` si absent. */
   sous_collections?: CollectionSousCollectionRef[];
+  /** v4 : parent si collection enfant ; défaut `null` si absent. */
+  parent_collection_id?: number | null;
+  /** Personnalités associées ; défaut `[]` si absent. */
+  personnalites?: CollectionPersonnaliteRef[];
 }
 
 export interface QuizzCollectionRef {

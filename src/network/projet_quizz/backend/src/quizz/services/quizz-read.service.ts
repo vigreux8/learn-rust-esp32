@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  CollectionPersonnaliteRef,
   CollectionUi,
   QuestionUi,
   QuizzQuestionDetail,
@@ -46,6 +47,58 @@ function shuffle<T>(items: T[]): T[] {
 @Injectable()
 export class QuizzReadService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async buildCollectionHierarchyExtras(
+    collectionId: number,
+  ): Promise<{
+    parent_collection_id: number | null;
+    personnalites: CollectionPersonnaliteRef[];
+  }> {
+    const [parentLink, directPersos, pcRows] = await Promise.all([
+      this.prisma.prisma.relation_collection.findFirst({
+        where: { e_collection: collectionId },
+        select: { p_collection: true },
+      }),
+      this.prisma.prisma.personalite.findMany({
+        where: { collection_id: collectionId },
+        select: { id: true, nom: true, prenom: true },
+      }),
+      this.prisma.prisma.personnalite_collection.findMany({
+        where: { collection_id: collectionId },
+        include: {
+          personalite: { select: { id: true, nom: true, prenom: true } },
+          ref_importance_personalite: { select: { type: true } },
+        },
+      }),
+    ]);
+    const byPersoId = new Map<number, CollectionPersonnaliteRef>();
+    for (const p of directPersos) {
+      byPersoId.set(p.id, {
+        id: p.id,
+        nom: p.nom,
+        prenom: p.prenom,
+        importance_type: null,
+      });
+    }
+    for (const row of pcRows) {
+      const imp = row.ref_importance_personalite?.type ?? null;
+      const prev = byPersoId.get(row.personalite.id);
+      if (prev) {
+        prev.importance_type = prev.importance_type ?? imp;
+      } else {
+        byPersoId.set(row.personalite.id, {
+          id: row.personalite.id,
+          nom: row.personalite.nom,
+          prenom: row.personalite.prenom,
+          importance_type: imp,
+        });
+      }
+    }
+    return {
+      parent_collection_id: parentLink?.p_collection ?? null,
+      personnalites: [...byPersoId.values()].sort((a, b) => a.id - b.id),
+    };
+  }
 
   private mapQuestionToUi(q: {
     id: number;
@@ -140,6 +193,9 @@ export class QuizzReadService {
       nom: r.child_quizz.nom,
     }));
 
+    const { parent_collection_id, personnalites } =
+      await this.buildCollectionHierarchyExtras(collectionId);
+
     return {
       id: col.id,
       user_id: col.user_id,
@@ -151,6 +207,8 @@ export class QuizzReadService {
       createur_pseudot: col.user.pseudot,
       modules,
       sous_collections,
+      parent_collection_id,
+      personnalites,
     };
   }
 
