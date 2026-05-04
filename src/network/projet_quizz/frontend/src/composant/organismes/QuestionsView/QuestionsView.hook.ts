@@ -7,8 +7,12 @@ import {
   fetchQuestionDetail,
   fetchQuestions,
   fetchRefCategories,
+  fetchSousCollections,
   patchQuestion,
+  postAttachQuestionToSousCollection,
+  postCreateQuestion,
 } from "../../../lib/api";
+import { useUserSession } from "../../../lib/userSession";
 import type { PlayQtype } from "../../../lib/playOrder";
 import type { CollectionUi, QuizzModuleRow, QuizzQuestionDetail, QuizzQuestionRow, RefCategorieRow } from "../../../types/quizz";
 import {
@@ -17,8 +21,10 @@ import {
   filterQuestionsForTable,
 } from "./QuestionsView.metier";
 import type { QuestionsViewProps } from "./QuestionsView.types";
+import type { QuestionCreateSavePayload } from "../QuestionEditModal/QuestionEditModal";
 
 export function useQuestionsView({ collectionId }: QuestionsViewProps) {
+  const { userId } = useUserSession();
   const [collections, setCollections] = useState<CollectionUi[]>([]);
   const [allModules, setAllModules] = useState<QuizzModuleRow[]>([]);
   const [collectionFilter, setCollectionFilter] = useState<string>(() => filterFromRouteParam(collectionId));
@@ -27,7 +33,12 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refCategories, setRefCategories] = useState<RefCategorieRow[]>([]);
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [questionModalVariant, setQuestionModalVariant] = useState<"edit" | "create">("edit");
+  const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<{ id: number; nom: string }[]>(
+    [],
+  );
+  const [draftSousCollectionId, setDraftSousCollectionId] = useState<number | null>(null);
   const [editModalLoading, setEditModalLoading] = useState(false);
   const [editModalError, setEditModalError] = useState<string | null>(null);
   const [editDetail, setEditDetail] = useState<QuizzQuestionDetail | null>(null);
@@ -58,11 +69,18 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     else setImportTargetModuleId(null);
   }, [collectionId]);
 
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     const fp = collectionFilterToQuery(collectionFilter);
-    fetchQuestions(fp).then(setQuestions).catch(() => setLoadError("fetch")).finally(() => setLoading(false));
+    try {
+      const qs = await fetchQuestions(fp);
+      setQuestions(qs);
+    } catch {
+      setLoadError("fetch");
+    } finally {
+      setLoading(false);
+    }
   }, [collectionFilter]);
 
   useEffect(() => {
@@ -72,7 +90,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   }, []);
 
   useEffect(() => {
-    reload();
+    void reload();
   }, [reload]);
 
   const onCollectionFilterChange = useCallback(
@@ -87,8 +105,21 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     [importTargetModuleId],
   );
 
+  const closeQuestionModal = useCallback(() => {
+    setQuestionModalOpen(false);
+    setQuestionModalVariant("edit");
+    setEditModalLoading(false);
+    setEditModalError(null);
+    setEditDetail(null);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
+  }, []);
+
   const openEditModal = useCallback((q: QuizzQuestionRow) => {
-    setEditModalOpen(true);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
+    setQuestionModalVariant("edit");
+    setQuestionModalOpen(true);
     setEditModalLoading(true);
     setEditModalError(null);
     setEditDetail(null);
@@ -103,12 +134,28 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
       .finally(() => setEditModalLoading(false));
   }, []);
 
-  const closeEditModal = useCallback(() => {
-    setEditModalOpen(false);
+  const openCreateQuestionModal = useCallback(() => {
+    const firstCat = refCategories[0]?.id ?? null;
+    if (firstCat == null) {
+      setLoadError("categories");
+      return;
+    }
+    setQuestionModalVariant("create");
+    setQuestionModalOpen(true);
     setEditModalLoading(false);
     setEditModalError(null);
     setEditDetail(null);
-  }, []);
+    setEditDraftQuestion("");
+    setEditDraftCommentaire("");
+    setEditDraftCategorieId(firstCat);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
+    if (targetCollectionNumeric != null) {
+      void fetchSousCollections(targetCollectionNumeric).then((rows) => {
+        setSousCollectionsForCreateModal(rows.map((r) => ({ id: r.id, nom: r.nom })));
+      });
+    }
+  }, [refCategories, targetCollectionNumeric]);
 
   const refreshEditDetail = useCallback(async () => {
     if (editDetail == null) return;
@@ -129,18 +176,47 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
       if (editDraftCommentaire !== editDetail.commentaire) payload.commentaire = editDraftCommentaire;
       if (editDraftCategorieId != null && editDraftCategorieId !== editDetail.categorie_id) payload.categorie_id = editDraftCategorieId;
       if (Object.keys(payload).length === 0) {
-        closeEditModal();
+        closeQuestionModal();
         return;
       }
       const updated = await patchQuestion(editDetail.id, payload);
       setQuestions((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
-      closeEditModal();
+      closeQuestionModal();
     } catch {
       setLoadError("save");
     } finally {
       setSaving(false);
     }
-  }, [closeEditModal, editDetail, editDraftCategorieId, editDraftCommentaire, editDraftQuestion]);
+  }, [closeQuestionModal, editDetail, editDraftCategorieId, editDraftCommentaire, editDraftQuestion]);
+
+  const saveCreateModal = useCallback(
+    async (payload: QuestionCreateSavePayload) => {
+      setSaving(true);
+      try {
+        const created = await postCreateQuestion({
+          user_id: userId,
+          categorie_id: payload.categorie_id,
+          question: payload.question,
+          commentaire: payload.commentaire,
+          reponses: payload.reponses,
+          collection_id: targetCollectionNumeric ?? undefined,
+        });
+        if (payload.sous_collection_id != null) {
+          await postAttachQuestionToSousCollection(payload.sous_collection_id, {
+            user_id: userId,
+            question_id: created.id,
+          });
+        }
+        await reload();
+        closeQuestionModal();
+      } catch {
+        setLoadError("create");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [closeQuestionModal, reload, targetCollectionNumeric, userId],
+  );
 
   const remove = useCallback(
     async (id: number) => {
@@ -148,18 +224,18 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
       try {
         await deleteQuestion(id);
         setQuestions((prev) => prev.filter((q) => q.id !== id));
-        if (editDetail?.id === id) closeEditModal();
+        if (editDetail?.id === id) closeQuestionModal();
       } catch {
         setLoadError("delete");
       } finally {
         setSaving(false);
       }
     },
-    [closeEditModal, editDetail?.id],
+    [closeQuestionModal, editDetail?.id],
   );
 
   const onImportSuccess = useCallback(() => {
-    reload();
+    void reload();
     fetchCollections().then(setCollections).catch(() => {});
   }, [reload]);
 
@@ -180,8 +256,22 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     },
   };
 
+  const operationErrorBannerMessage =
+    loadError === "save"
+      ? "Enregistrement impossible."
+      : loadError === "delete"
+        ? "Suppression impossible."
+        : loadError === "create"
+          ? "Création de la question impossible."
+          : loadError === "categories"
+            ? "Catégories indisponibles. Le formulaire de création ne peut pas s’ouvrir pour l’instant."
+            : loadError === "fetch"
+              ? "Impossible de charger la liste des questions."
+              : null;
+
   const operationError = {
-    visible: Boolean(loadError),
+    visible: Boolean(loadError) && loadError !== "fetch",
+    message: operationErrorBannerMessage ?? "Une opération a échoué.",
     onDismiss: () => setLoadError(null),
   };
 
@@ -199,6 +289,8 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     onCollectionFilterChange,
     listFilterQtype,
     onListFilterQtypeChange,
+    onOpenCreateQuestion: openCreateQuestionModal,
+    createQuestionDisabled: refCategories.length === 0,
   };
 
   const liste = {
@@ -212,20 +304,33 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   };
 
   const editModal = {
-    settings: { open: editModalOpen, onClose: closeEditModal } as const,
+    settings: {
+      open: questionModalOpen,
+      onClose: closeQuestionModal,
+      variant: questionModalVariant,
+      modalTitle: questionModalVariant === "create" ? "Nouvelle question" : undefined,
+    } as const,
     actions: {
       onSave: () => void saveEditModal(),
       onDraftQuestion: setEditDraftQuestion,
       onDraftCommentaire: setEditDraftCommentaire,
       onDraftCategorieId: setEditDraftCategorieId,
+      onDraftSousCollectionId: setDraftSousCollectionId,
       onReponseUpdated: () => void refreshEditDetail(),
+      onCreateSave: async (payload: QuestionCreateSavePayload) => saveCreateModal(payload),
     },
     status: { loading: editModalLoading, saving, error: editModalError } as const,
-    data: { questionDetail: editDetail, categorieOptions: refCategories } as const,
+    data: {
+      questionDetail: editDetail,
+      categorieOptions: refCategories,
+      sousCollectionsForCreate:
+        questionModalVariant === "create" ? sousCollectionsForCreateModal : undefined,
+    } as const,
     drafts: {
       question: editDraftQuestion,
       commentaire: editDraftCommentaire,
       categorieId: editDraftCategorieId,
+      sousCollectionId: draftSousCollectionId ?? null,
     },
   };
 

@@ -14,6 +14,7 @@ import {
   RefCategorieHierarchyRow,
   RefCategorieRow,
   RefImportancePersonaliteDto,
+  RefQuestionScaleRow,
   SousCollectionUi,
 } from '../quizz.type';
 
@@ -109,6 +110,23 @@ export class QuizzReadService {
     };
   }
 
+  private scaleFieldsFromQuestion(q: {
+    importance_id: number | null;
+    difficulter_id: number | null;
+    ref_importance: { lvl: string } | null;
+    ref_difficulter: { lvl: string } | null;
+  }): Pick<
+    QuestionUi,
+    'importance_id' | 'importance_lvl' | 'difficulter_id' | 'difficulter_lvl'
+  > {
+    return {
+      importance_id: q.importance_id,
+      importance_lvl: q.importance_id != null && q.ref_importance ? q.ref_importance.lvl : null,
+      difficulter_id: q.difficulter_id,
+      difficulter_lvl: q.difficulter_id != null && q.ref_difficulter ? q.ref_difficulter.lvl : null,
+    };
+  }
+
   private mapQuestionToUi(q: {
     id: number;
     user_id: number;
@@ -118,8 +136,12 @@ export class QuizzReadService {
     verifier: boolean;
     categorie_p_id: number;
     categorie_e_id: number | null;
+    importance_id: number | null;
+    difficulter_id: number | null;
     ref_p_categorie: { type: string };
     ref_e_categorie: { type: string } | null;
+    ref_importance: { lvl: string } | null;
+    ref_difficulter: { lvl: string } | null;
     quizz_question_reponse: {
       id: number;
       quizz_reponse: { id: number; reponse: string; bonne_reponse: number };
@@ -138,6 +160,7 @@ export class QuizzReadService {
       categorie_type: q.ref_p_categorie.type,
       categorie_e_id: eid,
       categorie_e_type: eid != null && q.ref_e_categorie ? q.ref_e_categorie.type : null,
+      ...this.scaleFieldsFromQuestion(q),
       reponses: ordered.map((j) => ({
         id: j.quizz_reponse.id,
         reponse: j.quizz_reponse.reponse,
@@ -170,6 +193,8 @@ export class QuizzReadService {
           include: {
             ref_p_categorie: true,
             ref_e_categorie: true,
+            ref_importance: true,
+            ref_difficulter: true,
             quizz_question_reponse: {
               include: { quizz_reponse: true },
             },
@@ -427,6 +452,8 @@ export class QuizzReadService {
       include: {
         ref_p_categorie: true,
         ref_e_categorie: true,
+        ref_importance: true,
+        ref_difficulter: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
         },
@@ -445,6 +472,20 @@ export class QuizzReadService {
     return this.prisma.prisma.ref_p_categorie.findMany({
       orderBy: { id: 'asc' },
       select: { id: true, type: true },
+    });
+  }
+
+  async listRefImportanceQuestions(): Promise<RefQuestionScaleRow[]> {
+    return this.prisma.prisma.ref_importance.findMany({
+      orderBy: { id: 'asc' },
+      select: { id: true, lvl: true },
+    });
+  }
+
+  async listRefDifficulteQuestions(): Promise<RefQuestionScaleRow[]> {
+    return this.prisma.prisma.ref_difficulter.findMany({
+      orderBy: { id: 'asc' },
+      select: { id: true, lvl: true },
     });
   }
 
@@ -474,6 +515,8 @@ export class QuizzReadService {
       include: {
         ref_p_categorie: true,
         ref_e_categorie: true,
+        ref_importance: true,
+        ref_difficulter: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
           orderBy: { id: 'asc' },
@@ -505,6 +548,7 @@ export class QuizzReadService {
       categorie_type: r.ref_p_categorie.type,
       categorie_e_id: eid,
       categorie_e_type: eid != null && r.ref_e_categorie ? r.ref_e_categorie.type : null,
+      ...this.scaleFieldsFromQuestion(r),
       collections: r.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,
@@ -533,6 +577,8 @@ export class QuizzReadService {
       include: {
         ref_p_categorie: true,
         ref_e_categorie: true,
+        ref_importance: true,
+        ref_difficulter: true,
         question_collection: {
           include: { quizz_collection: true },
           orderBy: { id: 'asc' },
@@ -553,6 +599,7 @@ export class QuizzReadService {
       categorie_type: r.ref_p_categorie.type,
       categorie_e_id: eid,
       categorie_e_type: eid != null && r.ref_e_categorie ? r.ref_e_categorie.type : null,
+      ...this.scaleFieldsFromQuestion(r),
       collections: r.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,

@@ -10,6 +10,7 @@ import type {
   RefCategorieHierarchyRow,
   RefCategorieRow,
   RefImportancePersonaliteUi,
+  RefQuestionScaleRow,
   SessionDetail,
   SessionSummary,
   SousCollectionUi,
@@ -269,6 +270,18 @@ export async function fetchRefCategoriesHierarchy(): Promise<RefCategorieHierarc
   return res.json() as Promise<RefCategorieHierarchyRow[]>;
 }
 
+export async function fetchRefQuestionImportance(): Promise<RefQuestionScaleRow[]> {
+  const res = await fetch(apiUrl("/quizz/ref-question-importance"));
+  await assertResponseOk(res);
+  return res.json() as Promise<RefQuestionScaleRow[]>;
+}
+
+export async function fetchRefQuestionDifficulte(): Promise<RefQuestionScaleRow[]> {
+  const res = await fetch(apiUrl("/quizz/ref-question-difficulte"));
+  await assertResponseOk(res);
+  return res.json() as Promise<RefQuestionScaleRow[]>;
+}
+
 export async function fetchQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
   const res = await fetch(apiUrl(`/quizz/questions/${id}`));
   await assertResponseOk(res);
@@ -362,6 +375,8 @@ export async function patchQuestion(
     categorie_id?: number;
     categorie_e_id?: number | null;
     verifier?: boolean;
+    importance_id?: number | null;
+    difficulter_id?: number | null;
   },
 ): Promise<QuizzQuestionRow> {
   const res = await fetch(apiUrl(`/quizz/questions/${id}`), {

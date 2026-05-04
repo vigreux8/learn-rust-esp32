@@ -12,6 +12,8 @@ export type QuestionsViewFiltersSectionProps = {
   onCollectionFilterChange: (value: string) => void;
   listFilterQtype: PlayQtype;
   onListFilterQtypeChange: (value: PlayQtype) => void;
+  onOpenCreateQuestion: () => void;
+  createQuestionDisabled: boolean;
 };
 
 export type QuestionsViewQuestionsBodyProps = {

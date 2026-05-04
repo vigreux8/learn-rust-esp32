@@ -49,6 +49,20 @@ export class UpdateQuestionDto {
   @IsOptional()
   @IsBoolean()
   verifier?: boolean;
+
+  /** `ref_importance.id` ; `null` retire le lien sur la question. */
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  importance_id?: number | null;
+
+  /** `ref_difficulter.id` ; `null` retire le lien sur la question. */
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  difficulter_id?: number | null;
 }
 
 /** Création d’une question (4 réponses, une seule correcte) avec rattachements optionnels. */

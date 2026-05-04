@@ -441,6 +441,18 @@ export class QuizzController {
     return this.quizz.listRefCategories();
   }
 
+  /** `ref_importance` pour les questions (distinct de `ref-importance-personnalite`). */
+  @Get('ref-question-importance')
+  listRefQuestionImportance() {
+    return this.quizz.listRefImportanceQuestions();
+  }
+
+  /** `ref_difficulter` pour les questions. */
+  @Get('ref-question-difficulte')
+  listRefQuestionDifficulte() {
+    return this.quizz.listRefDifficulteQuestions();
+  }
+
   @Post('questions/import')
   importQuestions(
     @Body() body: LlmImportBodyDto,
@@ -507,6 +519,8 @@ export class QuizzController {
       categorie_id: body?.categorie_id,
       categorie_e_id: body?.categorie_e_id,
       verifier: body?.verifier,
+      importance_id: body?.importance_id,
+      difficulter_id: body?.difficulter_id,
     });
   }
 

@@ -18,6 +18,11 @@ import type {
   QuizSessionProgressProps,
   QuizSessionQuestionCardProps,
 } from "./QuizSessionView.types";
+import {
+  formatRefLvlLabel,
+  quizSessionDifficulteChipClass,
+  quizSessionImportanceChipClass,
+} from "./QuizSessionView.metier";
 import { QUIZ_SESSION_STYLES } from "./QuizSessionView.styles";
 
 export function QuizSessionLoading() {
@@ -105,8 +110,10 @@ export function QuizSessionQuestionCard({
   onNext,
   onEndInfiniteSession,
   categorieSections,
+  scaleSections,
 }: QuizSessionQuestionCardProps) {
   const disabledCat = nextBusy || fetchingMore || deleteBusy;
+  const disabledScale = disabledCat;
   const draftParentNode = categorieSections.hierarchy.find(
     (h) => h.id === categorieSections.draftParentId,
   );
@@ -184,76 +191,87 @@ export function QuizSessionQuestionCard({
           <span class="pointer-events-none select-none">verifier : {draftVerifier ? "Oui" : "Non"}</span>
         </label>
 
-        <div class={QUIZ_SESSION_STYLES.categorieSeparator}>
+        <div class={QUIZ_SESSION_STYLES.categorieSectionWrap}>
           <p class={QUIZ_SESSION_STYLES.categorieResume}>
             Catégorie (brouillon) : {categorieSections.resumeLine}
           </p>
-          {categorieSections.pendingSync ? (
-            <p class="mb-2 text-[0.65rem] leading-snug text-base-content/55">
-              Enregistrement côté serveur au « Suivant », à « Voir le résultat » ou « Terminer la session ».
-            </p>
-          ) : null}
-          <div class={QUIZ_SESSION_STYLES.categorieButtonRow} role="group" aria-label="Catégorie parente">
-            {categorieSections.parentKeys.map((key) => {
-              const active = categorieSections.draftParentKeyResolved === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  title={
-                    active
-                      ? `Aucune : désélectionner ${formatQuestionCategorieParentLabel(key)} (choisir un parent avant de continuer)`
-                      : `Choisir la catégorie ${formatQuestionCategorieParentLabel(key)}`
-                  }
-                  disabled={disabledCat}
-                  class={cn(
-                    QUIZ_SESSION_STYLES.categorieChip,
-                    active ? QUIZ_SESSION_STYLES.categorieChipActive : QUIZ_SESSION_STYLES.categorieChipInactive,
-                  )}
-                  onClick={() => categorieSections.onParentCategory(key)}
+   
+          <div class={QUIZ_SESSION_STYLES.scaleAsideBlock}>
+            <div class={QUIZ_SESSION_STYLES.categorieBlockInner}>
+              <div>
+                <p class={QUIZ_SESSION_STYLES.scaleAsideTitle}>Catégorie</p>
+                <div
+                  class={QUIZ_SESSION_STYLES.categorieButtonRow}
+                  role="group"
+                  aria-label="Catégorie parente"
                 >
-                  {formatQuestionCategorieParentLabel(key)}
-                </button>
-              );
-            })}
-          </div>
-          {enfantsDuParent.length > 0 ? (
-            <div class="mt-2">
-              <p class={QUIZ_SESSION_STYLES.categorieSubLabel}>Sous-catégories</p>
-              <div
-                class={QUIZ_SESSION_STYLES.categorieButtonRow}
-                role="group"
-                aria-label="Sous-catégories pour la catégorie parente choisie"
-              >
-                {enfantsDuParent.map((e) => {
-                  const active = categorieSections.draftEnfantId === e.id;
-                  return (
-                    <button
-                      key={e.id}
-                      type="button"
-                      title={
-                        active
-                          ? `Retirer « ${formatQuestionCategorieEnfantLabel(e.type)} » (brouillon ; enregistrement avec Suivant / fin)`
-                          : `Associer « ${formatQuestionCategorieEnfantLabel(e.type)} »`
-                      }
-                      disabled={disabledCat}
-                      class={cn(
-                        QUIZ_SESSION_STYLES.categorieChip,
-                        active ? QUIZ_SESSION_STYLES.categorieChipActive : QUIZ_SESSION_STYLES.categorieChipInactive,
-                      )}
-                      onClick={() => categorieSections.onChildCategory(e.id)}
-                    >
-                      {formatQuestionCategorieEnfantLabel(e.type)}
-                    </button>
-                  );
-                })}
+                  {categorieSections.parentKeys.map((key) => {
+                    const active = categorieSections.draftParentKeyResolved === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        title={
+                          active
+                            ? `Aucune : désélectionner ${formatQuestionCategorieParentLabel(key)} (choisir un parent avant de continuer)`
+                            : `Choisir la catégorie ${formatQuestionCategorieParentLabel(key)}`
+                        }
+                        disabled={disabledCat}
+                        class={cn(
+                          QUIZ_SESSION_STYLES.categorieChip,
+                          active
+                            ? QUIZ_SESSION_STYLES.categorieChipActive
+                            : QUIZ_SESSION_STYLES.categorieChipInactive,
+                        )}
+                        onClick={() => categorieSections.onParentCategory(key)}
+                      >
+                        {formatQuestionCategorieParentLabel(key)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+              {enfantsDuParent.length > 0 ? (
+                <div class={QUIZ_SESSION_STYLES.categorieBlockSubDivider}>
+                  <p class={QUIZ_SESSION_STYLES.scaleAsideTitle}>Sous-catégories</p>
+                  <div
+                    class={QUIZ_SESSION_STYLES.categorieButtonRow}
+                    role="group"
+                    aria-label="Sous-catégories pour la catégorie parente choisie"
+                  >
+                    {enfantsDuParent.map((e) => {
+                      const active = categorieSections.draftEnfantId === e.id;
+                      return (
+                        <button
+                          key={e.id}
+                          type="button"
+                          title={
+                            active
+                              ? `Retirer « ${formatQuestionCategorieEnfantLabel(e.type)} » (brouillon ; enregistrement avec Suivant / fin)`
+                              : `Associer « ${formatQuestionCategorieEnfantLabel(e.type)} »`
+                          }
+                          disabled={disabledCat}
+                          class={cn(
+                            QUIZ_SESSION_STYLES.categorieChip,
+                            active
+                              ? QUIZ_SESSION_STYLES.categorieChipActive
+                              : QUIZ_SESSION_STYLES.categorieChipInactive,
+                          )}
+                          onClick={() => categorieSections.onChildCategory(e.id)}
+                        >
+                          {formatQuestionCategorieEnfantLabel(e.type)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       </aside>
 
-      <Card class={QUIZ_SESSION_STYLES.card}>
+      <Card padding="lg" class={QUIZ_SESSION_STYLES.card}>
         <p class={QUIZ_SESSION_STYLES.questionMeta}>
           Question {index + 1} / {total}
         </p>
@@ -317,6 +335,57 @@ export function QuizSessionQuestionCard({
           </div>
         ) : null}
       </Card>
+
+      <aside class={QUIZ_SESSION_STYLES.asideRight} aria-label="Difficulté et importance">
+        <div class={QUIZ_SESSION_STYLES.scaleAsideBlock}>
+          <p class={QUIZ_SESSION_STYLES.scaleAsideTitle}>Difficulté</p>
+          <div class={QUIZ_SESSION_STYLES.scaleAsideStack} role="group" aria-label="Difficulté">
+            {scaleSections.difficulteRows.map((row) => {
+              const active = scaleSections.draftDifficulteId === row.id;
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  disabled={disabledScale}
+                  title={
+                    active
+                      ? "Aucune difficulté (brouillon)"
+                      : `Difficulté : ${formatRefLvlLabel(row.lvl)}`
+                  }
+                  class={quizSessionDifficulteChipClass(row.lvl, active)}
+                  onClick={() => scaleSections.onDifficulte(row.id)}
+                >
+                  {formatRefLvlLabel(row.lvl)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div class={`${QUIZ_SESSION_STYLES.scaleAsideBlock} mt-2`}>
+          <p class={QUIZ_SESSION_STYLES.scaleAsideTitle}>Importance</p>
+          <div class={QUIZ_SESSION_STYLES.scaleAsideStack} role="group" aria-label="Importance">
+            {scaleSections.importanceRows.map((row) => {
+              const active = scaleSections.draftImportanceId === row.id;
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  disabled={disabledScale}
+                  title={
+                    active
+                      ? "Aucune importance (brouillon)"
+                      : `Importance : ${formatRefLvlLabel(row.lvl)}`
+                  }
+                  class={quizSessionImportanceChipClass(row.lvl, active)}
+                  onClick={() => scaleSections.onImportance(row.id)}
+                >
+                  {formatRefLvlLabel(row.lvl)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

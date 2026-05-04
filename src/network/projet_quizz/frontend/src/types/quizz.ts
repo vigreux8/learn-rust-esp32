@@ -26,6 +26,12 @@ export interface QuestionUi {
   /** Enfant `ref_e_categorie` (`relation_categorie`), ou `null`. */
   categorie_e_id: number | null;
   categorie_e_type: string | null;
+  /** `ref_importance` (question). */
+  importance_id: number | null;
+  importance_lvl: string | null;
+  /** `ref_difficulter`. */
+  difficulter_id: number | null;
+  difficulter_lvl: string | null;
   reponses: ReponseUi[];
 }
 
@@ -111,6 +117,10 @@ export interface QuizzQuestionRow {
   categorie_type: string;
   categorie_e_id: number | null;
   categorie_e_type: string | null;
+  importance_id: number | null;
+  importance_lvl: string | null;
+  difficulter_id: number | null;
+  difficulter_lvl: string | null;
   collections: QuizzCollectionRef[];
 }
 
@@ -128,6 +138,12 @@ export interface RefCategorieHierarchyRow {
   id: number;
   type: string;
   enfants: { id: number; type: string }[];
+}
+
+/** `ref_importance` / `ref_difficulter` (`GET /quizz/ref-question-importance` …). */
+export interface RefQuestionScaleRow {
+  id: number;
+  lvl: string;
 }
 
 /** Question liée à la collection enfant (`question_collection` sur l’id enfant). */

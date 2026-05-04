@@ -9,6 +9,7 @@ import {
   RefCategorieHierarchyRow,
   RefCategorieRow,
   RefImportancePersonaliteDto,
+  RefQuestionScaleRow,
   SousCollectionUi,
 } from '../quizz.type';
 import { AppCollectionImportBodyDto } from '../dto/import-collection.dto';
@@ -108,6 +109,14 @@ export class QuizzService {
     return this.read.listRefCategoriesHierarchy();
   }
 
+  listRefImportanceQuestions(): Promise<RefQuestionScaleRow[]> {
+    return this.read.listRefImportanceQuestions();
+  }
+
+  listRefDifficulteQuestions(): Promise<RefQuestionScaleRow[]> {
+    return this.read.listRefDifficulteQuestions();
+  }
+
   listRefImportancePersonalite(): Promise<RefImportancePersonaliteDto[]> {
     return this.read.listRefImportancePersonalite();
   }
@@ -129,6 +138,8 @@ export class QuizzService {
       categorie_id?: number;
       categorie_e_id?: number | null;
       verifier?: boolean;
+      importance_id?: number | null;
+      difficulter_id?: number | null;
     },
   ): Promise<QuizzQuestionRow> {
     return this.write.updateQuestion(id, data);

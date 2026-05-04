@@ -1,6 +1,10 @@
 import type { PlayOrder, PlayQtype } from "../../../lib/playOrder";
 import type { QuestionCategorieKey } from "../../../lib/questionCategories";
-import type { QuestionUi, RefCategorieHierarchyRow } from "../../../types/quizz";
+import type {
+  QuestionUi,
+  RefCategorieHierarchyRow,
+  RefQuestionScaleRow,
+} from "../../../types/quizz";
 
 export type QuizSessionViewProps = {
   collectionId?: string;
@@ -48,6 +52,15 @@ export type QuizSessionQuestionCardProps = {
     pendingSync: boolean;
     onParentCategory: (key: QuestionCategorieKey) => void;
     onChildCategory: (enfantId: number) => void;
+  };
+  scaleSections: {
+    difficulteRows: RefQuestionScaleRow[];
+    importanceRows: RefQuestionScaleRow[];
+    draftDifficulteId: number | null;
+    draftImportanceId: number | null;
+    pendingSync: boolean;
+    onDifficulte: (rowId: number) => void;
+    onImportance: (rowId: number) => void;
   };
   onPick: (reponseId: number) => void;
   onOpenCreateLinkedQuestionModal: (q: QuestionUi) => void;

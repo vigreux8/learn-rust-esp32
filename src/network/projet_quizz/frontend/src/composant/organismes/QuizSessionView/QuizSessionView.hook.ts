@@ -7,6 +7,8 @@ import {
   fetchRandomQuiz,
   fetchRefCategories,
   fetchRefCategoriesHierarchy,
+  fetchRefQuestionDifficulte,
+  fetchRefQuestionImportance,
   fetchSousCollections,
   patchQuestion,
   postAttachQuestionToSousCollection,
@@ -33,21 +35,33 @@ import type {
   QuizzQuestionDetail,
   RefCategorieHierarchyRow,
   RefCategorieRow,
+  RefQuestionScaleRow,
 } from "../../../types/quizz";
 import type { QuestionCreateSavePayload } from "../QuestionEditModal/QuestionEditModal";
-import { buildQuestionCopyJson, isPickedCorrect, shuffleQuestionsAnswers } from "./QuizSessionView.metier";
+import {
+  buildQuestionCopyJson,
+  isPickedCorrect,
+  mergeQuizSessionQuestionFromRow,
+  shuffleQuestionsAnswers,
+  sortRefDifficulteForQuizSession,
+  sortRefImportanceForQuizSession,
+} from "./QuizSessionView.metier";
 import type { QuizSessionViewProps, SessionData } from "./QuizSessionView.types";
 
-function ensureQuestionCategoryFields(q: QuestionUi): QuestionUi {
+function ensureQuestionQuizUiFields(q: QuestionUi): QuestionUi {
   return {
     ...q,
     categorie_e_id: q.categorie_e_id ?? null,
     categorie_e_type: q.categorie_e_type ?? null,
+    importance_id: q.importance_id ?? null,
+    importance_lvl: q.importance_lvl ?? null,
+    difficulter_id: q.difficulter_id ?? null,
+    difficulter_lvl: q.difficulter_lvl ?? null,
   };
 }
 
 function mapQuestionsCategories(questions: QuestionUi[]): QuestionUi[] {
-  return questions.map(ensureQuestionCategoryFields);
+  return questions.map(ensureQuestionQuizUiFields);
 }
 
 export function useQuizSessionView(props: QuizSessionViewProps) {
@@ -72,6 +86,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   );
   const [draftCategoriePid, setDraftCategoriePid] = useState<number | null>(null);
   const [draftCategorieEid, setDraftCategorieEid] = useState<number | null>(null);
+  const [refImportanceQuestion, setRefImportanceQuestion] = useState<RefQuestionScaleRow[]>([]);
+  const [refDifficulteQuestion, setRefDifficulteQuestion] = useState<RefQuestionScaleRow[]>([]);
+  const [draftImportanceId, setDraftImportanceId] = useState<number | null>(null);
+  const [draftDifficulteId, setDraftDifficulteId] = useState<number | null>(null);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [questionModalVariant, setQuestionModalVariant] = useState<"edit" | "create">("edit");
   const [createParentQuestionId, setCreateParentQuestionId] = useState<number | null>(null);
@@ -97,6 +115,12 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     void fetchRefCategoriesHierarchy()
       .then(setRefCategoriesHierarchy)
       .catch(() => setRefCategoriesHierarchy([]));
+    void fetchRefQuestionImportance()
+      .then((rows) => setRefImportanceQuestion(sortRefImportanceForQuizSession(rows)))
+      .catch(() => setRefImportanceQuestion([]));
+    void fetchRefQuestionDifficulte()
+      .then((rows) => setRefDifficulteQuestion(sortRefDifficulteForQuizSession(rows)))
+      .catch(() => setRefDifficulteQuestion([]));
   }, []);
 
   useEffect(() => {
@@ -227,6 +251,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     setDraftVerifier(cur.verifier);
     setDraftCategoriePid(cur.categorie_id);
     setDraftCategorieEid(cur.categorie_e_id ?? null);
+    setDraftImportanceId(cur.importance_id ?? null);
+    setDraftDifficulteId(cur.difficulter_id ?? null);
   }, [data, index]);
 
   useEffect(() => {
@@ -326,16 +352,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         const questions = [...prev.questions];
         const cur = questions[qi];
         if (!cur) return prev;
-        questions[qi] = {
-          ...cur,
-          question: updated.question,
-          commentaire: updated.commentaire,
-          categorie_id: updated.categorie_id,
-          categorie_type: updated.categorie_type,
-          categorie_e_id: updated.categorie_e_id,
-          categorie_e_type: updated.categorie_e_type,
-          verifier: updated.verifier,
-        };
+        questions[qi] = mergeQuizSessionQuestionFromRow(cur, updated);
         return { ...prev, questions };
       });
       setActionMessage("Question mise à jour.");
@@ -442,6 +459,16 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     }
   };
 
+  const handleDraftDifficulte = (id: number) => {
+    if (nextBusy || fetchingMore || deleteBusy) return;
+    setDraftDifficulteId((prev) => (prev === id ? null : id));
+  };
+
+  const handleDraftImportance = (id: number) => {
+    if (nextBusy || fetchingMore || deleteBusy) return;
+    setDraftImportanceId((prev) => (prev === id ? null : id));
+  };
+
   const syncVerifierIfNeeded = async (): Promise<boolean> => {
     if (data == null) return false;
     const curQ = data.questions[index];
@@ -453,7 +480,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         if (!prev) return prev;
         const qs = [...prev.questions];
         const i = qs.findIndex((x) => x.id === curQ.id);
-        if (i >= 0 && qs[i]) qs[i] = { ...qs[i]!, verifier: updated.verifier };
+        if (i >= 0 && qs[i]) qs[i] = mergeQuizSessionQuestionFromRow(qs[i]!, updated);
         return { ...prev, questions: qs };
       });
       return true;
@@ -493,19 +520,41 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         const qs = [...prev.questions];
         const qi = qs.findIndex((x) => x.id === curQ.id);
         if (qi < 0 || !qs[qi]) return prev;
-        qs[qi] = {
-          ...qs[qi]!,
-          categorie_id: updated.categorie_id,
-          categorie_type: updated.categorie_type,
-          categorie_e_id: updated.categorie_e_id,
-          categorie_e_type: updated.categorie_e_type,
-          verifier: qs[qi]!.verifier,
-        };
+        qs[qi] = mergeQuizSessionQuestionFromRow(qs[qi]!, updated);
         return { ...prev, questions: qs };
       });
       return true;
     } catch {
       setActionMessage("Enregistrement des catégories impossible. Réessaie.");
+      return false;
+    }
+  };
+
+  const syncDraftScalesIfNeeded = async (): Promise<boolean> => {
+    if (data == null) return false;
+    const curQ = data.questions[index];
+    if (curQ == null) return false;
+
+    const sameImp = (draftImportanceId ?? null) === (curQ.importance_id ?? null);
+    const sameDif = (draftDifficulteId ?? null) === (curQ.difficulter_id ?? null);
+    if (sameImp && sameDif) return true;
+
+    try {
+      const patchBody: { importance_id?: number | null; difficulter_id?: number | null } = {};
+      if (!sameImp) patchBody.importance_id = draftImportanceId ?? null;
+      if (!sameDif) patchBody.difficulter_id = draftDifficulteId ?? null;
+      const updated = await patchQuestion(curQ.id, patchBody);
+      setData((prev) => {
+        if (!prev) return prev;
+        const qs = [...prev.questions];
+        const qi = qs.findIndex((x) => x.id === curQ.id);
+        if (qi < 0 || !qs[qi]) return prev;
+        qs[qi] = mergeQuizSessionQuestionFromRow(qs[qi]!, updated);
+        return { ...prev, questions: qs };
+      });
+      return true;
+    } catch {
+      setActionMessage("Enregistrement de la difficulté ou de l’importance impossible. Réessaie.");
       return false;
     }
   };
@@ -518,6 +567,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       try {
         if (!(await syncVerifierIfNeeded())) return;
         if (!(await syncDraftCategoriesIfNeeded())) return;
+        if (!(await syncDraftScalesIfNeeded())) return;
 
         const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
         const nextGood = good + delta;
@@ -613,6 +663,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       try {
         if (!(await syncVerifierIfNeeded())) return;
         if (!(await syncDraftCategoriesIfNeeded())) return;
+        if (!(await syncDraftScalesIfNeeded())) return;
         const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
         const nextGood = good + delta;
         playedTowardResultsRef.current += 1;
@@ -689,6 +740,9 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const categoryPendingSync =
     draftCategoriePid !== q.categorie_id ||
     (draftCategorieEid ?? null) !== (q.categorie_e_id ?? null);
+  const scalesPendingSync =
+    (draftImportanceId ?? null) !== (q.importance_id ?? null) ||
+    (draftDifficulteId ?? null) !== (q.difficulter_id ?? null);
   const categoryResumeLine = formatSessionDraftCategorieResume(
     draftCategoriePid,
     draftCategorieEid,
@@ -740,6 +794,15 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       pendingSync: categoryPendingSync,
       onParentCategory: handleParentCategory,
       onChildCategory: handleChildCategory,
+    },
+    scaleSections: {
+      difficulteRows: refDifficulteQuestion,
+      importanceRows: refImportanceQuestion,
+      draftDifficulteId,
+      draftImportanceId,
+      pendingSync: scalesPendingSync,
+      onDifficulte: handleDraftDifficulte,
+      onImportance: handleDraftImportance,
     },
   };
 

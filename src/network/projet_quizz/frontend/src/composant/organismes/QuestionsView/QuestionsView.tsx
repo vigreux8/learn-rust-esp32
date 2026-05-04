@@ -22,7 +22,9 @@ export function QuestionsView(props: QuestionsViewProps) {
       <PageMain>
         <QuestionsActionBoutons data={questionsActionBoutons.data} actions={questionsActionBoutons.actions} />
 
-        {operationError.visible ? <QuestionsViewOperationErrorBanner onDismiss={operationError.onDismiss} /> : null}
+        {operationError.visible ? (
+          <QuestionsViewOperationErrorBanner message={operationError.message} onDismiss={operationError.onDismiss} />
+        ) : null}
 
         <QuestionsCollectionContextBar {...contextBar} />
 

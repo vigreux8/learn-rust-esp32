@@ -100,6 +100,8 @@ export class QuizzWriteService {
       categorie_id?: number;
       categorie_e_id?: number | null;
       verifier?: boolean;
+      importance_id?: number | null;
+      difficulter_id?: number | null;
     },
   ): Promise<QuizzQuestionRow> {
     const existing = await this.prisma.prisma.quizz_question.findUnique({
@@ -115,6 +117,8 @@ export class QuizzWriteService {
       categorie_p_id?: number;
       categorie_e_id?: number | null;
       verifier?: boolean;
+      importance_id?: number | null;
+      difficulter_id?: number | null;
     } = {};
     if (typeof data.question === 'string') patch.question = data.question;
     if (typeof data.commentaire === 'string') patch.commentaire = data.commentaire;
@@ -171,9 +175,37 @@ export class QuizzWriteService {
       }
     }
 
+    if (data.importance_id !== undefined) {
+      if (data.importance_id === null) {
+        patch.importance_id = null;
+      } else {
+        const imp = await this.prisma.prisma.ref_importance.findUnique({
+          where: { id: data.importance_id },
+        });
+        if (!imp) {
+          throw new BadRequestException(`importance_id ${data.importance_id} introuvable`);
+        }
+        patch.importance_id = data.importance_id;
+      }
+    }
+
+    if (data.difficulter_id !== undefined) {
+      if (data.difficulter_id === null) {
+        patch.difficulter_id = null;
+      } else {
+        const dif = await this.prisma.prisma.ref_difficulter.findUnique({
+          where: { id: data.difficulter_id },
+        });
+        if (!dif) {
+          throw new BadRequestException(`difficulter_id ${data.difficulter_id} introuvable`);
+        }
+        patch.difficulter_id = data.difficulter_id;
+      }
+    }
+
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException(
-        'Au moins un champ parmi "question", "commentaire", "categorie_id", "categorie_e_id" ou "verifier" requis',
+        'Au moins un champ parmi question, commentaire, categorie_id, categorie_e_id, verifier, importance_id ou difficulter_id requis',
       );
     }
     try {
@@ -183,6 +215,8 @@ export class QuizzWriteService {
         include: {
           ref_p_categorie: true,
           ref_e_categorie: true,
+          ref_importance: true,
+          ref_difficulter: true,
           question_collection: {
             include: { quizz_collection: true },
             orderBy: { id: 'asc' },
@@ -190,6 +224,8 @@ export class QuizzWriteService {
         },
       });
       const eid = row.categorie_e_id;
+      const impId = row.importance_id;
+      const difId = row.difficulter_id;
       return {
         id: row.id,
         user_id: row.user_id,
@@ -201,6 +237,10 @@ export class QuizzWriteService {
         categorie_type: row.ref_p_categorie.type,
         categorie_e_id: eid,
         categorie_e_type: eid != null && row.ref_e_categorie ? row.ref_e_categorie.type : null,
+        importance_id: impId,
+        importance_lvl: impId != null && row.ref_importance ? row.ref_importance.lvl : null,
+        difficulter_id: difId,
+        difficulter_lvl: difId != null && row.ref_difficulter ? row.ref_difficulter.lvl : null,
         collections: row.question_collection.map((qc) => ({
           id: qc.quizz_collection.id,
           nom: qc.quizz_collection.nom,
@@ -309,6 +349,8 @@ export class QuizzWriteService {
         include: {
           ref_p_categorie: true,
           ref_e_categorie: true,
+          ref_importance: true,
+          ref_difficulter: true,
           question_collection: {
             include: { quizz_collection: true },
             orderBy: { id: 'asc' },
@@ -318,6 +360,8 @@ export class QuizzWriteService {
     });
 
     const eid = row.categorie_e_id;
+    const impId = row.importance_id;
+    const difId = row.difficulter_id;
     return {
       id: row.id,
       user_id: row.user_id,
@@ -329,6 +373,10 @@ export class QuizzWriteService {
       categorie_type: row.ref_p_categorie.type,
       categorie_e_id: eid,
       categorie_e_type: eid != null && row.ref_e_categorie ? row.ref_e_categorie.type : null,
+      importance_id: impId,
+      importance_lvl: impId != null && row.ref_importance ? row.ref_importance.lvl : null,
+      difficulter_id: difId,
+      difficulter_lvl: difId != null && row.ref_difficulter ? row.ref_difficulter.lvl : null,
       collections: row.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,
