@@ -40,7 +40,12 @@ export type QuizSessionQuestionCardProps = {
   categorieSections: {
     hierarchy: RefCategorieHierarchyRow[];
     parentKeys: QuestionCategorieKey[];
-    categoryBusy: boolean;
+    draftParentKeyResolved: QuestionCategorieKey | null;
+    draftParentId: number | null;
+    draftEnfantId: number | null;
+    resumeLine: string;
+    /** Draft différent du dernier état serveur pour cette question. */
+    pendingSync: boolean;
     onParentCategory: (key: QuestionCategorieKey) => void;
     onChildCategory: (enfantId: number) => void;
   };

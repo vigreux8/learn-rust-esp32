@@ -3,7 +3,6 @@ import { route } from "preact-router";
 import {
   formatQuestionCategorieEnfantLabel,
   formatQuestionCategorieParentLabel,
-  formatQuestionCategorieResume,
 } from "../../../lib/questionCategories";
 import { playOrdersLabel, playQtypeLabel } from "../../../lib/playOrder";
 import { cn } from "../../../lib/cn";
@@ -107,10 +106,12 @@ export function QuizSessionQuestionCard({
   onEndInfiniteSession,
   categorieSections,
 }: QuizSessionQuestionCardProps) {
-  const disabledCat =
-    categorieSections.categoryBusy || nextBusy || fetchingMore || deleteBusy;
-  const nodeParent = categorieSections.hierarchy.find((h) => h.type === q.categorie_type);
-  const enfantsDuParent = nodeParent?.enfants ?? [];
+  const disabledCat = nextBusy || fetchingMore || deleteBusy;
+  const draftParentNode = categorieSections.hierarchy.find(
+    (h) => h.id === categorieSections.draftParentId,
+  );
+  const enfantsDuParent =
+    categorieSections.draftParentId == null ? [] : (draftParentNode?.enfants ?? []);
   return (
     <div class={QUIZ_SESSION_STYLES.bodyLayout}>
       <aside class={QUIZ_SESSION_STYLES.aside} aria-label="Actions sur la question">
@@ -185,19 +186,24 @@ export function QuizSessionQuestionCard({
 
         <div class={QUIZ_SESSION_STYLES.categorieSeparator}>
           <p class={QUIZ_SESSION_STYLES.categorieResume}>
-            Catégorie : {formatQuestionCategorieResume(q)}
+            Catégorie (brouillon) : {categorieSections.resumeLine}
           </p>
+          {categorieSections.pendingSync ? (
+            <p class="mb-2 text-[0.65rem] leading-snug text-base-content/55">
+              Enregistrement côté serveur au « Suivant », à « Voir le résultat » ou « Terminer la session ».
+            </p>
+          ) : null}
           <div class={QUIZ_SESSION_STYLES.categorieButtonRow} role="group" aria-label="Catégorie parente">
             {categorieSections.parentKeys.map((key) => {
-              const active = q.categorie_type === key;
+              const active = categorieSections.draftParentKeyResolved === key;
               return (
                 <button
                   key={key}
                   type="button"
                   title={
-                    active && q.categorie_e_id != null
-                      ? `Retirer la sous-catégorie pour ${formatQuestionCategorieParentLabel(key)}`
-                      : `Associer la catégorie ${formatQuestionCategorieParentLabel(key)}`
+                    active
+                      ? `Aucune : désélectionner ${formatQuestionCategorieParentLabel(key)} (choisir un parent avant de continuer)`
+                      : `Choisir la catégorie ${formatQuestionCategorieParentLabel(key)}`
                   }
                   disabled={disabledCat}
                   class={cn(
@@ -220,14 +226,14 @@ export function QuizSessionQuestionCard({
                 aria-label="Sous-catégories pour la catégorie parente choisie"
               >
                 {enfantsDuParent.map((e) => {
-                  const active = q.categorie_e_id === e.id;
+                  const active = categorieSections.draftEnfantId === e.id;
                   return (
                     <button
                       key={e.id}
                       type="button"
                       title={
                         active
-                          ? `Retirer « ${formatQuestionCategorieEnfantLabel(e.type)} »`
+                          ? `Retirer « ${formatQuestionCategorieEnfantLabel(e.type)} » (brouillon ; enregistrement avec Suivant / fin)`
                           : `Associer « ${formatQuestionCategorieEnfantLabel(e.type)} »`
                       }
                       disabled={disabledCat}
@@ -243,9 +249,6 @@ export function QuizSessionQuestionCard({
                 })}
               </div>
             </div>
-          ) : null}
-          {categorieSections.categoryBusy ? (
-            <p class="mt-2 text-xs text-base-content/50">Enregistrement de la catégorie…</p>
           ) : null}
         </div>
       </aside>

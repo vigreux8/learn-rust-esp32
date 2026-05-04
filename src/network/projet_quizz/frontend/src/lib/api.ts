@@ -2,12 +2,14 @@ import { apiUrl } from "./config";
 import type {
   CollectionUi,
   DeviceLookupResult,
+  PersonalitePickerRowUi,
   QuestionUi,
   QuizzModuleRow,
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieHierarchyRow,
   RefCategorieRow,
+  RefImportancePersonaliteUi,
   SessionDetail,
   SessionSummary,
   SousCollectionUi,
@@ -143,6 +145,75 @@ export async function unassignCollectionFromModule(
 ): Promise<CollectionUi> {
   const res = await fetch(
     apiUrl(`/quizz/collections/${collectionId}/modules/${moduleId}`),
+    { method: "DELETE" },
+  );
+  await assertResponseOk(res);
+  return res.json() as Promise<CollectionUi>;
+}
+
+export async function fetchRefImportancePersonalite(): Promise<RefImportancePersonaliteUi[]> {
+  const res = await fetch(apiUrl("/quizz/ref-importance-personnalite"));
+  await assertResponseOk(res);
+  return res.json() as Promise<RefImportancePersonaliteUi[]>;
+}
+
+export async function fetchPersonalitesPicker(): Promise<PersonalitePickerRowUi[]> {
+  const res = await fetch(apiUrl("/quizz/personalites"));
+  await assertResponseOk(res);
+  return res.json() as Promise<PersonalitePickerRowUi[]>;
+}
+
+export type CreatePersonaliteCollectionBody = {
+  userId: number;
+  nom: string;
+  prenom: string;
+  naissance: number;
+  mort?: number | null;
+  resumer: string;
+  moduleId?: number;
+};
+
+export async function createPersonaliteCollection(
+  body: CreatePersonaliteCollectionBody,
+): Promise<CollectionUi> {
+  const res = await fetch(apiUrl("/quizz/personalites/collections"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<CollectionUi>;
+}
+
+export async function assignPersonaliteToCollection(
+  collectionId: number,
+  body: {
+    userId: number;
+    personaliteId: number;
+    importanceType?: "pionnier" | "important" | "secondaire" | null;
+  },
+): Promise<CollectionUi> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/personalites`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: body.userId,
+      personaliteId: body.personaliteId,
+      importanceType: body.importanceType ?? null,
+    }),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<CollectionUi>;
+}
+
+export async function unassignPersonaliteFromCollection(
+  collectionId: number,
+  personaliteId: number,
+  userId: number,
+): Promise<CollectionUi> {
+  const q = new URLSearchParams({ userId: String(userId) });
+  const res = await fetch(
+    apiUrl(`/quizz/collections/${collectionId}/personalites/${personaliteId}?${q.toString()}`),
     { method: "DELETE" },
   );
   await assertResponseOk(res);

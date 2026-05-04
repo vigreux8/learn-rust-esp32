@@ -195,8 +195,10 @@ model personalite {
   collection_id           Int
   nom                     String
   prenom                  String                    @map("Prenom")
-  naissance               String
-  mort                    String?
+  /// Année de naissance (entier).
+  naissance               Int
+  /// Année du décès, si connue (`null` = vivant ou inconnu).
+  mort                    Int?
   resumer                 String
   quizz_collection        quizz_collection          @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   personnalite_collection personnalite_collection[]

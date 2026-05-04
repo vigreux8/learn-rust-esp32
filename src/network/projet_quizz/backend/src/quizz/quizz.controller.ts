@@ -17,8 +17,10 @@ import { AppCollectionImportBodyDto } from './dto/import-collection.dto';
 import { LlmImportBodyDto } from './dto/import-llm.dto';
 import {
   AssignCollectionToModuleDto,
+  AssignPersonaliteToCollectionDto,
   AttachQuestionToSousCollectionBodyDto,
   CreateCollectionInModuleDto,
+  CreatePersonaliteCollectionDto,
   CreateQuestionDto,
   CreateQuizzModuleDto,
   CreateSousCollectionBodyDto,
@@ -188,6 +190,29 @@ export class QuizzController {
     return this.quizz.listCollections();
   }
 
+  @Get('ref-importance-personnalite')
+  listRefImportancePersonalite() {
+    return this.quizz.listRefImportancePersonalite();
+  }
+
+  @Get('personalites')
+  listPersonalitesPicker() {
+    return this.quizz.listPersonalitesPicker();
+  }
+
+  @Post('personalites/collections')
+  createPersonaliteCollection(@Body() body: CreatePersonaliteCollectionDto) {
+    return this.quizz.createPersonaliteCollection({
+      userId: body.userId,
+      nom: body.nom,
+      prenom: body.prenom,
+      naissance: body.naissance,
+      mort: body.mort,
+      resumer: body.resumer ?? '',
+      moduleId: body.moduleId,
+    });
+  }
+
   @Post('collections')
   createStandaloneCollection(@Body() body: CreateStandaloneCollectionDto) {
     return this.quizz.createStandaloneCollection({
@@ -258,6 +283,34 @@ export class QuizzController {
     @Param('moduleId', ParseIntPipe) moduleId: number,
   ) {
     return this.quizz.unassignCollectionFromModule(collectionId, moduleId);
+  }
+
+  @Post('collections/:id/personalites')
+  assignPersonaliteToCollection(
+    @Param('id', ParseIntPipe) collectionId: number,
+    @Body() body: AssignPersonaliteToCollectionDto,
+  ) {
+    return this.quizz.assignPersonaliteToCollection(collectionId, {
+      userId: body.userId,
+      personaliteId: body.personaliteId,
+      importanceType:
+        body.importanceType === null || body.importanceType === undefined
+          ? null
+          : body.importanceType,
+    });
+  }
+
+  @Delete('collections/:id/personalites/:personaliteId')
+  unassignPersonaliteFromCollection(
+    @Param('id', ParseIntPipe) collectionId: number,
+    @Param('personaliteId', ParseIntPipe) personaliteId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.unassignPersonaliteFromCollection(
+      collectionId,
+      personaliteId,
+      userId,
+    );
   }
 
   @Delete('collections/:id')

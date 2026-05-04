@@ -1,5 +1,5 @@
 import type { PlayQtype } from "../../../lib/playOrder";
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
+import type { CollectionUi, PersonalitePickerRowUi, QuizzModuleRow } from "../../../types/quizz";
 import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 
 export type LinkedModule = { id: number };
@@ -27,5 +27,14 @@ export type CollectionCardProps = {
   onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
   onDeleteCollection?: (collection: CollectionUi) => void;
+  /** Rattacher / détacher des personnalités (cartes dont tu es propriétaire). */
+  personalitesPicker?: PersonalitePickerRowUi[];
+  assignPersoBusyCollectionId?: number | null;
+  onAssignPerso?: (
+    collectionId: number,
+    personaliteId: number,
+    importanceType: "" | "pionnier" | "important" | "secondaire",
+  ) => void | Promise<void>;
+  onUnassignPerso?: (collectionId: number, personaliteId: number) => void | Promise<void>;
 };
 

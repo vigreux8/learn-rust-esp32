@@ -360,7 +360,12 @@ export class QuizzWriteService {
 
     await this.prisma.prisma.$transaction(async (tx) => {
       await tx.personnalite_collection.deleteMany({
-        where: { collection_id: collectionId },
+        where: {
+          OR: [
+            { collection_id: collectionId },
+            { personalite: { collection_id: collectionId } },
+          ],
+        },
       });
       await tx.personalite.deleteMany({
         where: { collection_id: collectionId },
@@ -645,5 +650,161 @@ export class QuizzWriteService {
         data: { update_at: t },
       }),
     ]);
+  }
+
+  /**
+   * Crée une collection dont le nom est « Prénom Nom » et la fiche `personalite` associée.
+   */
+  async createPersonaliteCollection(body: {
+    userId: number;
+    nom: string;
+    prenom: string;
+    naissance: number;
+    mort?: number | null;
+    resumer: string;
+    moduleId?: number;
+  }): Promise<{ collectionId: number; personaliteId: number }> {
+    const user = await this.prisma.prisma.user.findUnique({
+      where: { id: body.userId },
+    });
+    if (!user) {
+      throw new NotFoundException(`Utilisateur ${body.userId} introuvable`);
+    }
+    if (body.moduleId != null) {
+      const mod = await this.prisma.prisma.quizz_module.findUnique({
+        where: { id: body.moduleId },
+      });
+      if (!mod) {
+        throw new NotFoundException(`Module ${body.moduleId} introuvable`);
+      }
+    }
+    const colNom = `${body.prenom.trim()} ${body.nom.trim()}`.trim();
+    if (!colNom) {
+      throw new BadRequestException('Le nom complet (prénom + nom) ne peut pas être vide');
+    }
+    if (body.mort != null && body.mort < body.naissance) {
+      throw new BadRequestException(
+        "L'année de décès ne peut pas être antérieure à l'année de naissance.",
+      );
+    }
+    const t = nowIso();
+    const res = await this.prisma.prisma.$transaction(async (tx) => {
+      const c = await tx.quizz_collection.create({
+        data: {
+          user_id: body.userId,
+          create_at: t,
+          update_at: t,
+          nom: colNom,
+        },
+      });
+      const p = await tx.personalite.create({
+        data: {
+          collection_id: c.id,
+          nom: body.nom.trim(),
+          prenom: body.prenom.trim(),
+          naissance: body.naissance,
+          mort: body.mort != null ? body.mort : null,
+          resumer: body.resumer.trim() !== '' ? body.resumer.trim() : '—',
+        },
+      });
+      if (body.moduleId != null) {
+        await tx.quizz_module_collection.create({
+          data: { module_id: body.moduleId, collection_id: c.id },
+        });
+      }
+      return { collectionId: c.id, personaliteId: p.id };
+    });
+    return res;
+  }
+
+  async assignPersonaliteToCollection(
+    collectionId: number,
+    body: {
+      userId: number;
+      personaliteId: number;
+      importanceType?: string | null;
+    },
+  ): Promise<void> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (col.user_id !== body.userId) {
+      throw new ForbiddenException(
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${body.userId}.`,
+      );
+    }
+    const perso = await this.prisma.prisma.personalite.findUnique({
+      where: { id: body.personaliteId },
+    });
+    if (!perso) {
+      throw new NotFoundException(`Personnalité ${body.personaliteId} introuvable`);
+    }
+    if (perso.collection_id === collectionId) {
+      throw new BadRequestException(
+        'Cette collection est déjà la fiche principale de cette personnalité.',
+      );
+    }
+    const dup = await this.prisma.prisma.personnalite_collection.findFirst({
+      where: { collection_id: collectionId, personalite_id: body.personaliteId },
+    });
+    if (dup != null) {
+      throw new BadRequestException(
+        'Cette personnalité est déjà associée à cette collection.',
+      );
+    }
+    let importance_id: number | null = null;
+    const it = body.importanceType?.trim();
+    if (it != null && it !== '') {
+      const ref = await this.prisma.prisma.ref_importance_personalite.findFirst({
+        where: { type: it },
+      });
+      if (!ref) {
+        throw new BadRequestException(`Type d’importance inconnu : « ${it} »`);
+      }
+      importance_id = ref.id;
+    }
+    const t = nowIso();
+    await this.prisma.prisma.personnalite_collection.create({
+      data: {
+        personalite_id: body.personaliteId,
+        collection_id: collectionId,
+        importance_id,
+      },
+    });
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: collectionId },
+      data: { update_at: t },
+    });
+  }
+
+  async unassignPersonaliteFromCollection(
+    collectionId: number,
+    personaliteId: number,
+    userId: number,
+  ): Promise<void> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (col.user_id !== userId) {
+      throw new ForbiddenException(
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${userId}.`,
+      );
+    }
+    const rm = await this.prisma.prisma.personnalite_collection.deleteMany({
+      where: { collection_id: collectionId, personalite_id: personaliteId },
+    });
+    if (rm.count === 0) {
+      throw new NotFoundException('Association personnalité / collection introuvable');
+    }
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: collectionId },
+      data: { update_at: nowIso() },
+    });
   }
 }

@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   CollectionUi,
+  PersonalitePickerRowDto,
   QuestionUi,
   QuizzModuleRow,
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieHierarchyRow,
   RefCategorieRow,
+  RefImportancePersonaliteDto,
   SousCollectionUi,
 } from '../quizz.type';
 import { AppCollectionImportBodyDto } from '../dto/import-collection.dto';
@@ -104,6 +106,14 @@ export class QuizzService {
 
   listRefCategoriesHierarchy(): Promise<RefCategorieHierarchyRow[]> {
     return this.read.listRefCategoriesHierarchy();
+  }
+
+  listRefImportancePersonalite(): Promise<RefImportancePersonaliteDto[]> {
+    return this.read.listRefImportancePersonalite();
+  }
+
+  listPersonalitesPicker(): Promise<PersonalitePickerRowDto[]> {
+    return this.read.listPersonalitesPicker();
   }
 
   getQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
@@ -216,6 +226,59 @@ export class QuizzService {
     const ui = await this.read.buildCollectionUi(collectionId);
     if (!ui) {
       throw new NotFoundException(`Collection ${collectionId} introuvable après création`);
+    }
+    return ui;
+  }
+
+  async createPersonaliteCollection(body: {
+    userId: number;
+    nom: string;
+    prenom: string;
+    naissance: number;
+    mort?: number | null;
+    resumer: string;
+    moduleId?: number;
+  }): Promise<CollectionUi> {
+    const { collectionId } =
+      await this.write.createPersonaliteCollection(body);
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(
+        `Collection ${collectionId} introuvable après création personnalité`,
+      );
+    }
+    return ui;
+  }
+
+  async assignPersonaliteToCollection(
+    collectionId: number,
+    body: {
+      userId: number;
+      personaliteId: number;
+      importanceType?: string | null;
+    },
+  ): Promise<CollectionUi> {
+    await this.write.assignPersonaliteToCollection(collectionId, body);
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    return ui;
+  }
+
+  async unassignPersonaliteFromCollection(
+    collectionId: number,
+    personaliteId: number,
+    userId: number,
+  ): Promise<CollectionUi> {
+    await this.write.unassignPersonaliteFromCollection(
+      collectionId,
+      personaliteId,
+      userId,
+    );
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
     }
     return ui;
   }

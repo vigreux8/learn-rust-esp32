@@ -7,21 +7,25 @@ import {
 } from "../../../lib/collectionHierarchyVis";
 import {
   assignCollectionToModule,
+  assignPersonaliteToCollection,
   createEmptyCollection,
+  createPersonaliteCollection,
   createQuizzModule,
   deleteCollection,
   deleteQuizzModule,
   fetchCollections,
   fetchModules,
+  fetchPersonalitesPicker,
   importAppCollectionQuestionsJson,
   importQuestionsJson,
   unassignCollectionFromModule,
+  unassignPersonaliteFromCollection,
 } from "../../../lib/api";
 import { normalizeAndValidateAppCollectionImportText } from "../../../lib/appCollectionImportNormalize";
 import { normalizeAndValidateImportText } from "../../../lib/llmImportNormalize";
 import type { PlayQtype } from "../../../lib/playOrder";
 import { useUserSession } from "../../../lib/userSession";
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
+import type { CollectionUi, PersonalitePickerRowUi, QuizzModuleRow } from "../../../types/quizz";
 import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 import { applyModuleFilter, filterCollections, pendingDeleteLabels } from "./CollectionsView.metier";
 import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
@@ -66,6 +70,13 @@ export function useCollectionsView() {
   /** Recherche globale sur le titre (toutes les collections visibles après filtres créateur / module). */
   const [collectionListSearch, setCollectionListSearch] = useState("");
   const [collectionListSuggestFocused, setCollectionListSuggestFocused] = useState(false);
+  const [newCollectionKind, setNewCollectionKind] = useState<"normale" | "personnalite">("normale");
+  const [personnaliteModalOpen, setPersonnaliteModalOpen] = useState(false);
+  const [personnaliteModalBusy, setPersonnaliteModalBusy] = useState(false);
+  const [personnaliteModalError, setPersonnaliteModalError] = useState<string | null>(null);
+  const [personalitesPicker, setPersonalitesPicker] = useState<PersonalitePickerRowUi[]>([]);
+  const [assignPersoBusyCollectionId, setAssignPersoBusyCollectionId] = useState<number | null>(null);
+  const [assignPersoError, setAssignPersoError] = useState<string | null>(null);
 
   const jsonImportInputRef = useRef<HTMLInputElement | null>(null);
   const [jsonImportOpen, setJsonImportOpen] = useState(false);
@@ -76,9 +87,17 @@ export function useCollectionsView() {
   const [jsonImportError, setJsonImportError] = useState<string | null>(null);
   const [jsonImportCategorie, setJsonImportCategorie] = useState<"histoire" | "pratique" | "connaissance">("histoire");
 
-  const loadData = useCallback(async () => {
-    const [list, mods] = await Promise.all([fetchCollections(), fetchModules()]);
-    return { list, mods };
+  const loadBootstrap = useCallback(async (): Promise<{
+    list: CollectionUi[];
+    mods: QuizzModuleRow[];
+    picker: PersonalitePickerRowUi[];
+  }> => {
+    const [list, mods, picker] = await Promise.all([
+      fetchCollections(),
+      fetchModules(),
+      fetchPersonalitesPicker().catch(() => [] as PersonalitePickerRowUi[]),
+    ]);
+    return { list, mods, picker };
   }, []);
 
   useEffect(() => {
@@ -87,10 +106,11 @@ export function useCollectionsView() {
       setLoading(true);
       setError(null);
       try {
-        const { list, mods } = await loadData();
+        const { list, mods, picker } = await loadBootstrap();
         if (!cancelled) {
           setCollections(list);
           setModules(mods);
+          setPersonalitesPicker(picker);
         }
       } catch {
         if (!cancelled) setError("fetch");
@@ -101,7 +121,7 @@ export function useCollectionsView() {
     return () => {
       cancelled = true;
     };
-  }, [loadData]);
+  }, [loadBootstrap]);
 
   useEffect(() => {
     if (moduleFilter !== "all" && !modules.some((m) => m.id === moduleFilter)) setModuleFilter("all");
@@ -157,6 +177,82 @@ export function useCollectionsView() {
       setAssignError(e instanceof Error ? e.message : "Retrait impossible.");
     } finally {
       setAssignBusyCollectionId(null);
+    }
+  };
+
+  const handleCreatePersonnaliteFromModal = async (payload: {
+    nom: string;
+    prenom: string;
+    naissance: number;
+    mort: number | null;
+    resumer: string;
+    moduleId: number | "";
+  }) => {
+    setPersonnaliteModalBusy(true);
+    setPersonnaliteModalError(null);
+    try {
+      const body = {
+        userId,
+        nom: payload.nom,
+        prenom: payload.prenom,
+        naissance: payload.naissance,
+        mort: payload.mort,
+        resumer: payload.resumer,
+        ...(payload.moduleId !== "" ? { moduleId: Number(payload.moduleId) } : {}),
+      };
+      const ui = await createPersonaliteCollection(body);
+      setCollections((prev) => [...prev, ui].sort((a, b) => a.id - b.id));
+      const picker = await fetchPersonalitesPicker().catch(() => [] as PersonalitePickerRowUi[]);
+      setPersonalitesPicker(picker);
+      setPersonnaliteModalOpen(false);
+      const modQ =
+        payload.moduleId !== "" ? `?module=${Number(payload.moduleId)}` : "";
+      route(`/questions/${ui.id}${modQ}`);
+    } catch (e) {
+      setPersonnaliteModalError(
+        e instanceof Error ? e.message : "Creation personnalité impossible.",
+      );
+    } finally {
+      setPersonnaliteModalBusy(false);
+    }
+  };
+
+  const handleAssignPersoToCollection = async (
+    collectionId: number,
+    personaliteId: number,
+    importanceType: "" | "pionnier" | "important" | "secondaire",
+  ) => {
+    setAssignPersoBusyCollectionId(collectionId);
+    setAssignPersoError(null);
+    try {
+      const updated = await assignPersonaliteToCollection(collectionId, {
+        userId,
+        personaliteId,
+        importanceType: importanceType === "" ? null : importanceType,
+      });
+      setCollections((prev) => prev.map((c) => (c.id === collectionId ? updated : c)));
+    } catch (e) {
+      setAssignPersoError(e instanceof Error ? e.message : "Association personnalité impossible.");
+    } finally {
+      setAssignPersoBusyCollectionId(null);
+    }
+  };
+
+  const handleUnassignPersoFromCollection = async (
+    collectionId: number,
+    personaliteId: number,
+  ) => {
+    setAssignPersoBusyCollectionId(collectionId);
+    setAssignPersoError(null);
+    try {
+      const updated = await unassignPersonaliteFromCollection(collectionId, personaliteId, userId);
+      setCollections((prev) => prev.map((c) => (c.id === collectionId ? updated : c)));
+    } catch (e) {
+      setAssignPersoError(
+        e instanceof Error ? e.message : "Dissociation personnalité impossible.",
+      );
+    } finally {
+      setAssignPersoBusyCollectionId(null);
     }
   };
 
@@ -352,9 +448,10 @@ export function useCollectionsView() {
           const nouvelle = await createEmptyCollection({ userId, nom: data.collection.nom });
           collectionCreeeId = nouvelle.id;
           const res = await importAppCollectionQuestionsJson(data, { collectionId: nouvelle.id });
-          const { list, mods } = await loadData();
+          const { list, mods, picker } = await loadBootstrap();
           setCollections(list);
           setModules(mods);
+          setPersonalitesPicker(picker);
           setJsonImportText("");
           setJsonImportMessage(
             `Import reussi (FlowLearn) : collection « ${data.collection.nom} » creee, ${res.createdQuestions} question(s).`,
@@ -374,9 +471,10 @@ export function useCollectionsView() {
       const data = normalizeAndValidateImportText(jsonImportText);
       data.user_id = userId;
       const res = await importQuestionsJson(data, { categorie: jsonImportCategorie });
-      const { list, mods } = await loadData();
+      const { list, mods, picker } = await loadBootstrap();
       setCollections(list);
       setModules(mods);
+      setPersonalitesPicker(picker);
       setJsonImportText("");
       setJsonImportMessage(
         res.createdCollections > 0
@@ -408,10 +506,11 @@ export function useCollectionsView() {
   };
 
   const onRetryLoad = () => {
-    loadData()
-      .then(({ list, mods }) => {
+    loadBootstrap()
+      .then(({ list, mods, picker }) => {
         setCollections(list);
         setModules(mods);
+        setPersonalitesPicker(picker);
       })
       .catch(() => setError("fetch"));
   };
@@ -516,6 +615,24 @@ export function useCollectionsView() {
     onUnassign: handleUnassign,
     onRequestDeleteCollection: (collection: CollectionUi) =>
       setPendingDelete({ kind: "collection", data: collection }),
+    newCollectionKind,
+    onChangeNewCollectionKind: setNewCollectionKind,
+    personnaliteModalOpen,
+    personnaliteModalBusy,
+    personnaliteModalError,
+    onOpenPersonnaliteModal: () => {
+      setPersonnaliteModalError(null);
+      setPersonnaliteModalOpen(true);
+    },
+    onClosePersonnaliteModal: () => {
+      if (!personnaliteModalBusy) setPersonnaliteModalOpen(false);
+    },
+    onSubmitPersonnaliteModal: handleCreatePersonnaliteFromModal,
+    personalitesPicker,
+    assignPersoBusyCollectionId,
+    assignPersoError,
+    onAssignPersoToCollection: handleAssignPersoToCollection,
+    onUnassignPersoFromCollection: handleUnassignPersoFromCollection,
   };
 
   const confirmPopup = {

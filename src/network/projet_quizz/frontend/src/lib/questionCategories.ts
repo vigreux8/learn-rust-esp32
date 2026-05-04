@@ -1,4 +1,4 @@
-import type { RefCategorieRow } from "../types/quizz";
+import type { RefCategorieHierarchyRow, RefCategorieRow } from "../types/quizz";
 
 /**
  * Types `ref_categorie` supportés explicitement par le frontend.
@@ -86,4 +86,26 @@ export function formatQuestionCategorieResume(q: {
     return `${p} › ${formatQuestionCategorieEnfantLabel(q.categorie_e_type)}`;
   }
   return p;
+}
+
+/** Libellé du brouillon (ids parent / enfant) pour la palette catégories du quiz. */
+export function formatSessionDraftCategorieResume(
+  draftParentId: number | null,
+  draftEnfantId: number | null,
+  hierarchy: RefCategorieHierarchyRow[],
+): string {
+  if (draftParentId == null) {
+    return "Aucune";
+  }
+  const node = hierarchy.find((h) => h.id === draftParentId);
+  const parentType = node?.type ?? "";
+  let eType: string | null = null;
+  if (draftEnfantId != null && node) {
+    eType =
+      node.enfants.find((e: { id: number; type: string }) => e.id === draftEnfantId)?.type ?? null;
+  }
+  return formatQuestionCategorieResume({
+    categorie_type: parentType || "?",
+    categorie_e_type: eType,
+  });
 }

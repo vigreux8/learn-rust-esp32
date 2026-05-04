@@ -7,11 +7,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   CollectionPersonnaliteRef,
   CollectionUi,
+  PersonalitePickerRowDto,
   QuestionUi,
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieHierarchyRow,
   RefCategorieRow,
+  RefImportancePersonaliteDto,
   SousCollectionUi,
 } from '../quizz.type';
 
@@ -67,7 +69,7 @@ export class QuizzReadService {
       this.prisma.prisma.personnalite_collection.findMany({
         where: { collection_id: collectionId },
         include: {
-          personalite: { select: { id: true, nom: true, prenom: true } },
+          personalite: { select: { id: true, nom: true, prenom: true, collection_id: true } },
           ref_importance_personalite: { select: { type: true } },
         },
       }),
@@ -79,19 +81,25 @@ export class QuizzReadService {
         nom: p.nom,
         prenom: p.prenom,
         importance_type: null,
+        detachable: false,
+        fiche_collection_id: collectionId,
       });
     }
     for (const row of pcRows) {
       const imp = row.ref_importance_personalite?.type ?? null;
       const prev = byPersoId.get(row.personalite.id);
+      const ficheId = row.personalite.collection_id;
       if (prev) {
         prev.importance_type = prev.importance_type ?? imp;
+        prev.detachable = true;
       } else {
         byPersoId.set(row.personalite.id, {
           id: row.personalite.id,
           nom: row.personalite.nom,
           prenom: row.personalite.prenom,
           importance_type: imp,
+          detachable: true,
+          fiche_collection_id: ficheId,
         });
       }
     }
@@ -220,11 +228,20 @@ export class QuizzReadService {
   }
 
   async listCollections(): Promise<CollectionUi[]> {
-    const cols = await this.prisma.prisma.quizz_collection.findMany({
-      orderBy: { id: 'asc' },
-    });
+    const [cols, fichesPerso] = await Promise.all([
+      this.prisma.prisma.quizz_collection.findMany({
+        orderBy: { id: 'asc' },
+      }),
+      this.prisma.prisma.personalite.findMany({
+        select: { collection_id: true },
+      }),
+    ]);
+    /** Collections « hébergeant » une fiche personnalité : pas de carte dans la grille (elles restent joignables par URL et picker). */
+    const sansCarteListe = new Set(fichesPerso.map((p) => p.collection_id));
+
     const out: CollectionUi[] = [];
     for (const c of cols) {
+      if (sansCarteListe.has(c.id)) continue;
       const ui = await this.buildCollectionUi(c.id);
       if (ui) out.push(ui);
     }
@@ -431,23 +448,22 @@ export class QuizzReadService {
     });
   }
 
-  /** Parents et enfants déclarés dans `relation_categorie` (v4). */
   async listRefCategoriesHierarchy(): Promise<RefCategorieHierarchyRow[]> {
     const parents = await this.prisma.prisma.ref_p_categorie.findMany({
       orderBy: { id: 'asc' },
       include: {
         relation_categorie_parent: {
-          orderBy: { id: 'asc' },
-          include: { enfant: { select: { id: true, type: true } } },
+          include: { enfant: true },
+          orderBy: { e_categorie: 'asc' },
         },
       },
     });
     return parents.map((p) => ({
       id: p.id,
       type: p.type,
-      enfants: p.relation_categorie_parent.map((r) => ({
-        id: r.enfant.id,
-        type: r.enfant.type,
+      enfants: p.relation_categorie_parent.map((rel) => ({
+        id: rel.enfant.id,
+        type: rel.enfant.type,
       })),
     }));
   }
@@ -527,20 +543,20 @@ export class QuizzReadService {
     return rows.map((r) => {
       const eid = r.categorie_e_id;
       return {
-        id: r.id,
-        user_id: r.user_id,
-        create_at: r.create_at,
-        question: r.question,
-        commentaire: r.commentaire ?? '',
-        verifier: r.verifier,
-        categorie_id: r.categorie_p_id,
-        categorie_type: r.ref_p_categorie.type,
-        categorie_e_id: eid,
-        categorie_e_type: eid != null && r.ref_e_categorie ? r.ref_e_categorie.type : null,
-        collections: r.question_collection.map((qc) => ({
-          id: qc.quizz_collection.id,
-          nom: qc.quizz_collection.nom,
-        })),
+      id: r.id,
+      user_id: r.user_id,
+      create_at: r.create_at,
+      question: r.question,
+      commentaire: r.commentaire ?? '',
+      verifier: r.verifier,
+      categorie_id: r.categorie_p_id,
+      categorie_type: r.ref_p_categorie.type,
+      categorie_e_id: eid,
+      categorie_e_type: eid != null && r.ref_e_categorie ? r.ref_e_categorie.type : null,
+      collections: r.question_collection.map((qc) => ({
+        id: qc.quizz_collection.id,
+        nom: qc.quizz_collection.nom,
+      })),
       };
     });
   }
@@ -592,5 +608,25 @@ export class QuizzReadService {
       });
     }
     return out;
+  }
+
+  async listRefImportancePersonalite(): Promise<RefImportancePersonaliteDto[]> {
+    const rows = await this.prisma.prisma.ref_importance_personalite.findMany({
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => ({ id: r.id, type: r.type }));
+  }
+
+  async listPersonalitesPicker(): Promise<PersonalitePickerRowDto[]> {
+    const rows = await this.prisma.prisma.personalite.findMany({
+      orderBy: { id: 'asc' },
+      select: { id: true, nom: true, prenom: true, collection_id: true },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      nom: r.nom,
+      prenom: r.prenom,
+      collection_id: r.collection_id,
+    }));
   }
 }

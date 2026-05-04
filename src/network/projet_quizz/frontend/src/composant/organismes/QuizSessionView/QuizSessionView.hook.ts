@@ -23,7 +23,9 @@ import { saveLastQuizResult } from "../../../lib/lastQuizResult";
 import { useRoutePath } from "../../../lib/routePathContext";
 import { useUserSession } from "../../../lib/userSession";
 import {
+  formatSessionDraftCategorieResume,
   getSupportedQuestionCategories,
+  isQuestionCategorieKey,
   type QuestionCategorieKey,
 } from "../../../lib/questionCategories";
 import type {
@@ -68,7 +70,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const [refCategoriesHierarchy, setRefCategoriesHierarchy] = useState<RefCategorieHierarchyRow[]>(
     [],
   );
-  const [categoryBusy, setCategoryBusy] = useState(false);
+  const [draftCategoriePid, setDraftCategoriePid] = useState<number | null>(null);
+  const [draftCategorieEid, setDraftCategorieEid] = useState<number | null>(null);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [questionModalVariant, setQuestionModalVariant] = useState<"edit" | "create">("edit");
   const [createParentQuestionId, setCreateParentQuestionId] = useState<number | null>(null);
@@ -220,7 +223,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   useEffect(() => {
     if (data == null) return;
     const cur = data.questions[index];
-    if (cur) setDraftVerifier(cur.verifier);
+    if (!cur) return;
+    setDraftVerifier(cur.verifier);
+    setDraftCategoriePid(cur.categorie_id);
+    setDraftCategorieEid(cur.categorie_e_id ?? null);
   }, [data, index]);
 
   useEffect(() => {
@@ -399,67 +405,40 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     setPickedId(reponseId);
   };
 
-  const patchQuestionCategories = async (
-    current: QuestionUi,
-    payload: { categorie_id?: number; categorie_e_id?: number | null },
-  ) => {
-    if (categoryBusy || nextBusy) return;
-    setCategoryBusy(true);
-    try {
-      const updated = await patchQuestion(current.id, payload);
-      setData((prev) => {
-        if (!prev) return prev;
-        const qs = [...prev.questions];
-        const qi = qs.findIndex((x) => x.id === current.id);
-        if (qi < 0 || !qs[qi]) return prev;
-        qs[qi] = {
-          ...qs[qi]!,
-          categorie_id: updated.categorie_id,
-          categorie_type: updated.categorie_type,
-          categorie_e_id: updated.categorie_e_id,
-          categorie_e_type: updated.categorie_e_type,
-          verifier: updated.verifier,
-        };
-        return { ...prev, questions: qs };
-      });
-    } catch {
-      setActionMessage("Impossible de mettre à jour la catégorie.");
-    } finally {
-      setCategoryBusy(false);
-    }
+  const resolveDraftParentKey = (): QuestionCategorieKey | null => {
+    if (draftCategoriePid == null) return null;
+    const h = refCategoriesHierarchy.find((row) => row.id === draftCategoriePid);
+    if (h?.type && isQuestionCategorieKey(h.type)) return h.type;
+    const f = refCategories.find((row) => row.id === draftCategoriePid);
+    if (f?.type && isQuestionCategorieKey(f.type)) return f.type;
+    return null;
   };
 
   const handleParentCategory = (parentKey: QuestionCategorieKey) => {
-    if (data == null) return;
-    const current = data.questions[index];
-    if (!current || categoryBusy || nextBusy || fetchingMore) return;
+    if (data == null || nextBusy || fetchingMore || deleteBusy) return;
 
     const fromHierarchy = refCategoriesHierarchy.find((row) => row.type === parentKey);
     const fromFlat = refCategories.find((row) => row.type === parentKey);
     const parentId = fromHierarchy?.id ?? fromFlat?.id;
     if (parentId == null) return;
 
-    const sameParent = current.categorie_type === parentKey;
-    if (sameParent && current.categorie_e_id != null) {
-      void patchQuestionCategories(current, { categorie_e_id: null });
+    if (resolveDraftParentKey() === parentKey) {
+      setDraftCategoriePid(null);
+      setDraftCategorieEid(null);
       return;
     }
-    if (sameParent && current.categorie_e_id == null) {
-      return;
-    }
-
-    void patchQuestionCategories(current, { categorie_id: parentId });
+    setDraftCategoriePid(parentId);
+    setDraftCategorieEid(null);
   };
 
   const handleChildCategory = (enfantId: number) => {
-    if (data == null) return;
-    const current = data.questions[index];
-    if (!current || categoryBusy || nextBusy || fetchingMore) return;
+    if (data == null || nextBusy || fetchingMore || deleteBusy) return;
+    if (draftCategoriePid == null) return;
 
-    if (current.categorie_e_id === enfantId) {
-      void patchQuestionCategories(current, { categorie_e_id: null });
+    if (draftCategorieEid === enfantId) {
+      setDraftCategorieEid(null);
     } else {
-      void patchQuestionCategories(current, { categorie_e_id: enfantId });
+      setDraftCategorieEid(enfantId);
     }
   };
 
@@ -484,6 +463,53 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     }
   };
 
+  const syncDraftCategoriesIfNeeded = async (): Promise<boolean> => {
+    if (data == null) return false;
+    const curQ = data.questions[index];
+    if (curQ == null) return false;
+
+    if (draftCategoriePid === null) {
+      setActionMessage(
+        "Choisis une catégorie parente avant « Suivant » ou la fin de session (aucune n’est pas enregistrable en base).",
+      );
+      return false;
+    }
+
+    const sameParent = draftCategoriePid === curQ.categorie_id;
+    const sameChild = (draftCategorieEid ?? null) === (curQ.categorie_e_id ?? null);
+    if (sameParent && sameChild) return true;
+
+    try {
+      const patchBody: { categorie_id?: number; categorie_e_id?: number | null } = {};
+      if (!sameParent) {
+        patchBody.categorie_id = draftCategoriePid;
+        patchBody.categorie_e_id = draftCategorieEid ?? null;
+      } else {
+        patchBody.categorie_e_id = draftCategorieEid ?? null;
+      }
+      const updated = await patchQuestion(curQ.id, patchBody);
+      setData((prev) => {
+        if (!prev) return prev;
+        const qs = [...prev.questions];
+        const qi = qs.findIndex((x) => x.id === curQ.id);
+        if (qi < 0 || !qs[qi]) return prev;
+        qs[qi] = {
+          ...qs[qi]!,
+          categorie_id: updated.categorie_id,
+          categorie_type: updated.categorie_type,
+          categorie_e_id: updated.categorie_e_id,
+          categorie_e_type: updated.categorie_e_type,
+          verifier: qs[qi]!.verifier,
+        };
+        return { ...prev, questions: qs };
+      });
+      return true;
+    } catch {
+      setActionMessage("Enregistrement des catégories impossible. Réessaie.");
+      return false;
+    }
+  };
+
   const handleNext = () => {
     if (nextBusy || pickedId == null || data == null) return;
     const total = data.questions.length;
@@ -491,6 +517,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setNextBusy(true);
       try {
         if (!(await syncVerifierIfNeeded())) return;
+        if (!(await syncDraftCategoriesIfNeeded())) return;
 
         const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
         const nextGood = good + delta;
@@ -585,6 +612,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setNextBusy(true);
       try {
         if (!(await syncVerifierIfNeeded())) return;
+        if (!(await syncDraftCategoriesIfNeeded())) return;
         const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
         const nextGood = good + delta;
         playedTowardResultsRef.current += 1;
@@ -658,6 +686,15 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const correct = revealed && pickedId != null && isPickedCorrect(data.questions, index, pickedId);
   const anecdote = (q.commentaire ?? "").trim();
   const backTarget = data.mode === "random" ? "/" : "/collections";
+  const categoryPendingSync =
+    draftCategoriePid !== q.categorie_id ||
+    (draftCategorieEid ?? null) !== (q.categorie_e_id ?? null);
+  const categoryResumeLine = formatSessionDraftCategorieResume(
+    draftCategoriePid,
+    draftCategorieEid,
+    refCategoriesHierarchy,
+  );
+  const draftResolvedParentKey = resolveDraftParentKey();
 
   const session = {
     data,
@@ -696,7 +733,11 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     categorieSections: {
       hierarchy: refCategoriesHierarchy,
       parentKeys: getSupportedQuestionCategories(refCategories),
-      categoryBusy,
+      draftParentKeyResolved: draftResolvedParentKey,
+      draftParentId: draftCategoriePid,
+      draftEnfantId: draftCategorieEid,
+      resumeLine: categoryResumeLine,
+      pendingSync: categoryPendingSync,
       onParentCategory: handleParentCategory,
       onChildCategory: handleChildCategory,
     },

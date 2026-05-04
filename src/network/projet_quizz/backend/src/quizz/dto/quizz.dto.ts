@@ -3,9 +3,11 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
+  Max,
   Min,
   MinLength,
   ValidateIf,
@@ -156,5 +158,55 @@ export class AttachQuestionToSousCollectionBodyDto {
   @IsInt()
   @Min(1)
   question_id!: number;
+}
+
+export class CreatePersonaliteCollectionDto {
+  @IsInt()
+  @Min(1)
+  userId!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsString()
+  @MinLength(1)
+  prenom!: string;
+
+  @IsInt()
+  @Min(-10000)
+  @Max(9999)
+  naissance!: number;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsInt()
+  @Min(-10000)
+  @Max(9999)
+  mort?: number | null;
+
+  @IsString()
+  resumer!: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  moduleId?: number;
+}
+
+export class AssignPersonaliteToCollectionDto {
+  @IsInt()
+  @Min(1)
+  userId!: number;
+
+  @IsInt()
+  @Min(1)
+  personaliteId!: number;
+
+  /** `null` ou omis : `importance_id` NULL dans `personnalité_collection`. */
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null && v !== '')
+  @IsIn(['pionnier', 'important', 'secondaire'])
+  importanceType?: 'pionnier' | 'important' | 'secondaire' | null;
 }
 

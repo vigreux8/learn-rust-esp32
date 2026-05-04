@@ -57,6 +57,24 @@ export interface CollectionPersonnaliteRef {
   prenom: string;
   /** ex. pionnier, important, secondaire (`ref_importance_personalite.type`). */
   importance_type: string | null;
+  /** Présente si la ligne peut être retirée (liaison `personnalité_collection`). */
+  detachable?: boolean;
+  /** Collection à ouvrir pour la fiche (questions / jeu). */
+  fiche_collection_id: number;
+}
+
+/** Référentiel importance (boutons pionnier / important / secondaire). */
+export interface RefImportancePersonaliteUi {
+  id: number;
+  type: string;
+}
+
+/** Liste des personnalités pour rattacher à une carte. */
+export interface PersonalitePickerRowUi {
+  id: number;
+  nom: string;
+  prenom: string;
+  collection_id: number;
 }
 
 export interface CollectionUi {
@@ -105,6 +123,7 @@ export interface RefCategorieRow {
   type: string;
 }
 
+/** Parents `ref_p_categorie` avec enfants `ref_e_categorie` (`GET /quizz/categories/hierarchy`). */
 export interface RefCategorieHierarchyRow {
   id: number;
   type: string;

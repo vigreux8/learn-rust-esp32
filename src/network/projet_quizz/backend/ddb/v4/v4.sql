@@ -194,10 +194,10 @@ CREATE TABLE IF NOT EXISTS "personalite" (
 	"collection_id" INTEGER NOT NULL,
 	"nom" TEXT NOT NULL,
 	"Prenom" TEXT NOT NULL,
-	-- ces une date respect du format : ISO 8601, car la date est avant 1970
-	"naissance" TEXT NOT NULL,
-	-- ces une date respect du format : ISO 8601, car la date est avant 1970, none car la personne peu-etre encore en vie
-	"mort" TEXT,
+	-- année civile entière (SQLite INTEGER)
+	"naissance" INTEGER NOT NULL,
+	-- année du décès, NULL si vivant ou inconnu
+	"mort" INTEGER,
 	-- résumer rapide la vie de la personalité
 	"resumer" TEXT NOT NULL,
 	PRIMARY KEY("id"),

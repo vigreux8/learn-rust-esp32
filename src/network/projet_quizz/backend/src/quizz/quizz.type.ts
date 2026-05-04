@@ -16,9 +16,8 @@ export type QuestionUi = {
   categorie_id: number;
   /** `ref_p_categorie.type` (ex. histoire, pratique). */
   categorie_type: string;
-  /** `ref_e_categorie.id` si une sous-catégorie est liée (`relation_categorie`). */
+  /** `ref_e_categorie.id` via `relation_categorie`, ou `null`. */
   categorie_e_id: number | null;
-  /** `ref_e_categorie.type` si `categorie_e_id` présent ; sinon `null`. */
   categorie_e_type: string | null;
   reponses: ReponseUi[];
 };
@@ -41,6 +40,23 @@ export type CollectionPersonnaliteRef = {
   prenom: string;
   /** `ref_importance_personalite.type` si présent (ex. pionnier, important, secondaire). */
   importance_type: string | null;
+  /** Retrait possible seulement via une ligne `personnalité_collection`. */
+  detachable: boolean;
+  /** Collection dédiée à la fiche personnalité (`personalite.collection_id`). */
+  fiche_collection_id: number;
+};
+
+export type RefImportancePersonaliteDto = {
+  id: number;
+  type: string;
+};
+
+/** Liste pour rattacher une personnalité à une collection (hors exclusions). */
+export type PersonalitePickerRowDto = {
+  id: number;
+  nom: string;
+  prenom: string;
+  collection_id: number;
 };
 
 /** Question rattachée à une collection enfant (`question_collection`). */
@@ -108,6 +124,7 @@ export type QuizzQuestionRow = {
   categorie_id: number;
   /** `ref_p_categorie.type` (ex. histoire, pratique). */
   categorie_type: string;
+  /** `ref_e_categorie.id`, ou `null`. */
   categorie_e_id: number | null;
   categorie_e_type: string | null;
   collections: QuizzCollectionRef[];
@@ -122,7 +139,7 @@ export type RefCategorieRow = {
   type: string;
 };
 
-/** Parents `ref_p_categorie` avec leurs enfants `ref_e_categorie` (via `relation_categorie`). */
+/** Parents `ref_p_categorie` avec enfants `ref_e_categorie` (`GET /quizz/categories/hierarchy`). */
 export type RefCategorieHierarchyRow = {
   id: number;
   type: string;

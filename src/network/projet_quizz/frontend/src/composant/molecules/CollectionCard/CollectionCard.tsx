@@ -1,5 +1,5 @@
 import { Fragment } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useMemo, useState } from "preact/hooks";
 import { route } from "preact-router";
 import type { JSX } from "preact";
 import { ChevronRight, FolderTree, LayoutGrid, ListTree, Trash2, X } from "lucide-preact";
@@ -38,13 +38,25 @@ export function CollectionCard({
   onAssign,
   onUnassign,
   onDeleteCollection,
+  personalitesPicker = [],
+  assignPersoBusyCollectionId = null,
+  onAssignPerso,
+  onUnassignPerso,
 }: CollectionCardProps) {
   const n = collection.questions.length;
-  const uiLocked = interactionLocked || assignBusyCollectionId !== null || deleteBusyCollectionId !== null;
+  const uiLocked =
+    interactionLocked ||
+    assignBusyCollectionId !== null ||
+    deleteBusyCollectionId !== null ||
+    assignPersoBusyCollectionId !== null;
   const counts = collection.question_counts_by_type;
   const isMine = collection.user_id === myUserId;
   const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
   const [playSousCollectionId, setPlaySousCollectionId] = useState<number | "">("");
+  const [chosenPersoId, setChosenPersoId] = useState<number | "">("");
+  const [importPick, setImportPick] = useState<"" | "pionnier" | "important" | "secondaire">("");
+  const [persoSearch, setPersoSearch] = useState("");
+  const [persoSuggestFocused, setPersoSuggestFocused] = useState(false);
   const linkedModules = collection.modules ?? [];
   const sousForPlay = collection.sous_collections ?? [];
   const sousChildren = collection.sous_collections ?? [];
@@ -60,9 +72,62 @@ export function CollectionCard({
   };
 
   const assignable = allModules.filter((m) => !linkedModules.some((l) => l.id === m.id));
+  const persoPickable = useMemo(() => {
+    if (!isMine || onAssignPerso == null || personalitesPicker.length === 0) return [];
+    const linkedIds = new Set((collection.personnalites ?? []).map((x) => x.id));
+    return personalitesPicker.filter(
+      (row) => row.collection_id !== collection.id && !linkedIds.has(row.id),
+    );
+  }, [personalitesPicker, collection.id, collection.personnalites, isMine, onAssignPerso]);
+
+  const persoSearchMatches = useMemo(() => {
+    const q = persoSearch.trim().toLowerCase();
+    const pool = persoPickable;
+    if (q === "") return pool.slice(0, 10);
+    return pool
+      .filter((row) => {
+        const full = `${row.prenom} ${row.nom}`.toLowerCase();
+        return full.includes(q) || row.nom.toLowerCase().includes(q) || row.prenom.toLowerCase().includes(q);
+      })
+      .slice(0, 12);
+  }, [persoPickable, persoSearch]);
+
+  const showPersoSuggestPanel = persoSuggestFocused && persoSearchMatches.length > 0 && !uiLocked;
+
+  const chosenPersoRow = useMemo(
+    () => (chosenPersoId === "" ? undefined : persoPickable.find((r) => r.id === chosenPersoId)),
+    [chosenPersoId, persoPickable],
+  );
+
   const moduleLinkKey = linkedModules.map((m) => m.id).join(",");
   useEffect(() => setSelectedModuleId(""), [collection.id, moduleLinkKey]);
   useEffect(() => setPlaySousCollectionId(""), [collection.id]);
+  useEffect(() => {
+    setChosenPersoId("");
+    setImportPick("");
+    setPersoSearch("");
+    setPersoSuggestFocused(false);
+  }, [collection.id]);
+
+  const navigateToPlay = (targetCollId: number) => {
+    const orders = buildPlayOrdersFromPicker(playMode);
+    const sousQ =
+      targetCollId === collection.id && playSousCollectionId !== "" ? playSousCollectionId : undefined;
+    route(`/play/${targetCollId}${buildPlaySessionQuery({
+      orders,
+      qtype: playQtype,
+      infinite: playInfinite,
+      userId: playOrdersRequireUserId(orders) ? myUserId : undefined,
+      sousCollectionId: sousQ,
+    })}`);
+  };
+
+  const importanceButtons = [
+    { value: "" as const, label: "Sans niveau" },
+    { value: "pionnier" as const, label: "Pionnier" },
+    { value: "important" as const, label: "Important" },
+    { value: "secondaire" as const, label: "Secondaire" },
+  ];
 
   return (
     <Fragment>
@@ -71,16 +136,48 @@ export function CollectionCard({
           {personnalitesSorted.map((p) => (
             <div
               key={p.id}
-              class="rounded-2xl border-2 bg-base-100/95 px-3 py-2 shadow-sm"
+              class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 bg-base-100/95 px-3 py-2 shadow-sm"
               style={{ borderColor: personnaliteStripBorderHex(p.importance_type) }}
             >
-              <p class="text-[11px] font-medium uppercase tracking-wide text-base-content/45">Personnalité</p>
-              <p class="text-sm font-semibold text-base-content">
-                {p.prenom} {p.nom}
-                {p.importance_type ? (
-                  <span class="ml-2 text-xs font-normal text-base-content/55">· {p.importance_type}</span>
+              <button
+                type="button"
+                class="min-w-0 flex-1 rounded-lg text-left transition hover:bg-base-200/50 sm:pr-2"
+                disabled={uiLocked}
+                aria-label={`Ouvrir la collection de ${p.prenom} ${p.nom}`}
+                onClick={() => route(buildQuestionsRoutePath(p.fiche_collection_id, []))}
+              >
+                <p class="text-[11px] font-medium uppercase tracking-wide text-base-content/45">Personnalité</p>
+                <p class="text-sm font-semibold text-base-content">
+                  {p.prenom} {p.nom}
+                  {p.importance_type ? (
+                    <span class="ml-2 text-xs font-normal text-base-content/55">· {p.importance_type}</span>
+                  ) : null}
+                </p>
+                <p class="mt-0.5 text-[10px] text-base-content/45">Collection liée · cliquer pour les questions</p>
+              </button>
+              <div class="flex shrink-0 items-center gap-1">
+                <Button
+                  variant="flow"
+                  class="btn-xs gap-0.5"
+                  disabled={uiLocked}
+                  onClick={() => navigateToPlay(p.fiche_collection_id)}
+                >
+                  Jouer
+                  <ChevronRight class="h-3.5 w-3.5" aria-hidden />
+                </Button>
+                {isMine && p.detachable === true && onUnassignPerso != null ? (
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs shrink-0 text-error hover:bg-error/10"
+                    title="Dissocier"
+                    aria-label={`Dissocier ${p.prenom} ${p.nom}`}
+                    disabled={uiLocked}
+                    onClick={() => void onUnassignPerso(collection.id, p.id)}
+                  >
+                    <X class="h-3.5 w-3.5" aria-hidden />
+                  </button>
                 ) : null}
-              </p>
+              </div>
             </div>
           ))}
         </div>
@@ -207,6 +304,102 @@ export function CollectionCard({
             </div>
           ) : null}
           {isMine && allModules.length === 0 ? <p class="border-t border-base-content/10 pt-3 text-xs text-base-content/50">Crée d’abord une supercollection (bloc ci-dessus) pour pouvoir rattacher cette collection.</p> : null}
+          {isMine && persoPickable.length > 0 && onAssignPerso != null ? (
+            <div class="flex flex-col gap-2 border-t border-base-content/10 pt-3 sm:max-w-md"
+              onClick={(e) => e.stopPropagation()}>
+              <p class="text-xs font-medium text-base-content/55">Associer une personnalité</p>
+              <div class="relative">
+                <label class="sr-only" for={`perso-search-${collection.id}`}>Rechercher une personnalité</label>
+                <input
+                  id={`perso-search-${collection.id}`}
+                  type="search"
+                  autoComplete="off"
+                  class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100"
+                  placeholder="Prénom, nom…"
+                  disabled={uiLocked}
+                  value={persoSearch}
+                  onInput={(e) => setPersoSearch((e.target as HTMLInputElement).value)}
+                  onFocus={() => setPersoSuggestFocused(true)}
+                  onBlur={() => {
+                    setTimeout(() => setPersoSuggestFocused(false), 180);
+                  }}
+                />
+                {showPersoSuggestPanel ? (
+                  <ul
+                    class="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border border-base-content/10 bg-base-100 py-1 shadow-lg"
+                    role="listbox"
+                  >
+                    {persoSearchMatches.map((row) => (
+                      <li key={row.id} role="option">
+                        <button
+                          type="button"
+                          class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-base-200/80"
+                          onMouseDown={(ev) => ev.preventDefault()}
+                          onClick={() => {
+                            setChosenPersoId(row.id);
+                            setPersoSearch(`${row.prenom} ${row.nom}`);
+                            setPersoSuggestFocused(false);
+                          }}
+                        >
+                          <span class="font-medium text-base-content">{row.prenom} {row.nom}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              {chosenPersoRow != null ? (
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-xs text-base-content/60">
+                    Sélection :{" "}
+                    <span class="font-medium text-base-content">
+                      {chosenPersoRow.prenom} {chosenPersoRow.nom}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs rounded-full"
+                    disabled={uiLocked}
+                    onClick={() => {
+                      setChosenPersoId("");
+                      setPersoSearch("");
+                    }}
+                  >
+                    Changer
+                  </button>
+                </div>
+              ) : null}
+              <div class="flex flex-wrap gap-1">
+                <span class="w-full text-[10px] font-medium uppercase tracking-wide text-base-content/45">Importance dans cette collection</span>
+                {importanceButtons.map((b) => (
+                  <button
+                    key={b.value === "" ? "none" : b.value}
+                    type="button"
+                    disabled={uiLocked}
+                    class={
+                      importPick === b.value
+                        ? "btn btn-primary btn-xs rounded-full px-3"
+                        : "btn btn-ghost btn-xs rounded-full border border-base-content/10 px-3"
+                    }
+                    onClick={() => setImportPick(b.value)}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                class="btn-sm w-fit"
+                disabled={uiLocked || chosenPersoId === "" || assignPersoBusyCollectionId === collection.id}
+                onClick={() => {
+                  if (chosenPersoId === "") return;
+                  void onAssignPerso(collection.id, chosenPersoId, importPick);
+                }}
+              >
+                {assignPersoBusyCollectionId === collection.id ? "…" : "Associer"}
+              </Button>
+            </div>
+          ) : null}
         </div>
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
           <Button variant="outline" class="btn-sm gap-1" onClick={handleQuestionsClick}><ListTree class="h-4 w-4" aria-hidden />Questions</Button>
@@ -252,15 +445,7 @@ export function CollectionCard({
           ) : null}
           <Button variant="flow" class="btn-sm gap-1" onClick={(e) => {
             e.stopPropagation();
-            const orders = buildPlayOrdersFromPicker(playMode);
-            const sousQ = playSousCollectionId === "" ? undefined : playSousCollectionId;
-            route(`/play/${collection.id}${buildPlaySessionQuery({
-              orders,
-              qtype: playQtype,
-              infinite: playInfinite,
-              userId: playOrdersRequireUserId(orders) ? myUserId : undefined,
-              sousCollectionId: sousQ,
-            })}`);
+            navigateToPlay(collection.id);
           }}>
             Jouer<ChevronRight class="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
           </Button>

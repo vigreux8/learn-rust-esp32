@@ -1,11 +1,12 @@
 import { FileJson, Layers, Search, Trash2 } from "lucide-preact";
 import type { PlayQtype } from "../../../lib/playOrder";
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
+import type { CollectionUi, PersonalitePickerRowUi, QuizzModuleRow } from "../../../types/quizz";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
 import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 import { CollectionCard } from "../../molecules/CollectionCard/CollectionCard";
+import { CreatePersonnaliteModal } from "../../molecules/CreatePersonnaliteModal/CreatePersonnaliteModal";
 import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 
 export function CollectionsHeader({
@@ -171,6 +172,19 @@ export function CollectionsContent({
   clearHierarchySubtree,
   setHierarchyRootFromCard,
   getTreeDepth,
+  newCollectionKind,
+  onChangeNewCollectionKind,
+  personnaliteModalOpen,
+  personnaliteModalBusy,
+  personnaliteModalError,
+  onOpenPersonnaliteModal,
+  onClosePersonnaliteModal,
+  onSubmitPersonnaliteModal,
+  personalitesPicker,
+  assignPersoBusyCollectionId,
+  assignPersoError,
+  onAssignPersoToCollection,
+  onUnassignPersoFromCollection,
 }: {
   modules: QuizzModuleRow[];
   pendingDelete: PendingDelete;
@@ -229,6 +243,30 @@ export function CollectionsContent({
   clearHierarchySubtree: () => void;
   setHierarchyRootFromCard: (collectionId: number, enabled: boolean) => void;
   getTreeDepth: (collection: CollectionUi) => number;
+  newCollectionKind: "normale" | "personnalite";
+  onChangeNewCollectionKind: (value: "normale" | "personnalite") => void;
+  personnaliteModalOpen: boolean;
+  personnaliteModalBusy: boolean;
+  personnaliteModalError: string | null;
+  onOpenPersonnaliteModal: () => void;
+  onClosePersonnaliteModal: () => void;
+  onSubmitPersonnaliteModal: (payload: {
+    nom: string;
+    prenom: string;
+    naissance: number;
+    mort: number | null;
+    resumer: string;
+    moduleId: number | "";
+  }) => void | Promise<void>;
+  personalitesPicker: PersonalitePickerRowUi[];
+  assignPersoBusyCollectionId: number | null;
+  assignPersoError: string | null;
+  onAssignPersoToCollection: (
+    collectionId: number,
+    personaliteId: number,
+    importanceType: "" | "pionnier" | "important" | "secondaire",
+  ) => void | Promise<void>;
+  onUnassignPersoFromCollection: (collectionId: number, personaliteId: number) => void | Promise<void>;
 }) {
   return (
     <>
@@ -289,7 +327,7 @@ export function CollectionsContent({
                   type="button"
                   class="btn btn-ghost btn-xs shrink-0 gap-1 text-error hover:bg-error/10"
                   aria-label={`Supprimer la supercollection ${m.nom}`}
-                  disabled={deleteModuleBusyId !== null || assignBusyCollectionId !== null || deleteCollectionBusyId !== null || pendingDelete !== null}
+                  disabled={deleteModuleBusyId !== null || assignBusyCollectionId !== null || assignPersoBusyCollectionId !== null || deleteCollectionBusyId !== null || pendingDelete !== null}
                   onClick={() => onRequestDeleteModule(m)}
                 >
                   {deleteModuleBusyId === m.id ? <span class="loading loading-spinner loading-xs" aria-hidden /> : <Trash2 class="h-4 w-4" aria-hidden />}
@@ -315,28 +353,68 @@ export function CollectionsContent({
 
       <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
         <h2 class="text-sm font-semibold tracking-tight text-base-content">Nouvelle collection</h2>
-        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <div class="min-w-0 flex-1 sm:min-w-48">
-            <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-name">Nom</label>
-            <input id="new-collection-name" class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100" type="text" value={newCollName} disabled={createCollBusy} onInput={(e) => onChangeNewCollName((e.target as HTMLInputElement).value)} />
-          </div>
-          <div class="w-full sm:w-auto sm:min-w-40">
-            <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-module">Supercollection (optionnel)</label>
-            <select id="new-collection-module" class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100" value={newCollModuleId === "" ? "" : String(newCollModuleId)} disabled={createCollBusy || modules.length === 0} onChange={(e) => onChangeNewCollModuleId((e.target as HTMLSelectElement).value === "" ? "" : Number((e.target as HTMLSelectElement).value))}>
-              <option value="">—</option>
-              {modules.map((m) => (
-                <option key={m.id} value={m.id}>{m.nom}</option>
-              ))}
-            </select>
-          </div>
-          <Button variant="flow" class="btn-sm shrink-0" disabled={createCollBusy || !newCollName.trim()} onClick={onCreateCollection}>
-            {createCollBusy ? "Creation..." : "Creer collection"}
-          </Button>
+        <p class="mt-1 text-xs text-base-content/55">Choisis si la carte est une collection classique ou une fiche personnalité (titre automatique « Prénom Nom »).</p>
+        <div class="mt-3 inline-flex flex-wrap rounded-full border border-base-content/10 bg-base-100/70 p-1">
+          <button
+            type="button"
+            class={newCollectionKind === "normale" ? "btn btn-xs btn-primary rounded-full px-4" : "btn btn-ghost btn-xs rounded-full px-4"}
+            disabled={personnaliteModalBusy}
+            onClick={() => onChangeNewCollectionKind("normale")}
+          >
+            Normale
+          </button>
+          <button
+            type="button"
+            class={newCollectionKind === "personnalite" ? "btn btn-xs btn-primary rounded-full px-4" : "btn btn-ghost btn-xs rounded-full px-4"}
+            disabled={personnaliteModalBusy}
+            onClick={() => onChangeNewCollectionKind("personnalite")}
+          >
+            Personnalité
+          </button>
         </div>
+        {newCollectionKind === "normale" ? (
+          <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div class="min-w-0 flex-1 sm:min-w-48">
+              <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-name">Nom</label>
+              <input id="new-collection-name" class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100" type="text" value={newCollName} disabled={createCollBusy || personnaliteModalBusy} onInput={(e) => onChangeNewCollName((e.target as HTMLInputElement).value)} />
+            </div>
+            <div class="w-full sm:w-auto sm:min-w-40">
+              <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-module">Supercollection (optionnel)</label>
+              <select id="new-collection-module" class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100" value={newCollModuleId === "" ? "" : String(newCollModuleId)} disabled={createCollBusy || modules.length === 0 || personnaliteModalBusy} onChange={(e) => onChangeNewCollModuleId((e.target as HTMLSelectElement).value === "" ? "" : Number((e.target as HTMLSelectElement).value))}>
+                <option value="">—</option>
+                {modules.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nom}</option>
+                ))}
+              </select>
+            </div>
+            <Button variant="flow" class="btn-sm shrink-0" disabled={createCollBusy || personnaliteModalBusy || !newCollName.trim()} onClick={onCreateCollection}>
+              {createCollBusy ? "Creation..." : "Creer collection"}
+            </Button>
+          </div>
+        ) : (
+          <div class="mt-4 flex flex-col gap-2 rounded-xl border border-flow/20 bg-flow/8 p-4">
+            <p class="text-sm text-base-content/80">
+              Une pop-up permet de saisir la personnalité. La collection sera nommée exactement comme sa fiche (prénom + nom).
+            </p>
+            <Button variant="flow" class="btn-sm w-fit" disabled={createCollBusy} onClick={onOpenPersonnaliteModal}>
+              Ouvrir le formulaire personnalité
+            </Button>
+          </div>
+        )}
         {createCollError ? <p class="mt-2 text-xs text-error">{createCollError}</p> : null}
       </section>
 
+      <CreatePersonnaliteModal
+        open={personnaliteModalOpen}
+        busy={personnaliteModalBusy}
+        error={personnaliteModalError}
+        modules={modules}
+        onClose={onClosePersonnaliteModal}
+        onSubmit={(payload) => void onSubmitPersonnaliteModal(payload)}
+      />
+
       {assignError ? <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{assignError}</p> : null}
+      {assignPersoError ? <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{assignPersoError}</p> : null}
       {deleteCollectionError ? <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{deleteCollectionError}</p> : null}
 
       <fieldset class="mb-6">
@@ -488,8 +566,16 @@ export function CollectionsContent({
                 }
                 onAssign={onAssign}
                 onUnassign={onUnassign}
-                interactionLocked={pendingDelete !== null}
+                interactionLocked={
+                  pendingDelete !== null ||
+                  assignBusyCollectionId !== null ||
+                  assignPersoBusyCollectionId !== null
+                }
                 onDeleteCollection={onRequestDeleteCollection}
+                personalitesPicker={personalitesPicker}
+                assignPersoBusyCollectionId={assignPersoBusyCollectionId}
+                onAssignPerso={onAssignPersoToCollection}
+                onUnassignPerso={onUnassignPersoFromCollection}
               />
             </li>
           ))}
