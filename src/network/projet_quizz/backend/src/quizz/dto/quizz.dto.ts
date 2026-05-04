@@ -108,28 +108,3 @@ export class CreateStandaloneCollectionDto {
   moduleId?: number;
 }
 
-/** Création d’une sous-collection rattachée à une collection existante. */
-export class CreateSousCollectionDto {
-  @IsInt()
-  @Min(1)
-  user_id!: number;
-
-  @IsString()
-  @MinLength(1)
-  nom!: string;
-
-  @IsString()
-  description!: string;
-}
-
-/** Rattache une question déjà liée à la collection parente à une sous-collection. */
-export class AttachQuestionToSousCollectionDto {
-  @IsInt()
-  @Min(1)
-  user_id!: number;
-
-  @IsInt()
-  @Min(1)
-  question_id!: number;
-}
-

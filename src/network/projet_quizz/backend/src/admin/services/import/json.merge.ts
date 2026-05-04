@@ -147,9 +147,9 @@ function findDeviceIdByMac(db: Database.Database, mac: string): number | null {
   return row?.id ?? null;
 }
 
-function findRefCategorieIdByType(db: Database.Database, type: string): number | null {
+function findRefPCategorieIdByType(db: Database.Database, type: string): number | null {
   const row = db
-    .prepare(`SELECT id FROM ref_categorie WHERE type = ?`)
+    .prepare(`SELECT id FROM ref_p_categorie WHERE type = ?`)
     .get(type) as { id: number } | undefined;
   return row?.id ?? null;
 }
@@ -227,20 +227,31 @@ export class FormatV1Strategy {
       }
 
       if (table === 'quizz_question') {
-        const rawCat = out.categorie_id;
+        const rawCat =
+          typeof out.categorie_p_id === 'number'
+            ? out.categorie_p_id
+            : typeof out.categorie_id === 'number'
+              ? out.categorie_id
+              : null;
         if (typeof rawCat === 'number') {
-          const importedCatRow = importedTables.ref_categorie?.rows.find((r) => r.id === rawCat) as
+          const dumpCat = importedTables.ref_p_categorie ?? importedTables.ref_categorie;
+          const importedCatRow = dumpCat?.rows.find((r) => r.id === rawCat) as
             | { type?: unknown }
             | undefined;
           const type = typeof importedCatRow?.type === 'string' ? importedCatRow.type : null;
           if (type) {
-            const localId = findRefCategorieIdByType(db, type);
-            if (localId != null && localId !== rawCat) {
-              out.categorie_id = localId;
-              remappedIds += 1;
+            const localId = findRefPCategorieIdByType(db, type);
+            if (localId != null) {
+              if (localId !== rawCat) remappedIds += 1;
+              out.categorie_p_id = localId;
+            } else {
+              out.categorie_p_id = rawCat;
             }
+          } else {
+            out.categorie_p_id = rawCat;
           }
         }
+        delete out.categorie_id;
       }
 
       return out;
@@ -294,21 +305,26 @@ export class FormatV1Strategy {
         return 'inserted';
       }
 
-      if (table === 'ref_categorie') {
+      if (table === 'ref_p_categorie' || table === 'ref_categorie') {
         const oldId = typeof row.id === 'number' ? row.id : null;
         const type = typeof row.type === 'string' ? row.type : '';
         if (!type) return 'skipped';
-        const existingId = findRefCategorieIdByType(db, type);
+        const existingId = findRefPCategorieIdByType(db, type);
         if (existingId != null) {
           if (oldId != null) pkMap?.set(oldId, existingId);
           return 'mapped';
         }
-        const cols = Object.keys(row);
-        const vals = cols.map((c) => row[c]);
-        db.exec(buildInsertSql(table, cols, vals));
+        const desc =
+          typeof row.description === 'string' && row.description.trim() !== ''
+            ? String(row.description)
+            : type;
+        const insertPayload: Record<string, unknown> = { type, description: desc };
+        if (oldId != null) insertPayload.id = oldId;
+        const cols = Object.keys(insertPayload);
+        const vals = cols.map((c) => insertPayload[c]!);
+        db.exec(buildInsertSql('ref_p_categorie', cols, vals));
         if (oldId != null && pkCol) {
-          const newRow = db.prepare(`SELECT last_insert_rowid() AS id`).get() as { id: number };
-          pkMap?.set(oldId, newRow.id);
+          pkMap?.set(oldId, oldId);
         }
         return 'inserted';
       }

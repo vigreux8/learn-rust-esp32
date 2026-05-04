@@ -90,9 +90,8 @@ export class QuizzImportService {
     targetCollectionId: number;
     questions: LlmImportQuestionDto[];
     categorieId: number;
-    sousCollectionId?: number;
   }): Promise<{ createdQuestions: number }> {
-    const { userId, targetCollectionId, questions, categorieId, sousCollectionId } = params;
+    const { userId, targetCollectionId, questions, categorieId } = params;
     let createdQuestions = 0;
     const t = nowIso();
     await this.prisma.prisma.$transaction(async (tx) => {
@@ -107,14 +106,6 @@ export class QuizzImportService {
           verifier: false,
         });
         createdQuestions += 1;
-        if (sousCollectionId != null) {
-          await tx.relation_sous_collections.create({
-            data: {
-              sous_collection_id: sousCollectionId,
-              question_id: questionId,
-            },
-          });
-        }
       }
       await tx.quizz_collection.update({
         where: { id: targetCollectionId },
@@ -131,7 +122,6 @@ export class QuizzImportService {
       collections: LlmImportCollectionBlockDto[];
       questionsSansCollection: LlmImportQuestionDto[];
       collectionId?: number;
-      sousCollectionId?: number;
     },
   ): Promise<{
     createdQuestions: number;
@@ -143,7 +133,6 @@ export class QuizzImportService {
       collections,
       questionsSansCollection,
       collectionId,
-      sousCollectionId,
     } = params;
     if (collectionId != null) {
       const flat = [...collections.flatMap((b) => b.questions), ...questionsSansCollection];
@@ -153,7 +142,6 @@ export class QuizzImportService {
           targetCollectionId: collectionId,
           questions: flat,
           categorieId,
-          sousCollectionId,
         },
       );
       return { createdQuestions, createdCollections: 0 };

@@ -7,92 +7,99 @@ datasource db {
 }
 
 model device {
-  id          Int           @id @unique(map: "sqlite_autoindex_device_1") @default(autoincrement())
+  id          Int           @id @default(autoincrement())
   adresse_mac String
   user_device user_device[]
 }
 
-model question_collection {
-  id               Int              @id @unique(map: "sqlite_autoindex_question_collection_1") @default(autoincrement())
-  collection_id    Int
-  question_id      Int
-  quizz_question   quizz_question   @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_collection quizz_collection @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+model ref_importance {
+  id             Int              @id @default(autoincrement())
+  lvl            String
+  quizz_question quizz_question[]
 }
 
-model quizz_collection {
-  id                      Int                       @id @unique(map: "sqlite_autoindex_quizz_collection_1") @default(autoincrement())
-  user_id                 Int
-  create_at               String
-  update_at               String
-  nom                     String
-  question_collection     question_collection[]
-  user                    user                      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_module_collection quizz_module_collection[]
-  sous_collections        sous_collections[]
+model ref_difficulter {
+  id             Int              @id @default(autoincrement())
+  lvl            String
+  quizz_question quizz_question[]
+}
+
+model relation_collection {
+  id            Int @id @default(autoincrement())
+  p_collection  Int
+  e_collection  Int
+  parent_quizz  quizz_collection @relation("relation_collection_parent", fields: [p_collection], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  child_quizz   quizz_collection @relation("relation_collection_child", fields: [e_collection], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("relation-collection")
+}
+
+model groupe_questions {
+  id                 Int                  @id @default(autoincrement())
+  /// Colonne SQL `nom` (INTEGER dans v4.sql — aligné sur l’artefact ddb).
+  nom                Int
+  description        String?
+  question_reflexion question_reflexion[]
 }
 
 model quizz_module {
-  id                      Int                       @id @unique(map: "sqlite_autoindex_quizz_module_1") @default(autoincrement())
+  id                      Int                       @id @default(autoincrement())
   nom                     String
   create_at               String
   update_at               String
   quizz_module_collection quizz_module_collection[]
 }
 
-model quizz_module_collection {
-  id               Int              @id @unique(map: "sqlite_autoindex_quizz_module_collection_1") @default(autoincrement())
-  module_id        Int
-  collection_id    Int
-  quizz_collection quizz_collection @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_module     quizz_module     @relation(fields: [module_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+model ref_p_categorie {
+  id                        Int                 @id @default(autoincrement())
+  type                      String
+  description               String
+  quizz_question            quizz_question[]
+  relation_categorie_parent relation_categorie[] @relation("relation_categorie_p")
 }
 
-model quizz_question {
-  id                                                                                    Int                           @id @unique(map: "sqlite_autoindex_quizz_question_1") @default(autoincrement())
-  user_id                                                                               Int
-  categorie_id                                                                          Int
-  create_at                                                                             String
-  question                                                                              String
-  commentaire                                                                           String
-  /**
-   * 0/1 en SQLite : question validée (« fakechecker » côté JSON app).
-   */
-  verifier                                                                              Boolean                       @default(false)
-  question_collection                                                                   question_collection[]
-  ref_categorie                                                                         ref_categorie                 @relation(fields: [categorie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user                                                                                  user                          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_question_reponse                                                                quizz_question_reponse[]
-  relation_question_implicite_relation_question_implicite_question_e_idToquizz_question relation_question_implicite[] @relation("relation_question_implicite_question_e_idToquizz_question")
-  relation_question_implicite_relation_question_implicite_question_p_idToquizz_question relation_question_implicite[] @relation("relation_question_implicite_question_p_idToquizz_question")
-  relation_sous_collections                                                             relation_sous_collections[]
-  user_kpi                                                                              user_kpi[]
+model ref_e_categorie {
+  id                       Int                 @id @default(autoincrement())
+  type                     String
+  description              String
+  quizz_question             quizz_question[]
+  relation_categorie_enfant relation_categorie[] @relation("relation_categorie_e")
 }
 
-model quizz_question_reponse {
-  id             Int            @id @unique(map: "sqlite_autoindex_quizz_question_reponse_1") @default(autoincrement())
-  question_id    Int
-  reponse_id     Int
-  quizz_reponse  quizz_reponse  @relation(fields: [reponse_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_question quizz_question @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+model relation_categorie {
+  id          Int @id @default(autoincrement())
+  p_categorie Int
+  e_categorie Int
+  parent      ref_p_categorie @relation("relation_categorie_p", fields: [p_categorie], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  enfant      ref_e_categorie @relation("relation_categorie_e", fields: [e_categorie], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model quizz_reponse {
-  id                     Int                      @id @unique(map: "sqlite_autoindex_quizz_reponse_1") @default(autoincrement())
+  id                     Int                      @id @default(autoincrement())
   reponse                String
   bonne_reponse          Int
   quizz_question_reponse quizz_question_reponse[]
   user_kpi               user_kpi[]
 }
 
-model ref_categorie {
-  id             Int              @id @unique(map: "sqlite_autoindex_ref_categorie_1") @default(autoincrement())
-  type           String
-  quizz_question quizz_question[]
+model quizz_question_reponse {
+  id             Int            @id @default(autoincrement())
+  question_id    Int
+  reponse_id     Int
+  quizz_reponse  quizz_reponse  @relation(fields: [reponse_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_question quizz_question @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_device {
+  id        Int    @id @default(autoincrement())
+  user_id   Int
+  device_id Int
+  device    device @relation(fields: [device_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      user   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model user {
-  id               Int                @id @unique(map: "sqlite_autoindex_user_1") @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   pseudot          String
   quizz_collection quizz_collection[]
   quizz_question   quizz_question[]
@@ -100,16 +107,60 @@ model user {
   user_kpi         user_kpi[]
 }
 
-model user_device {
-  id        Int    @id @unique(map: "sqlite_autoindex_user_device_1") @default(autoincrement())
-  user_id   Int
-  device_id Int
-  device    device @relation(fields: [device_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user      user   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+model quizz_question {
+  id               Int     @id @default(autoincrement())
+  user_id          Int
+  importance_id    Int?
+  difficulter_id   Int?
+  categorie_p_id   Int
+  categorie_e_id   Int?
+  create_at        String
+  question         String
+  commentaire      String
+  verifier         Boolean @default(false)
+
+  user               user               @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ref_importance     ref_importance?    @relation(fields: [importance_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ref_difficulter    ref_difficulter?   @relation(fields: [difficulter_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ref_p_categorie    ref_p_categorie    @relation(fields: [categorie_p_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ref_e_categorie    ref_e_categorie?   @relation(fields: [categorie_e_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  question_collection question_collection[]
+  quizz_question_reponse quizz_question_reponse[]
+  relation_implicite_as_q1 relation_question_implicite[] @relation("relation_q_imp_q1")
+  relation_implicite_as_q2 relation_question_implicite[] @relation("relation_q_imp_q2")
+  question_reflexion_as_p    question_reflexion[]         @relation("question_reflexion_p")
+  question_reflexion_as_a    question_reflexion[]         @relation("question_reflexion_a")
+  user_kpi                   user_kpi[]
+}
+
+model quizz_collection {
+  id          Int     @id @default(autoincrement())
+  user_id     Int
+  create_at   String
+  update_at   String
+  nom         String
+  description String?
+
+  user                       user                       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  question_collection        question_collection[]
+  quizz_module_collection    quizz_module_collection[]
+  relation_collection_parent relation_collection[]      @relation("relation_collection_parent")
+  relation_collection_child  relation_collection[]      @relation("relation_collection_child")
+  personalite                personalite[]
+  personnalite_collection    personnalite_collection[]
+}
+
+model question_collection {
+  id               Int              @id @default(autoincrement())
+  collection_id    Int
+  question_id      Int
+  quizz_question   quizz_question   @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_collection quizz_collection @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model user_kpi {
-  id             Int            @id @unique(map: "sqlite_autoindex_user_kpi_1") @default(autoincrement())
+  id             Int            @id @default(autoincrement())
   user_id        Int
   create_at      String
   question_id    Int
@@ -120,41 +171,61 @@ model user_kpi {
   user           user           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model collection_story {
-  id                          Int                           @id @unique(map: "sqlite_autoindex_collection_story_1") @default(autoincrement())
-  nom                         Int
-  description                 String
-  relation_question_implicite relation_question_implicite[]
+model quizz_module_collection {
+  id               Int              @id @default(autoincrement())
+  module_id        Int
+  collection_id    Int
+  quizz_collection quizz_collection @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_module     quizz_module     @relation(fields: [module_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model relation_question_implicite {
-  id                                                                       Int               @id @unique(map: "sqlite_autoindex_relation_question_implicite_1") @default(autoincrement())
-  story_id                                                                 Int?
-  question_p_id                                                            Int
-  question_e_id                                                            Int
-  collection_story                                                         collection_story? @relation(fields: [story_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_question_relation_question_implicite_question_e_idToquizz_question quizz_question    @relation("relation_question_implicite_question_e_idToquizz_question", fields: [question_e_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_question_relation_question_implicite_question_p_idToquizz_question quizz_question    @relation("relation_question_implicite_question_p_idToquizz_question", fields: [question_p_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id           Int  @id @default(autoincrement())
+  story_id     Int?
+  /// Colonne SQL `question1__id` (v4).
+  question_1_id Int @map("question1__id")
+  question_2_id Int @map("question2_id")
+
+  quizz_question_1 quizz_question @relation("relation_q_imp_q1", fields: [question_1_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_question_2 quizz_question @relation("relation_q_imp_q2", fields: [question_2_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model sous_collections {
-  id                        Int                         @id @default(autoincrement())
-  collection_id             Int
-  nom                       String
-  description               String
-  quizz_collection          quizz_collection            @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  relation_sous_collections relation_sous_collections[]
-
-  @@map("sous-collections")
+model personalite {
+  id                       Int                       @id @default(autoincrement())
+  collection_id            Int
+  nom                      String
+  prenom                   String                    @map("Prenom")
+  naissance                String
+  mort                     String?
+  resumer                  String
+  quizz_collection         quizz_collection          @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  personnalite_collection  personnalite_collection[]
 }
 
-model relation_sous_collections {
-  id                 Int              @id @default(autoincrement())
-  sous_collection_id Int
-  question_id        Int
-  sous_collections   sous_collections @relation(fields: [sous_collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_question     quizz_question   @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+model ref_importance_personalite {
+  id                      Int                       @id @default(autoincrement())
+  type                    String
+  personnalite_collection personnalite_collection[]
+}
 
-  @@unique([sous_collection_id, question_id], map: "relation_sous_collections_sous_question_key")
-  @@map("relation_sous-collections")
+model personnalite_collection {
+  id                         Int                         @id @default(autoincrement())
+  importance_id            Int?
+  personalite_id           Int
+  collection_id            Int
+  ref_importance_personalite ref_importance_personalite? @relation(fields: [importance_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  personalite              personalite                 @relation(fields: [personalite_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_collection         quizz_collection            @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("personalité_collection")
+}
+
+model question_reflexion {
+  id                      Int              @id @default(autoincrement())
+  collection_questions_id Int
+  question_p_id           Int
+  question_a_id           Int
+  groupe_questions        groupe_questions @relation(fields: [collection_questions_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_question_p        quizz_question   @relation("question_reflexion_p", fields: [question_p_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quizz_question_a        quizz_question   @relation("question_reflexion_a", fields: [question_a_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

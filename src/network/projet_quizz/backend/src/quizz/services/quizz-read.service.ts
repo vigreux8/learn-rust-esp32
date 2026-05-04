@@ -10,7 +10,6 @@ import {
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieRow,
-  SousCollectionUi,
 } from '../quizz.type';
 
 export type QuizPlayOrder =
@@ -30,8 +29,6 @@ export type QuizPlaySessionOpts = {
   userId?: number;
   limit?: number;
   excludeIds: number[];
-  /** Limite les questions à celles liées à cette sous-collection (doit appartenir à la collection). */
-  sousCollectionId?: number;
 };
 
 function shuffle<T>(items: T[]): T[] {
@@ -54,8 +51,8 @@ export class QuizzReadService {
     question: string;
     commentaire: string;
     verifier: boolean;
-    categorie_id: number;
-    ref_categorie: { type: string };
+    categorie_p_id: number;
+    ref_p_categorie: { type: string };
     quizz_question_reponse: {
       id: number;
       quizz_reponse: { id: number; reponse: string; bonne_reponse: number };
@@ -69,8 +66,8 @@ export class QuizzReadService {
       question: q.question,
       commentaire: q.commentaire ?? '',
       verifier: q.verifier,
-      categorie_id: q.categorie_id,
-      categorie_type: q.ref_categorie.type,
+      categorie_id: q.categorie_p_id,
+      categorie_type: q.ref_p_categorie.type,
       reponses: ordered.map((j) => ({
         id: j.quizz_reponse.id,
         reponse: j.quizz_reponse.reponse,
@@ -101,7 +98,7 @@ export class QuizzReadService {
       include: {
         quizz_question: {
           include: {
-            ref_categorie: true,
+            ref_p_categorie: true,
             quizz_question_reponse: {
               include: { quizz_reponse: true },
             },
@@ -112,7 +109,7 @@ export class QuizzReadService {
 
     const question_counts_by_type = { histoire: 0, pratique: 0 };
     for (const qc of qcs) {
-      const t = qc.quizz_question.ref_categorie.type;
+      const t = qc.quizz_question.ref_p_categorie.type;
       if (t === 'histoire') question_counts_by_type.histoire += 1;
       else if (t === 'pratique') question_counts_by_type.pratique += 1;
     }
@@ -120,7 +117,7 @@ export class QuizzReadService {
     const filtered =
       qtype === 'melanger'
         ? qcs
-        : qcs.filter((qc) => qc.quizz_question.ref_categorie.type === qtype);
+        : qcs.filter((qc) => qc.quizz_question.ref_p_categorie.type === qtype);
 
     const questions = filtered.map((qc) => this.mapQuestionToUi(qc.quizz_question));
 
@@ -128,13 +125,6 @@ export class QuizzReadService {
       id: mc.quizz_module.id,
       nom: mc.quizz_module.nom,
     }));
-
-    const sousRows = await this.prisma.prisma.sous_collections.findMany({
-      where: { collection_id: collectionId },
-      orderBy: { id: 'asc' },
-      select: { id: true, nom: true },
-    });
-    const sous_collections = sousRows.map((s) => ({ id: s.id, nom: s.nom }));
 
     return {
       id: col.id,
@@ -146,7 +136,7 @@ export class QuizzReadService {
       question_counts_by_type,
       createur_pseudot: col.user.pseudot,
       modules,
-      sous_collections,
+      sous_collections: [],
     };
   }
 
@@ -170,23 +160,6 @@ export class QuizzReadService {
     let ui = await this.buildCollectionUi(collectionId, qtype);
     if (!ui) {
       throw new NotFoundException(`Collection ${collectionId} introuvable`);
-    }
-    if (play?.sousCollectionId != null) {
-      const scId = play.sousCollectionId;
-      const sc = await this.prisma.prisma.sous_collections.findFirst({
-        where: { id: scId, collection_id: collectionId },
-      });
-      if (!sc) {
-        throw new BadRequestException(
-          `Sous-collection ${scId} introuvable pour la collection ${collectionId}.`,
-        );
-      }
-      const rels = await this.prisma.prisma.relation_sous_collections.findMany({
-        where: { sous_collection_id: scId },
-        select: { question_id: true },
-      });
-      const allowed = new Set(rels.map((r) => r.question_id));
-      ui = { ...ui, questions: ui.questions.filter((q) => allowed.has(q.id)) };
     }
     if (ui.questions.length === 0) {
       throw new NotFoundException(
@@ -328,7 +301,7 @@ export class QuizzReadService {
     const where =
       qtype === 'melanger'
         ? {}
-        : { ref_categorie: { type: qtype } };
+        : { ref_p_categorie: { type: qtype } };
     const rows = await this.prisma.prisma.quizz_question.findMany({
       where: {
         ...where,
@@ -336,7 +309,7 @@ export class QuizzReadService {
       },
       orderBy: { id: 'asc' },
       include: {
-        ref_categorie: true,
+        ref_p_categorie: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
         },
@@ -352,7 +325,7 @@ export class QuizzReadService {
   }
 
   async listRefCategories(): Promise<RefCategorieRow[]> {
-    return this.prisma.prisma.ref_categorie.findMany({
+    return this.prisma.prisma.ref_p_categorie.findMany({
       orderBy: { id: 'asc' },
       select: { id: true, type: true },
     });
@@ -362,7 +335,7 @@ export class QuizzReadService {
     const r = await this.prisma.prisma.quizz_question.findUnique({
       where: { id },
       include: {
-        ref_categorie: true,
+        ref_p_categorie: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
           orderBy: { id: 'asc' },
@@ -389,8 +362,8 @@ export class QuizzReadService {
       question: r.question,
       commentaire: r.commentaire ?? '',
       verifier: r.verifier,
-      categorie_id: r.categorie_id,
-      categorie_type: r.ref_categorie.type,
+      categorie_id: r.categorie_p_id,
+      categorie_type: r.ref_p_categorie.type,
       collections: r.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,
@@ -417,7 +390,7 @@ export class QuizzReadService {
       where,
       orderBy: { id: 'asc' },
       include: {
-        ref_categorie: true,
+        ref_p_categorie: true,
         question_collection: {
           include: { quizz_collection: true },
           orderBy: { id: 'asc' },
@@ -432,8 +405,8 @@ export class QuizzReadService {
       question: r.question,
       commentaire: r.commentaire ?? '',
       verifier: r.verifier,
-      categorie_id: r.categorie_id,
-      categorie_type: r.ref_categorie.type,
+      categorie_id: r.categorie_p_id,
+      categorie_type: r.ref_p_categorie.type,
       collections: r.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,
@@ -455,44 +428,5 @@ export class QuizzReadService {
       );
     }
     return this.listQuestions(n);
-  }
-
-  async listSousCollectionsByCollection(
-    collectionId: number,
-  ): Promise<SousCollectionUi[]> {
-    const col = await this.prisma.prisma.quizz_collection.findUnique({
-      where: { id: collectionId },
-    });
-    if (!col) {
-      throw new NotFoundException(`Collection ${collectionId} introuvable`);
-    }
-
-    const rows = await this.prisma.prisma.sous_collections.findMany({
-      where: { collection_id: collectionId },
-      orderBy: { id: 'asc' },
-      include: {
-        relation_sous_collections: {
-          orderBy: { id: 'asc' },
-          include: {
-            quizz_question: {
-              include: { ref_categorie: true },
-            },
-          },
-        },
-      },
-    });
-
-    return rows.map((r) => ({
-      id: r.id,
-      collection_id: r.collection_id,
-      nom: r.nom,
-      description: r.description ?? '',
-      questions: r.relation_sous_collections.map((rel) => ({
-        relation_id: rel.id,
-        question_id: rel.quizz_question.id,
-        question: rel.quizz_question.question,
-        categorie_type: rel.quizz_question.ref_categorie.type,
-      })),
-    }));
   }
 }

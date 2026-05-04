@@ -12,9 +12,9 @@ export type QuestionUi = {
   commentaire: string;
   /** Colonne SQL `verifier` : export/import app sous le nom `fakechecker`. */
   verifier: boolean;
-  /** `ref_categorie.id` (utile pour export/import “app”). */
+  /** `ref_p_categorie.id` (API inchangée : champ toujours nommé categorie_id). */
   categorie_id: number;
-  /** `ref_categorie.type` (ex. histoire, pratique). */
+  /** `ref_p_categorie.type` (ex. histoire, pratique). */
   categorie_type: string;
   reponses: ReponseUi[];
 };
@@ -30,7 +30,7 @@ export type CollectionSousCollectionRef = {
   nom: string;
 };
 
-/** Comptage des questions liées à la collection, par `ref_categorie.type` (toutes les questions, hors filtre `qtype`). */
+/** Comptage des questions liées à la collection, par `ref_p_categorie.type` (toutes les questions, hors filtre `qtype`). */
 export type CollectionQuestionCountsByType = {
   histoire: number;
   pratique: number;
@@ -48,7 +48,7 @@ export type CollectionUi = {
   createur_pseudot: string;
   /** Super-collections (`quizz_module`) liées via `quizz_module_collection`. */
   modules: CollectionModuleRef[];
-  /** Sous-collections (`sous_collections`) pour sélection / jeu ciblé. */
+  /** Schéma v4 : plus de sous-collections en base ; champ conservé pour compat clients (tableau vide). */
   sous_collections: CollectionSousCollectionRef[];
 };
 
@@ -64,9 +64,9 @@ export type QuizzQuestionRow = {
   question: string;
   commentaire: string;
   verifier: boolean;
-  /** `ref_categorie.id` */
+  /** `ref_p_categorie.id` (nom API inchangé). */
   categorie_id: number;
-  /** `ref_categorie.type` (ex. histoire, pratique) */
+  /** `ref_p_categorie.type` (ex. histoire, pratique). */
   categorie_type: string;
   collections: QuizzCollectionRef[];
 };
@@ -87,18 +87,3 @@ export type QuizzModuleRow = {
   update_at: string;
 };
 
-/** Question rattachée à une sous-collection (UI drag-drop). */
-export type SousCollectionQuestionRef = {
-  relation_id: number;
-  question_id: number;
-  question: string;
-  categorie_type: string;
-};
-
-export type SousCollectionUi = {
-  id: number;
-  collection_id: number;
-  nom: string;
-  description: string;
-  questions: SousCollectionQuestionRef[];
-};

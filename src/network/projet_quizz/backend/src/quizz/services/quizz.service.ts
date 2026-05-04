@@ -6,7 +6,6 @@ import {
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieRow,
-  SousCollectionUi,
 } from '../quizz.type';
 import { AppCollectionImportBodyDto } from '../dto/import-collection.dto';
 import { LlmImportBodyDto } from '../dto/import-llm.dto';
@@ -183,7 +182,6 @@ export class QuizzService {
       collectionId?: number;
       moduleId?: number;
       categorie?: 'histoire' | 'pratique';
-      sousCollectionId?: number;
     },
   ): Promise<{
     createdQuestions: number;
@@ -197,48 +195,5 @@ export class QuizzService {
     opts?: { collectionId?: number },
   ): Promise<{ createdQuestions: number }> {
     return this.importCollection.importAppCollectionQuestionsJson(body, opts);
-  }
-
-  listSousCollectionsByCollection(
-    collectionId: number,
-  ): Promise<SousCollectionUi[]> {
-    return this.read.listSousCollectionsByCollection(collectionId);
-  }
-
-  createSousCollection(
-    collectionId: number,
-    body: { user_id: number; nom: string; description: string },
-  ): Promise<SousCollectionUi> {
-    return this.write.createSousCollection(collectionId, body);
-  }
-
-  updateSousCollection(
-    sousCollectionId: number,
-    body: { user_id: number; nom: string; description: string },
-  ): Promise<SousCollectionUi> {
-    return this.write.updateSousCollection(sousCollectionId, body);
-  }
-
-  deleteSousCollection(sousCollectionId: number, userId: number): Promise<void> {
-    return this.write.deleteSousCollection(sousCollectionId, userId);
-  }
-
-  attachQuestionToSousCollection(
-    sousCollectionId: number,
-    body: { user_id: number; question_id: number },
-  ): Promise<void> {
-    return this.write.attachQuestionToSousCollection(sousCollectionId, body);
-  }
-
-  detachQuestionFromSousCollection(
-    sousCollectionId: number,
-    userId: number,
-    questionId: number,
-  ): Promise<void> {
-    return this.write.detachQuestionFromSousCollection(
-      sousCollectionId,
-      userId,
-      questionId,
-    );
   }
 }
