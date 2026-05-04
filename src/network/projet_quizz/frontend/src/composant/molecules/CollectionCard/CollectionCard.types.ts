@@ -1,8 +1,8 @@
 import type { PlayQtype } from "../../../lib/playOrder";
-import type { CollectionUi, PersonalitePickerRowUi, QuizzModuleRow } from "../../../types/quizz";
+import type { CollectionUi, PersonalitePickerRowUi } from "../../../types/quizz";
 import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 
-export type LinkedModule = { id: number };
+export type CollectionTagRef = { id: number; nom: string };
 
 /** Case à cocher « vue sous-arbre » (cartes ayant au moins une sous-collection). */
 export type CollectionCardHierarchyToggle = {
@@ -13,7 +13,8 @@ export type CollectionCardHierarchyToggle = {
 export type CollectionCardProps = {
   collection: CollectionUi;
   myUserId: number;
-  allModules: QuizzModuleRow[];
+  /** Collections pouvant servir d’étiquette (hors exclusions gérées dans la carte). */
+  tagPickerPool: CollectionTagRef[];
   assignBusyCollectionId: number | null;
   deleteBusyCollectionId: number | null;
   interactionLocked?: boolean;
@@ -24,8 +25,8 @@ export type CollectionCardProps = {
   treeDepth: number;
   /** Filtrer la page sur les seuls descendants de cette collection (si fourni). */
   hierarchyViewToggle?: CollectionCardHierarchyToggle;
-  onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
-  onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
+  onAssignTag: (collectionId: number, tagCollectionId: number) => void | Promise<void>;
+  onUnassignTag: (collectionId: number, tagCollectionId: number) => void | Promise<void>;
   onDeleteCollection?: (collection: CollectionUi) => void;
   /** Rattacher / détacher des personnalités (cartes dont tu es propriétaire). */
   personalitesPicker?: PersonalitePickerRowUi[];
@@ -37,4 +38,3 @@ export type CollectionCardProps = {
   ) => void | Promise<void>;
   onUnassignPerso?: (collectionId: number, personaliteId: number) => void | Promise<void>;
 };
-

@@ -42,14 +42,6 @@ model groupe_questions {
   question_reflexion question_reflexion[]
 }
 
-model quizz_module {
-  id                      Int                       @id @default(autoincrement())
-  nom                     String
-  create_at               String
-  update_at               String
-  quizz_module_collection quizz_module_collection[]
-}
-
 model ref_p_categorie {
   id                        Int                  @id @default(autoincrement())
   type                      String
@@ -144,11 +136,23 @@ model quizz_collection {
 
   user                       user                      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   question_collection        question_collection[]
-  quizz_module_collection    quizz_module_collection[]
+  collection_tag_as_tag      collection_tag_lien[]     @relation("CollectionTagLien_tag")
+  collection_tagged_links    collection_tag_lien[]     @relation("CollectionTagLien_tagged")
   relation_collection_parent relation_collection[]     @relation("relation_collection_parent")
   relation_collection_child  relation_collection[]     @relation("relation_collection_child")
   personalite                personalite[]
   personnalite_collection    personnalite_collection[]
+}
+
+model collection_tag_lien {
+  id                   Int @id @default(autoincrement())
+  tag_collection_id     Int
+  tagged_collection_id Int
+  tag_collection        quizz_collection @relation("CollectionTagLien_tag", fields: [tag_collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tagged_collection     quizz_collection @relation("CollectionTagLien_tagged", fields: [tagged_collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tag_collection_id, tagged_collection_id])
+  @@map("collection_tag_lien")
 }
 
 model question_collection {
@@ -169,14 +173,6 @@ model user_kpi {
   quizz_question quizz_question @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   quizz_reponse  quizz_reponse  @relation(fields: [reponse_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user           user           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-}
-
-model quizz_module_collection {
-  id               Int              @id @default(autoincrement())
-  module_id        Int
-  collection_id    Int
-  quizz_collection quizz_collection @relation(fields: [collection_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  quizz_module     quizz_module     @relation(fields: [module_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model relation_question_implicite {

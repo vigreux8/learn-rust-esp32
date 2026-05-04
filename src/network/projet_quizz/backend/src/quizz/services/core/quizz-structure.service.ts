@@ -4,67 +4,97 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import type { QuizzModuleRow } from '../../quizz.type';
 
 function nowIso(): string {
   return new Date().toISOString();
 }
 
 /**
- * Création des modules (niveau « super-collection ») et rattachement des collections.
+ * Liens « étiquette / hashtag » entre collections (`collection_tag_lien`),
+ * distincts de l’arborescence (`relation-collection`).
  */
 @Injectable()
 export class QuizzStructureService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listModules(): Promise<QuizzModuleRow[]> {
-    const rows = await this.prisma.prisma.quizz_module.findMany({
-      orderBy: { id: 'asc' },
+  /**
+   * Rattache une collection « tag » à une collection cible (many-to-many).
+   * `tag_collection_id` désigne la collection servant d’étiquette (ex. thématique partagée).
+   */
+  async assignCollectionTag(
+    tagCollectionId: number,
+    taggedCollectionId: number,
+  ): Promise<void> {
+    if (tagCollectionId === taggedCollectionId) {
+      throw new BadRequestException(
+        'Une collection ne peut pas être étiquetée par elle-même.',
+      );
+    }
+    const tagCol = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: tagCollectionId },
     });
-    return rows.map((r) => ({
-      id: r.id,
-      nom: r.nom,
-      create_at: r.create_at,
-      update_at: r.update_at,
-    }));
+    const taggedCol = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: taggedCollectionId },
+    });
+    if (!tagCol) {
+      throw new NotFoundException(`Collection étiquette ${tagCollectionId} introuvable`);
+    }
+    if (!taggedCol) {
+      throw new NotFoundException(`Collection ${taggedCollectionId} introuvable`);
+    }
+    const existing = await this.prisma.prisma.collection_tag_lien.findFirst({
+      where: {
+        tag_collection_id: tagCollectionId,
+        tagged_collection_id: taggedCollectionId,
+      },
+    });
+    if (existing) return;
+    await this.prisma.prisma.collection_tag_lien.create({
+      data: {
+        tag_collection_id: tagCollectionId,
+        tagged_collection_id: taggedCollectionId,
+      },
+    });
   }
 
-  async createModule(nom: string): Promise<QuizzModuleRow> {
-    const trimmed = nom.trim();
-    if (!trimmed) {
-      throw new BadRequestException('Le nom du module ne peut pas être vide');
-    }
-    const t = nowIso();
-    const row = await this.prisma.prisma.quizz_module.create({
-      data: { nom: trimmed, create_at: t, update_at: t },
+  async unassignCollectionTag(
+    tagCollectionId: number,
+    taggedCollectionId: number,
+  ): Promise<void> {
+    const del = await this.prisma.prisma.collection_tag_lien.deleteMany({
+      where: {
+        tag_collection_id: tagCollectionId,
+        tagged_collection_id: taggedCollectionId,
+      },
     });
-    return {
-      id: row.id,
-      nom: row.nom,
-      create_at: row.create_at,
-      update_at: row.update_at,
-    };
+    if (del.count === 0) {
+      throw new NotFoundException(
+        `Aucun lien étiquette entre ${tagCollectionId} et ${taggedCollectionId}`,
+      );
+    }
   }
 
   /**
-   * Crée une collection utilisateur et la rattache à un module (pont `quizz_module_collection`).
+   * Crée une collection utilisateur et la rattache à une collection-étiquette.
    */
-  async createCollectionInModule(params: {
-    moduleId: number;
+  async createCollectionWithTag(params: {
+    tagCollectionId: number;
     userId: number;
     nom: string;
   }): Promise<{
     collectionId: number;
-    moduleId: number;
+    tagCollectionId: number;
     nom: string;
     create_at: string;
     update_at: string;
   }> {
-    const mod = await this.prisma.prisma.quizz_module.findUnique({
-      where: { id: params.moduleId },
+    const tagCol = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: params.tagCollectionId },
     });
-    if (!mod) {
-      throw new NotFoundException(`Module ${params.moduleId} introuvable`);
+    if (!tagCol) {
+      throw new NotFoundException(
+        `Collection étiquette ${params.tagCollectionId} introuvable`,
+      );
     }
     const user = await this.prisma.prisma.user.findUnique({
       where: { id: params.userId },
@@ -86,15 +116,15 @@ export class QuizzStructureService {
           nom: trimmed,
         },
       });
-      await tx.quizz_module_collection.create({
+      await tx.collection_tag_lien.create({
         data: {
-          module_id: params.moduleId,
-          collection_id: col.id,
+          tag_collection_id: params.tagCollectionId,
+          tagged_collection_id: col.id,
         },
       });
       return {
         collectionId: col.id,
-        moduleId: params.moduleId,
+        tagCollectionId: params.tagCollectionId,
         nom: col.nom,
         create_at: col.create_at,
         update_at: col.update_at,
@@ -103,81 +133,12 @@ export class QuizzStructureService {
   }
 
   /**
-   * Rattache une collection existante à un module (ligne `quizz_module_collection`).
-   * Sans effet si le lien existe déjà.
-   */
-  async assignCollectionToModule(
-    collectionId: number,
-    moduleId: number,
-  ): Promise<void> {
-    const col = await this.prisma.prisma.quizz_collection.findUnique({
-      where: { id: collectionId },
-    });
-    if (!col) {
-      throw new NotFoundException(`Collection ${collectionId} introuvable`);
-    }
-    const mod = await this.prisma.prisma.quizz_module.findUnique({
-      where: { id: moduleId },
-    });
-    if (!mod) {
-      throw new NotFoundException(`Module ${moduleId} introuvable`);
-    }
-    const existing = await this.prisma.prisma.quizz_module_collection.findFirst({
-      where: { collection_id: collectionId, module_id: moduleId },
-    });
-    if (existing) return;
-    await this.prisma.prisma.quizz_module_collection.create({
-      data: { module_id: moduleId, collection_id: collectionId },
-    });
-  }
-
-  /** Retire le lien `quizz_module_collection` entre une collection et un module. */
-  async unassignCollectionFromModule(
-    collectionId: number,
-    moduleId: number,
-  ): Promise<void> {
-    const col = await this.prisma.prisma.quizz_collection.findUnique({
-      where: { id: collectionId },
-    });
-    if (!col) {
-      throw new NotFoundException(`Collection ${collectionId} introuvable`);
-    }
-    const del = await this.prisma.prisma.quizz_module_collection.deleteMany({
-      where: { collection_id: collectionId, module_id: moduleId },
-    });
-    if (del.count === 0) {
-      throw new NotFoundException(
-        `Aucun lien entre la collection ${collectionId} et le module ${moduleId}`,
-      );
-    }
-  }
-
-  /**
-   * Supprime un module et les lignes `quizz_module_collection` associées.
-   * Les collections (`quizz_collection`) ne sont pas supprimées.
-   */
-  async deleteModule(moduleId: number): Promise<void> {
-    const mod = await this.prisma.prisma.quizz_module.findUnique({
-      where: { id: moduleId },
-    });
-    if (!mod) {
-      throw new NotFoundException(`Module ${moduleId} introuvable`);
-    }
-    await this.prisma.prisma.$transaction([
-      this.prisma.prisma.quizz_module_collection.deleteMany({
-        where: { module_id: moduleId },
-      }),
-      this.prisma.prisma.quizz_module.delete({ where: { id: moduleId } }),
-    ]);
-  }
-
-  /**
-   * Crée une collection vide (sans questions), optionnellement liée à un module.
+   * Crée une collection vide (sans questions), optionnellement liée à une collection-étiquette.
    */
   async createStandaloneCollection(params: {
     userId: number;
     nom: string;
-    moduleId?: number;
+    tagCollectionId?: number;
   }): Promise<{ collectionId: number }> {
     const user = await this.prisma.prisma.user.findUnique({
       where: { id: params.userId },
@@ -189,12 +150,14 @@ export class QuizzStructureService {
     if (!trimmed) {
       throw new BadRequestException('Le nom de la collection ne peut pas être vide');
     }
-    if (params.moduleId != null) {
-      const mod = await this.prisma.prisma.quizz_module.findUnique({
-        where: { id: params.moduleId },
+    if (params.tagCollectionId != null) {
+      const tag = await this.prisma.prisma.quizz_collection.findUnique({
+        where: { id: params.tagCollectionId },
       });
-      if (!mod) {
-        throw new NotFoundException(`Module ${params.moduleId} introuvable`);
+      if (!tag) {
+        throw new NotFoundException(
+          `Collection étiquette ${params.tagCollectionId} introuvable`,
+        );
       }
     }
     const t = nowIso();
@@ -207,9 +170,12 @@ export class QuizzStructureService {
           nom: trimmed,
         },
       });
-      if (params.moduleId != null) {
-        await tx.quizz_module_collection.create({
-          data: { module_id: params.moduleId, collection_id: c.id },
+      if (params.tagCollectionId != null) {
+        await tx.collection_tag_lien.create({
+          data: {
+            tag_collection_id: params.tagCollectionId,
+            tagged_collection_id: c.id,
+          },
         });
       }
       return c;

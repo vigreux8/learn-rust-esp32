@@ -45,9 +45,8 @@ async function clearAll(prisma: PrismaClient): Promise<void> {
   await prisma.ref_p_categorie.deleteMany();
   await prisma.ref_importance.deleteMany();
   await prisma.ref_difficulter.deleteMany();
-  await prisma.quizz_module_collection.deleteMany();
+  await prisma.collection_tag_lien.deleteMany();
   await prisma.quizz_collection.deleteMany();
-  await prisma.quizz_module.deleteMany();
   await prisma.quizz_reponse.deleteMany();
   await prisma.user_device.deleteMany();
   await prisma.device.deleteMany();
@@ -263,15 +262,16 @@ async function main(): Promise<void> {
     });
     const t = nowIso();
 
-    const modDemo = await prisma.quizz_module.create({
+    // --- COLLECTIONS (quizz_collection) ---
+    const colTagDemo = await prisma.quizz_collection.create({
       data: {
-        nom: 'demo-thematique',
+        user_id: u1.id,
         create_at: t,
         update_at: t,
+        nom: 'demo-thematique',
       },
     });
 
-    // --- COLLECTIONS (quizz_collection) ---
     const colCasquette = await prisma.quizz_collection.create({
       data: {
         user_id: u1.id,
@@ -300,8 +300,11 @@ async function main(): Promise<void> {
     });
 
     for (const col of [colCasquette, colOrthographe, colIA]) {
-      await prisma.quizz_module_collection.create({
-        data: { module_id: modDemo.id, collection_id: col.id },
+      await prisma.collection_tag_lien.create({
+        data: {
+          tag_collection_id: colTagDemo.id,
+          tagged_collection_id: col.id,
+        },
       });
     }
 

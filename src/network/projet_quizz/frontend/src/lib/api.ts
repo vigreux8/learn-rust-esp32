@@ -4,7 +4,6 @@ import type {
   DeviceLookupResult,
   PersonalitePickerRowUi,
   QuestionUi,
-  QuizzModuleRow,
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieHierarchyRow,
@@ -106,46 +105,25 @@ export async function fetchCollection(
   return res.json() as Promise<CollectionUi>;
 }
 
-export async function fetchModules(): Promise<QuizzModuleRow[]> {
-  const res = await fetch(apiUrl("/quizz/modules"));
-  await assertResponseOk(res);
-  return res.json() as Promise<QuizzModuleRow[]>;
-}
-
-export async function createQuizzModule(nom: string): Promise<QuizzModuleRow> {
-  const res = await fetch(apiUrl("/quizz/modules"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nom }),
-  });
-  await assertResponseOk(res);
-  return res.json() as Promise<QuizzModuleRow>;
-}
-
-export async function deleteQuizzModule(moduleId: number): Promise<void> {
-  const res = await fetch(apiUrl(`/quizz/modules/${moduleId}`), { method: "DELETE" });
-  await assertResponseOk(res);
-}
-
-export async function assignCollectionToModule(
+export async function assignCollectionTag(
   collectionId: number,
-  moduleId: number,
+  tagCollectionId: number,
 ): Promise<CollectionUi> {
-  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/modules`), {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/collection-tags`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ moduleId }),
+    body: JSON.stringify({ tagCollectionId }),
   });
   await assertResponseOk(res);
   return res.json() as Promise<CollectionUi>;
 }
 
-export async function unassignCollectionFromModule(
+export async function unassignCollectionTag(
   collectionId: number,
-  moduleId: number,
+  tagCollectionId: number,
 ): Promise<CollectionUi> {
   const res = await fetch(
-    apiUrl(`/quizz/collections/${collectionId}/modules/${moduleId}`),
+    apiUrl(`/quizz/collections/${collectionId}/collection-tags/${tagCollectionId}`),
     { method: "DELETE" },
   );
   await assertResponseOk(res);
@@ -171,7 +149,7 @@ export type CreatePersonaliteCollectionBody = {
   naissance: number;
   mort?: number | null;
   resumer: string;
-  moduleId?: number;
+  tagCollectionId?: number;
 };
 
 export async function createPersonaliteCollection(
@@ -431,7 +409,7 @@ export async function patchReponse(
 export async function createEmptyCollection(body: {
   userId: number;
   nom: string;
-  moduleId?: number;
+  tagCollectionId?: number;
 }): Promise<CollectionUi> {
   const res = await fetch(apiUrl("/quizz/collections"), {
     method: "POST",
@@ -446,7 +424,7 @@ export async function importQuestionsJson(
   body: LlmImportPayload,
   options?: {
     collectionId?: number;
-    moduleId?: number;
+    tagCollectionId?: number;
     categorie?: "histoire" | "pratique" | "connaissance";
     sousCollectionId?: number;
   },
@@ -458,8 +436,8 @@ export async function importQuestionsJson(
   if (options?.collectionId != null) {
     q.set("collectionId", String(options.collectionId));
   }
-  if (options?.moduleId != null) {
-    q.set("moduleId", String(options.moduleId));
+  if (options?.tagCollectionId != null) {
+    q.set("tagCollectionId", String(options.tagCollectionId));
   }
   if (options?.categorie != null) {
     q.set("categorie", options.categorie);

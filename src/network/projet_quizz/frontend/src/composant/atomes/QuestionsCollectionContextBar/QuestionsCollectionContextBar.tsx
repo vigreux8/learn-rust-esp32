@@ -4,9 +4,8 @@ import type { QuestionsCollectionContextBarProps } from "./QuestionsCollectionCo
 export function QuestionsCollectionContextBar({
   targetCollectionNumeric,
   collections,
-  allModules,
-  importTargetModuleId,
-  setImportTargetModuleId,
+  importTargetTagCollectionId,
+  setImportTargetTagCollectionId,
 }: QuestionsCollectionContextBarProps) {
   if (targetCollectionNumeric == null) return null;
   return (
@@ -15,26 +14,28 @@ export function QuestionsCollectionContextBar({
         Collection cible: {collections.find((c) => c.id === targetCollectionNumeric)?.nom ?? `#${targetCollectionNumeric}`}
       </p>
       <p class="mt-2 text-xs text-base-content/60">
-        L import LLM ajoute les questions ici. Tu peux forcer un lien vers une supercollection apres import:
+        L import LLM ajoute les questions ici. Tu peux forcer un lien vers une collection-étiquette apres import:
       </p>
-      <label class="mt-2 block text-xs font-medium text-base-content/55" for="import-module-link">
-        Supercollection (optionnel)
+      <label class="mt-2 block text-xs font-medium text-base-content/55" for="import-tag-link">
+        Collection-étiquette (optionnel)
       </label>
       <select
-        id="import-module-link"
+        id="import-tag-link"
         class="select select-bordered select-sm mt-1 max-w-md rounded-xl border-base-content/15 bg-base-100"
-        value={importTargetModuleId ?? ""}
+        value={importTargetTagCollectionId ?? ""}
         onChange={(e) => {
           const v = (e.target as HTMLSelectElement).value;
-          setImportTargetModuleId(v === "" ? null : Number(v));
+          setImportTargetTagCollectionId(v === "" ? null : Number(v));
         }}
       >
         <option value="">(aucune - pas de lien force)</option>
-        {allModules.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.nom}
-          </option>
-        ))}
+        {collections
+          .filter((c) => c.id !== targetCollectionNumeric)
+          .map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nom}
+            </option>
+          ))}
       </select>
     </div>
   );

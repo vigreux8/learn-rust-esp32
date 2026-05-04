@@ -8,7 +8,7 @@ export function CreatePersonnaliteModal({
   open,
   busy,
   error,
-  modules,
+  tagOptions,
   onClose,
   onSubmit,
 }: CreatePersonnaliteModalProps) {
@@ -17,7 +17,7 @@ export function CreatePersonnaliteModal({
   const [naissance, setNaissance] = useState("");
   const [mort, setMort] = useState("");
   const [resumer, setResumer] = useState("");
-  const [moduleId, setModuleId] = useState<number | "">("");
+  const [tagCollectionId, setTagCollectionId] = useState<number | "">("");
 
   useEffect(() => {
     if (!open) {
@@ -26,7 +26,7 @@ export function CreatePersonnaliteModal({
       setNaissance("");
       setMort("");
       setResumer("");
-      setModuleId("");
+      setTagCollectionId("");
     }
   }, [open]);
 
@@ -130,13 +130,13 @@ export function CreatePersonnaliteModal({
               onInput={(e) => setResumer((e.target as HTMLTextAreaElement).value)} />
           </div>
           <div>
-            <label class="mb-1 block text-xs font-medium text-base-content/65" htmlFor="perso-module">Supercollection (optionnel)</label>
-            <select id="perso-module" class="select select-bordered select-sm w-full rounded-xl"
-              disabled={busy || modules.length === 0}
-              value={moduleId === "" ? "" : String(moduleId)}
-              onChange={(e) => setModuleId((e.target as HTMLSelectElement).value === "" ? "" : Number((e.target as HTMLSelectElement).value))}>
+            <label class="mb-1 block text-xs font-medium text-base-content/65" htmlFor="perso-tag">Collection-étiquette (optionnel)</label>
+            <select id="perso-tag" class="select select-bordered select-sm w-full rounded-xl"
+              disabled={busy || tagOptions.length === 0}
+              value={tagCollectionId === "" ? "" : String(tagCollectionId)}
+              onChange={(e) => setTagCollectionId((e.target as HTMLSelectElement).value === "" ? "" : Number((e.target as HTMLSelectElement).value))}>
               <option value="">—</option>
-              {modules.map((m) => (<option key={m.id} value={m.id}>{m.nom}</option>))}
+              {tagOptions.map((m) => (<option key={m.id} value={m.id}>{m.nom}</option>))}
             </select>
           </div>
         </div>
@@ -155,7 +155,7 @@ export function CreatePersonnaliteModal({
                 naissance: birthY,
                 mort: mort.trim() === "" ? null : deathY,
                 resumer: resumer.trim(),
-                moduleId,
+                tagCollectionId,
               });
             }}
           >

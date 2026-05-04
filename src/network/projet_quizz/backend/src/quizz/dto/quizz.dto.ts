@@ -100,12 +100,7 @@ export class CreateQuestionDto {
   parent_question_id?: number;
 }
 
-export class CreateQuizzModuleDto {
-  @IsString()
-  nom!: string;
-}
-
-export class CreateCollectionInModuleDto {
+export class CreateCollectionUnderTagDto {
   @IsInt()
   @Min(1)
   userId!: number;
@@ -114,10 +109,10 @@ export class CreateCollectionInModuleDto {
   nom!: string;
 }
 
-export class AssignCollectionToModuleDto {
+export class AssignCollectionTagDto {
   @IsInt()
   @Min(1)
-  moduleId!: number;
+  tagCollectionId!: number;
 }
 
 export class CreateStandaloneCollectionDto {
@@ -132,7 +127,7 @@ export class CreateStandaloneCollectionDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  moduleId?: number;
+  tagCollectionId?: number;
 }
 
 /** Création d’une collection enfant (v4 : `quizz_collection` + `relation-collection`). */
@@ -205,7 +200,7 @@ export class CreatePersonaliteCollectionDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  moduleId?: number;
+  tagCollectionId?: number;
 }
 
 export class AssignPersonaliteToCollectionDto {

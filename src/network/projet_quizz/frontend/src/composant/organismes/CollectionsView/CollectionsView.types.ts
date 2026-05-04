@@ -1,8 +1,5 @@
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
+import type { CollectionUi } from "../../../types/quizz";
 
 export type CollectionFilter = "all" | "mine" | `user-${number}`;
 
-export type PendingDelete =
-  | null
-  | { kind: "collection"; data: CollectionUi }
-  | { kind: "module"; data: QuizzModuleRow };
+export type PendingDelete = { kind: "collection"; data: CollectionUi } | null;

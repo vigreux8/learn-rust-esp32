@@ -2,7 +2,7 @@ import { Fragment } from "preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { route } from "preact-router";
 import type { JSX } from "preact";
-import { ChevronRight, FolderTree, LayoutGrid, ListTree, Trash2, X } from "lucide-preact";
+import { ChevronRight, LayoutGrid, ListTree, Tag, Trash2, X } from "lucide-preact";
 
 import {
   COLLECTION_TREE_LEVEL_BORDER_HEX,
@@ -18,6 +18,7 @@ import {
 import { Card } from "../../atomes/Card";
 import { Badge } from "../../atomes/Badge";
 import { Button } from "../../atomes/Button";
+import { SearchAssociateBlock } from "../SearchAssociateBlock";
 
 import { buildQuestionsRoutePath, buildSousCollectionsRoutePath } from "./CollectionCard.metier";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";
@@ -26,7 +27,7 @@ import type { CollectionCardProps } from "./CollectionCard.types";
 export function CollectionCard({
   collection,
   myUserId,
-  allModules,
+  tagPickerPool,
   assignBusyCollectionId,
   deleteBusyCollectionId,
   interactionLocked = false,
@@ -35,8 +36,8 @@ export function CollectionCard({
   playInfinite,
   treeDepth,
   hierarchyViewToggle,
-  onAssign,
-  onUnassign,
+  onAssignTag,
+  onUnassignTag,
   onDeleteCollection,
   personalitesPicker = [],
   assignPersoBusyCollectionId = null,
@@ -51,27 +52,28 @@ export function CollectionCard({
     assignPersoBusyCollectionId !== null;
   const counts = collection.question_counts_by_type;
   const isMine = collection.user_id === myUserId;
-  const [selectedModuleId, setSelectedModuleId] = useState<number | "">("");
   const [playSousCollectionId, setPlaySousCollectionId] = useState<number | "">("");
-  const [chosenPersoId, setChosenPersoId] = useState<number | "">("");
   const [importPick, setImportPick] = useState<"" | "pionnier" | "important" | "secondaire">("");
-  const [persoSearch, setPersoSearch] = useState("");
-  const [persoSuggestFocused, setPersoSuggestFocused] = useState(false);
-  const linkedModules = collection.modules ?? [];
+  const linkedTags = collection.collection_tags ?? [];
   const sousForPlay = collection.sous_collections ?? [];
   const sousChildren = collection.sous_collections ?? [];
   const personnalitesSorted = sortPersonnalitesForDisplay(collection.personnalites ?? []);
   const levelBorderIdx = Math.min(Math.max(treeDepth, 0), COLLECTION_TREE_LEVEL_BORDER_HEX.length - 1);
   const collectionBorderHex = COLLECTION_TREE_LEVEL_BORDER_HEX[levelBorderIdx];
 
-  const handleQuestionsClick = () => route(buildQuestionsRoutePath(collection.id, linkedModules));
+  const handleQuestionsClick = () => route(buildQuestionsRoutePath(collection.id, linkedTags));
   const handleCardClick = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null;
     if (target?.closest("button, a, input, select, textarea, label")) return;
     handleQuestionsClick();
   };
 
-  const assignable = allModules.filter((m) => !linkedModules.some((l) => l.id === m.id));
+  const assignableTags = useMemo(() => {
+    return tagPickerPool.filter(
+      (row) => row.id !== collection.id && !linkedTags.some((l) => l.id === row.id),
+    );
+  }, [tagPickerPool, collection.id, linkedTags]);
+
   const persoPickable = useMemo(() => {
     if (!isMine || onAssignPerso == null || personalitesPicker.length === 0) return [];
     const linkedIds = new Set((collection.personnalites ?? []).map((x) => x.id));
@@ -80,33 +82,9 @@ export function CollectionCard({
     );
   }, [personalitesPicker, collection.id, collection.personnalites, isMine, onAssignPerso]);
 
-  const persoSearchMatches = useMemo(() => {
-    const q = persoSearch.trim().toLowerCase();
-    const pool = persoPickable;
-    if (q === "") return pool.slice(0, 10);
-    return pool
-      .filter((row) => {
-        const full = `${row.prenom} ${row.nom}`.toLowerCase();
-        return full.includes(q) || row.nom.toLowerCase().includes(q) || row.prenom.toLowerCase().includes(q);
-      })
-      .slice(0, 12);
-  }, [persoPickable, persoSearch]);
-
-  const showPersoSuggestPanel = persoSuggestFocused && persoSearchMatches.length > 0 && !uiLocked;
-
-  const chosenPersoRow = useMemo(
-    () => (chosenPersoId === "" ? undefined : persoPickable.find((r) => r.id === chosenPersoId)),
-    [chosenPersoId, persoPickable],
-  );
-
-  const moduleLinkKey = linkedModules.map((m) => m.id).join(",");
-  useEffect(() => setSelectedModuleId(""), [collection.id, moduleLinkKey]);
   useEffect(() => setPlaySousCollectionId(""), [collection.id]);
   useEffect(() => {
-    setChosenPersoId("");
     setImportPick("");
-    setPersoSearch("");
-    setPersoSuggestFocused(false);
   }, [collection.id]);
 
   const navigateToPlay = (targetCollId: number) => {
@@ -222,12 +200,12 @@ export function CollectionCard({
           <h2 class="text-xl font-semibold tracking-tight text-base-content">{collection.nom}</h2>
           <p class="text-sm text-base-content/60">Collection · mise à jour {collection.update_at.slice(0, 10)}</p>
           <p class="text-sm text-base-content/60">Créé par {collection.createur_pseudot}</p>
-          {linkedModules.length > 0 ? (
+          {linkedTags.length > 0 ? (
             <div class="flex flex-wrap items-center gap-2 pt-1">
               <span class="inline-flex items-center gap-1 text-xs font-medium text-base-content/50">
-                <FolderTree class="h-3.5 w-3.5" aria-hidden />Supercollections
+                <Tag class="h-3.5 w-3.5" aria-hidden />Étiquettes
               </span>
-              {linkedModules.map((m) => (
+              {linkedTags.map((m) => (
                 <span key={m.id} class="inline-flex max-w-full items-center gap-0.5 rounded-full border border-learn/30 bg-learn/10 pl-2.5 pr-0.5 text-xs font-medium text-learn">
                   <span class="truncate py-1">{m.nom}</span>
                   {isMine ? (
@@ -235,9 +213,9 @@ export function CollectionCard({
                       type="button"
                       class="btn btn-ghost btn-xs min-h-0 h-7 w-7 shrink-0 rounded-full p-0 text-base-content/60 hover:bg-error/15 hover:text-error"
                       title={`Retirer « ${m.nom} »`}
-                      aria-label={`Retirer la supercollection ${m.nom}`}
+                      aria-label={`Retirer l’étiquette ${m.nom}`}
                       disabled={uiLocked}
-                      onClick={() => void onUnassign(collection.id, m.id)}
+                      onClick={() => void onUnassignTag(collection.id, m.id)}
                     >
                       <X class="h-3.5 w-3.5" aria-hidden />
                     </button>
@@ -261,8 +239,9 @@ export function CollectionCard({
                 defaultValue=""
                 disabled={uiLocked}
                 onChange={(e) => {
-                  const v = (e.target as HTMLSelectElement).value;
-                  (e.target as HTMLSelectElement).value = "";
+                  const el = e.target as HTMLSelectElement;
+                  const v = el.value;
+                  el.value = "";
                   if (v) route(buildQuestionsRoutePath(Number(v), []));
                 }}
               >
@@ -273,132 +252,93 @@ export function CollectionCard({
               </select>
             </div>
           ) : null}
-          {isMine && allModules.length > 0 ? (
-            <div class="flex flex-col gap-2 border-t border-base-content/10 pt-3 sm:max-w-md">
-              <p class="text-xs font-medium text-base-content/55">Rattacher à une supercollection</p>
-              {assignable.length === 0 ? (
-                <p class="text-xs text-base-content/50">Cette collection est déjà liée à toutes les supercollections.</p>
-              ) : (
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <select
-                    class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:min-w-[12rem]"
-                    value={selectedModuleId === "" ? "" : String(selectedModuleId)}
-                    disabled={uiLocked}
-                    onChange={(e) => {
-                      const v = (e.target as HTMLSelectElement).value;
-                      setSelectedModuleId(v === "" ? "" : Number(v));
-                    }}
-                  >
-                    <option value="">Choisir…</option>
-                    {assignable.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-                  </select>
-                  <Button variant="learn" class="btn-sm shrink-0" disabled={uiLocked || selectedModuleId === ""}
-                    onClick={() => {
-                      if (selectedModuleId === "") return;
-                      void onAssign(collection.id, selectedModuleId);
-                    }}>
-                    {assignBusyCollectionId === collection.id ? "…" : "Assigner"}
-                  </Button>
-                </div>
-              )}
-            </div>
+          {isMine && assignableTags.length > 0 ? (
+            <SearchAssociateBlock
+              settings={{
+                resetKey: collection.id,
+                title: "Associer une collection comme étiquette",
+                placeholder: "Rechercher par nom…",
+                inputId: `tag-search-${collection.id}`,
+                associateLabel: assignBusyCollectionId === collection.id ? "…" : "Associer",
+              }}
+              data={{ candidates: assignableTags }}
+              meta={{
+                getId: (row) => row.id,
+                getSuggestionLabel: (row) => row.nom,
+                matchesQuery: (row, q) => row.nom.toLowerCase().includes(q.trim().toLowerCase()),
+              }}
+              status={{
+                busy: assignBusyCollectionId === collection.id,
+                interactionLocked: uiLocked,
+              }}
+              actions={{
+                onAssociate: (tagCollectionId) => void onAssignTag(collection.id, tagCollectionId),
+              }}
+            />
           ) : null}
-          {isMine && allModules.length === 0 ? <p class="border-t border-base-content/10 pt-3 text-xs text-base-content/50">Crée d’abord une supercollection (bloc ci-dessus) pour pouvoir rattacher cette collection.</p> : null}
+          {isMine && assignableTags.length === 0 ? (
+            <p class="border-t border-base-content/10 pt-3 text-xs text-base-content/50">
+              {tagPickerPool.length <= 1
+                ? "Crée une autre collection pour pouvoir l’utiliser comme étiquette (hashtag)."
+                : "Toutes les autres collections disponibles sont déjà liées comme étiquettes."}
+            </p>
+          ) : null}
           {isMine && persoPickable.length > 0 && onAssignPerso != null ? (
-            <div class="flex flex-col gap-2 border-t border-base-content/10 pt-3 sm:max-w-md"
-              onClick={(e) => e.stopPropagation()}>
-              <p class="text-xs font-medium text-base-content/55">Associer une personnalité</p>
-              <div class="relative">
-                <label class="sr-only" for={`perso-search-${collection.id}`}>Rechercher une personnalité</label>
-                <input
-                  id={`perso-search-${collection.id}`}
-                  type="search"
-                  autoComplete="off"
-                  class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100"
-                  placeholder="Prénom, nom…"
-                  disabled={uiLocked}
-                  value={persoSearch}
-                  onInput={(e) => setPersoSearch((e.target as HTMLInputElement).value)}
-                  onFocus={() => setPersoSuggestFocused(true)}
-                  onBlur={() => {
-                    setTimeout(() => setPersoSuggestFocused(false), 180);
-                  }}
-                />
-                {showPersoSuggestPanel ? (
-                  <ul
-                    class="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border border-base-content/10 bg-base-100 py-1 shadow-lg"
-                    role="listbox"
-                  >
-                    {persoSearchMatches.map((row) => (
-                      <li key={row.id} role="option">
-                        <button
-                          type="button"
-                          class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-base-200/80"
-                          onMouseDown={(ev) => ev.preventDefault()}
-                          onClick={() => {
-                            setChosenPersoId(row.id);
-                            setPersoSearch(`${row.prenom} ${row.nom}`);
-                            setPersoSuggestFocused(false);
-                          }}
-                        >
-                          <span class="font-medium text-base-content">{row.prenom} {row.nom}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-              {chosenPersoRow != null ? (
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-xs text-base-content/60">
-                    Sélection :{" "}
-                    <span class="font-medium text-base-content">
-                      {chosenPersoRow.prenom} {chosenPersoRow.nom}
+            <SearchAssociateBlock
+              settings={{
+                resetKey: collection.id,
+                title: "Associer une personnalité",
+                placeholder: "Prénom, nom…",
+                inputId: `perso-search-${collection.id}`,
+                associateLabel: assignPersoBusyCollectionId === collection.id ? "…" : "Associer",
+              }}
+              data={{ candidates: persoPickable }}
+              meta={{
+                getId: (row) => row.id,
+                getSuggestionLabel: (row) => `${row.prenom} ${row.nom}`,
+                matchesQuery: (row, q) => {
+                  const t = q.trim().toLowerCase();
+                  const full = `${row.prenom} ${row.nom}`.toLowerCase();
+                  return (
+                    full.includes(t) ||
+                    row.nom.toLowerCase().includes(t) ||
+                    row.prenom.toLowerCase().includes(t)
+                  );
+                },
+              }}
+              status={{
+                busy: assignPersoBusyCollectionId === collection.id,
+                interactionLocked: uiLocked,
+              }}
+              actions={{
+                onAssociate: (personaliteId) =>
+                  void onAssignPerso(collection.id, personaliteId, importPick),
+              }}
+              slots={{
+                betweenSelectionAndButton: (
+                  <div class="flex flex-wrap gap-1">
+                    <span class="w-full text-[10px] font-medium uppercase tracking-wide text-base-content/45">
+                      Importance dans cette collection
                     </span>
-                  </span>
-                  <button
-                    type="button"
-                    class="btn btn-ghost btn-xs rounded-full"
-                    disabled={uiLocked}
-                    onClick={() => {
-                      setChosenPersoId("");
-                      setPersoSearch("");
-                    }}
-                  >
-                    Changer
-                  </button>
-                </div>
-              ) : null}
-              <div class="flex flex-wrap gap-1">
-                <span class="w-full text-[10px] font-medium uppercase tracking-wide text-base-content/45">Importance dans cette collection</span>
-                {importanceButtons.map((b) => (
-                  <button
-                    key={b.value === "" ? "none" : b.value}
-                    type="button"
-                    disabled={uiLocked}
-                    class={
-                      importPick === b.value
-                        ? "btn btn-primary btn-xs rounded-full px-3"
-                        : "btn btn-ghost btn-xs rounded-full border border-base-content/10 px-3"
-                    }
-                    onClick={() => setImportPick(b.value)}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                class="btn-sm w-fit"
-                disabled={uiLocked || chosenPersoId === "" || assignPersoBusyCollectionId === collection.id}
-                onClick={() => {
-                  if (chosenPersoId === "") return;
-                  void onAssignPerso(collection.id, chosenPersoId, importPick);
-                }}
-              >
-                {assignPersoBusyCollectionId === collection.id ? "…" : "Associer"}
-              </Button>
-            </div>
+                    {importanceButtons.map((b) => (
+                      <button
+                        key={b.value === "" ? "none" : b.value}
+                        type="button"
+                        disabled={uiLocked}
+                        class={
+                          importPick === b.value
+                            ? "btn btn-primary btn-xs rounded-full px-3"
+                            : "btn btn-ghost btn-xs rounded-full border border-base-content/10 px-3"
+                        }
+                        onClick={() => setImportPick(b.value)}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
+                ),
+              }}
+            />
           ) : null}
         </div>
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">

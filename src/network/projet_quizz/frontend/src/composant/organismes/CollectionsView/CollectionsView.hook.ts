@@ -6,50 +6,41 @@ import {
   orderCollectionsHierarchy,
 } from "../../../lib/collectionHierarchyVis";
 import {
-  assignCollectionToModule,
+  assignCollectionTag,
   assignPersonaliteToCollection,
   createEmptyCollection,
   createPersonaliteCollection,
-  createQuizzModule,
   deleteCollection,
-  deleteQuizzModule,
   fetchCollections,
-  fetchModules,
   fetchPersonalitesPicker,
   importAppCollectionQuestionsJson,
   importQuestionsJson,
-  unassignCollectionFromModule,
+  unassignCollectionTag,
   unassignPersonaliteFromCollection,
 } from "../../../lib/api";
 import { normalizeAndValidateAppCollectionImportText } from "../../../lib/appCollectionImportNormalize";
 import { normalizeAndValidateImportText } from "../../../lib/llmImportNormalize";
 import type { PlayQtype } from "../../../lib/playOrder";
 import { useUserSession } from "../../../lib/userSession";
-import type { CollectionUi, PersonalitePickerRowUi, QuizzModuleRow } from "../../../types/quizz";
+import type { CollectionUi, PersonalitePickerRowUi } from "../../../types/quizz";
 import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
-import { applyModuleFilter, filterCollections, pendingDeleteLabels } from "./CollectionsView.metier";
+import { applyTagFilter, filterCollections, pendingDeleteLabels } from "./CollectionsView.metier";
 import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 
 export function useCollectionsView() {
   const { userId } = useUserSession();
 
   const [collections, setCollections] = useState<CollectionUi[]>([]);
-  const [modules, setModules] = useState<QuizzModuleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<CollectionFilter>("all");
-  const [moduleFilter, setModuleFilter] = useState<number | "all">("all");
-  const [newModuleName, setNewModuleName] = useState("");
-  const [createModuleBusy, setCreateModuleBusy] = useState(false);
-  const [createModuleError, setCreateModuleError] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<number | "all">("all");
   const [assignBusyCollectionId, setAssignBusyCollectionId] = useState<number | null>(null);
   const [assignError, setAssignError] = useState<string | null>(null);
-  const [deleteModuleBusyId, setDeleteModuleBusyId] = useState<number | null>(null);
-  const [deleteModuleError, setDeleteModuleError] = useState<string | null>(null);
   const [deleteCollectionBusyId, setDeleteCollectionBusyId] = useState<number | null>(null);
   const [deleteCollectionError, setDeleteCollectionError] = useState<string | null>(null);
   const [newCollName, setNewCollName] = useState("");
-  const [newCollModuleId, setNewCollModuleId] = useState<number | "">("");
+  const [newCollTagId, setNewCollTagId] = useState<number | "">("");
   const [createCollBusy, setCreateCollBusy] = useState(false);
   const [createCollError, setCreateCollError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
@@ -89,16 +80,26 @@ export function useCollectionsView() {
 
   const loadBootstrap = useCallback(async (): Promise<{
     list: CollectionUi[];
-    mods: QuizzModuleRow[];
     picker: PersonalitePickerRowUi[];
   }> => {
-    const [list, mods, picker] = await Promise.all([
+    const [list, picker] = await Promise.all([
       fetchCollections(),
-      fetchModules(),
       fetchPersonalitesPicker().catch(() => [] as PersonalitePickerRowUi[]),
     ]);
-    return { list, mods, picker };
+    return { list, picker };
   }, []);
+
+  const tagFilterOptions = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const c of collections) {
+      for (const t of c.collection_tags ?? []) {
+        if (!map.has(t.id)) map.set(t.id, t.nom);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, nom]) => ({ id, nom }))
+      .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+  }, [collections]);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,10 +107,9 @@ export function useCollectionsView() {
       setLoading(true);
       setError(null);
       try {
-        const { list, mods, picker } = await loadBootstrap();
+        const { list, picker } = await loadBootstrap();
         if (!cancelled) {
           setCollections(list);
-          setModules(mods);
           setPersonalitesPicker(picker);
         }
       } catch {
@@ -124,8 +124,13 @@ export function useCollectionsView() {
   }, [loadBootstrap]);
 
   useEffect(() => {
-    if (moduleFilter !== "all" && !modules.some((m) => m.id === moduleFilter)) setModuleFilter("all");
-  }, [modules, moduleFilter]);
+    if (tagFilter !== "all" && !tagFilterOptions.some((t) => t.id === tagFilter)) setTagFilter("all");
+  }, [tagFilter, tagFilterOptions]);
+
+  const tagPickerPool = useMemo(
+    () => collections.map((c) => ({ id: c.id, nom: c.nom })),
+    [collections],
+  );
 
   useEffect(() => {
     if (hierarchySubtreeRootId == null) {
@@ -138,43 +143,27 @@ export function useCollectionsView() {
     if (!root || !hasKids) setHierarchySubtreeRootId(null);
   }, [collections, hierarchySubtreeRootId]);
 
-  const handleCreateModule = async () => {
-    const nom = newModuleName.trim();
-    if (!nom) return;
-    setCreateModuleBusy(true);
-    setCreateModuleError(null);
-    try {
-      const row = await createQuizzModule(nom);
-      setModules((prev) => [...prev, row].sort((a, b) => a.id - b.id));
-      setNewModuleName("");
-    } catch (e) {
-      setCreateModuleError(e instanceof Error ? e.message : "Creation impossible.");
-    } finally {
-      setCreateModuleBusy(false);
-    }
-  };
-
-  const handleAssign = async (collectionId: number, moduleId: number) => {
+  const handleAssignTag = async (collectionId: number, tagCollectionId: number) => {
     setAssignBusyCollectionId(collectionId);
     setAssignError(null);
     try {
-      const updated = await assignCollectionToModule(collectionId, moduleId);
+      const updated = await assignCollectionTag(collectionId, tagCollectionId);
       setCollections((prev) => prev.map((c) => (c.id === collectionId ? updated : c)));
     } catch (e) {
-      setAssignError(e instanceof Error ? e.message : "Assignation impossible.");
+      setAssignError(e instanceof Error ? e.message : "Association etiquette impossible.");
     } finally {
       setAssignBusyCollectionId(null);
     }
   };
 
-  const handleUnassign = async (collectionId: number, moduleId: number) => {
+  const handleUnassignTag = async (collectionId: number, tagCollectionId: number) => {
     setAssignBusyCollectionId(collectionId);
     setAssignError(null);
     try {
-      const updated = await unassignCollectionFromModule(collectionId, moduleId);
+      const updated = await unassignCollectionTag(collectionId, tagCollectionId);
       setCollections((prev) => prev.map((c) => (c.id === collectionId ? updated : c)));
     } catch (e) {
-      setAssignError(e instanceof Error ? e.message : "Retrait impossible.");
+      setAssignError(e instanceof Error ? e.message : "Retrait etiquette impossible.");
     } finally {
       setAssignBusyCollectionId(null);
     }
@@ -186,7 +175,7 @@ export function useCollectionsView() {
     naissance: number;
     mort: number | null;
     resumer: string;
-    moduleId: number | "";
+    tagCollectionId: number | "";
   }) => {
     setPersonnaliteModalBusy(true);
     setPersonnaliteModalError(null);
@@ -198,16 +187,16 @@ export function useCollectionsView() {
         naissance: payload.naissance,
         mort: payload.mort,
         resumer: payload.resumer,
-        ...(payload.moduleId !== "" ? { moduleId: Number(payload.moduleId) } : {}),
+        ...(payload.tagCollectionId !== "" ? { tagCollectionId: Number(payload.tagCollectionId) } : {}),
       };
       const ui = await createPersonaliteCollection(body);
       setCollections((prev) => [...prev, ui].sort((a, b) => a.id - b.id));
       const picker = await fetchPersonalitesPicker().catch(() => [] as PersonalitePickerRowUi[]);
       setPersonalitesPicker(picker);
       setPersonnaliteModalOpen(false);
-      const modQ =
-        payload.moduleId !== "" ? `?module=${Number(payload.moduleId)}` : "";
-      route(`/questions/${ui.id}${modQ}`);
+      const tagQ =
+        payload.tagCollectionId !== "" ? `?tagCollection=${Number(payload.tagCollectionId)}` : "";
+      route(`/questions/${ui.id}${tagQ}`);
     } catch (e) {
       setPersonnaliteModalError(
         e instanceof Error ? e.message : "Creation personnalité impossible.",
@@ -262,14 +251,14 @@ export function useCollectionsView() {
     setCreateCollBusy(true);
     setCreateCollError(null);
     try {
-      const body: { userId: number; nom: string; moduleId?: number } = { userId, nom };
-      if (newCollModuleId !== "") body.moduleId = Number(newCollModuleId);
+      const body: { userId: number; nom: string; tagCollectionId?: number } = { userId, nom };
+      if (newCollTagId !== "") body.tagCollectionId = Number(newCollTagId);
       const ui = await createEmptyCollection(body);
       setCollections((prev) => [...prev, ui].sort((a, b) => a.id - b.id));
       setNewCollName("");
-      setNewCollModuleId("");
-      const modQ = body.moduleId != null ? `?module=${body.moduleId}` : "";
-      route(`/questions/${ui.id}${modQ}`);
+      setNewCollTagId("");
+      const tagQ = body.tagCollectionId != null ? `?tagCollection=${body.tagCollectionId}` : "";
+      route(`/questions/${ui.id}${tagQ}`);
     } catch (e) {
       setCreateCollError(e instanceof Error ? e.message : "Creation impossible.");
     } finally {
@@ -277,46 +266,22 @@ export function useCollectionsView() {
     }
   };
 
-  const confirmDeleteBusy =
-    pendingDelete?.kind === "collection"
-      ? deleteCollectionBusyId !== null
-      : pendingDelete?.kind === "module"
-        ? deleteModuleBusyId !== null
-        : false;
+  const confirmDeleteBusy = pendingDelete != null && deleteCollectionBusyId !== null;
 
   const runConfirmedDelete = async () => {
     if (pendingDelete == null) return;
-    if (pendingDelete.kind === "collection") {
-      const c = pendingDelete.data;
-      setDeleteCollectionBusyId(c.id);
-      setDeleteCollectionError(null);
-      try {
-        await deleteCollection(c.id, userId);
-        setCollections((prev) => prev.filter((x) => x.id !== c.id));
-        setPendingDelete(null);
-      } catch (e) {
-        setDeleteCollectionError(e instanceof Error ? e.message : "Suppression de la collection impossible.");
-        setPendingDelete(null);
-      } finally {
-        setDeleteCollectionBusyId(null);
-      }
-      return;
-    }
-    const m = pendingDelete.data;
-    setDeleteModuleError(null);
-    setDeleteModuleBusyId(m.id);
+    const c = pendingDelete.data;
+    setDeleteCollectionBusyId(c.id);
+    setDeleteCollectionError(null);
     try {
-      await deleteQuizzModule(m.id);
-      setModules((prev) => prev.filter((x) => x.id !== m.id));
-      setCollections((prev) =>
-        prev.map((c) => ({ ...c, modules: (c.modules ?? []).filter((mod) => mod.id !== m.id) })),
-      );
+      await deleteCollection(c.id, userId);
+      setCollections((prev) => prev.filter((x) => x.id !== c.id));
       setPendingDelete(null);
     } catch (e) {
-      setDeleteModuleError(e instanceof Error ? e.message : "Suppression impossible.");
+      setDeleteCollectionError(e instanceof Error ? e.message : "Suppression de la collection impossible.");
       setPendingDelete(null);
     } finally {
-      setDeleteModuleBusyId(null);
+      setDeleteCollectionBusyId(null);
     }
   };
 
@@ -329,8 +294,8 @@ export function useCollectionsView() {
   }, [collections, userId]);
 
   const filtered = useMemo(
-    () => applyModuleFilter(filterCollections(collections, filter, userId), moduleFilter),
-    [collections, filter, userId, moduleFilter],
+    () => applyTagFilter(filterCollections(collections, filter, userId), tagFilter),
+    [collections, filter, userId, tagFilter],
   );
 
   const filteredSourceCount = filtered.length;
@@ -448,9 +413,8 @@ export function useCollectionsView() {
           const nouvelle = await createEmptyCollection({ userId, nom: data.collection.nom });
           collectionCreeeId = nouvelle.id;
           const res = await importAppCollectionQuestionsJson(data, { collectionId: nouvelle.id });
-          const { list, mods, picker } = await loadBootstrap();
+          const { list, picker } = await loadBootstrap();
           setCollections(list);
-          setModules(mods);
           setPersonalitesPicker(picker);
           setJsonImportText("");
           setJsonImportMessage(
@@ -471,9 +435,8 @@ export function useCollectionsView() {
       const data = normalizeAndValidateImportText(jsonImportText);
       data.user_id = userId;
       const res = await importQuestionsJson(data, { categorie: jsonImportCategorie });
-      const { list, mods, picker } = await loadBootstrap();
+      const { list, picker } = await loadBootstrap();
       setCollections(list);
-      setModules(mods);
       setPersonalitesPicker(picker);
       setJsonImportText("");
       setJsonImportMessage(
@@ -507,9 +470,8 @@ export function useCollectionsView() {
 
   const onRetryLoad = () => {
     loadBootstrap()
-      .then(({ list, mods, picker }) => {
+      .then(({ list, picker }) => {
         setCollections(list);
-        setModules(mods);
         setPersonalitesPicker(picker);
       })
       .catch(() => setError("fetch"));
@@ -547,32 +509,25 @@ export function useCollectionsView() {
   };
 
   const content = {
-    modules,
+    tagPickerPool,
+    tagFilterOptions,
     pendingDelete,
-    deleteModuleBusyId,
     assignBusyCollectionId,
     deleteCollectionBusyId,
-    deleteModuleError,
-    newModuleName,
-    createModuleBusy,
-    createModuleError,
-    onChangeNewModuleName: setNewModuleName,
-    onCreateModule: () => void handleCreateModule(),
-    onRequestDeleteModule: (module: QuizzModuleRow) => setPendingDelete({ kind: "module", data: module }),
     newCollName,
-    newCollModuleId,
+    newCollTagId,
     createCollBusy,
     createCollError,
     onChangeNewCollName: setNewCollName,
-    onChangeNewCollModuleId: setNewCollModuleId,
+    onChangeNewCollTagId: setNewCollTagId,
     onCreateCollection: () => void handleCreateCollection(),
     assignError,
     deleteCollectionError,
     filter,
     onChangeFilter: setFilter,
     autresCreateurs,
-    moduleFilter,
-    onChangeModuleFilter: setModuleFilter,
+    tagFilter,
+    onChangeTagFilter: setTagFilter,
     filtered: displayCollections,
     filteredSourceCount,
     collectionListSearch,
@@ -611,8 +566,8 @@ export function useCollectionsView() {
     onPlayQtypeChange: setPlayQtype,
     playInfinite,
     onPlayInfiniteChange: setPlayInfinite,
-    onAssign: handleAssign,
-    onUnassign: handleUnassign,
+    onAssignTag: handleAssignTag,
+    onUnassignTag: handleUnassignTag,
     onRequestDeleteCollection: (collection: CollectionUi) =>
       setPendingDelete({ kind: "collection", data: collection }),
     newCollectionKind,

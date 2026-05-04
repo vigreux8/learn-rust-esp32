@@ -65,7 +65,7 @@ export class ImportLlmHandler {
     body: LlmImportBodyDto,
     opts?: {
       collectionId?: number;
-      moduleId?: number;
+      tagCollectionId?: number;
       categorie?: 'histoire' | 'pratique' | 'connaissance';
       sousCollectionId?: number;
     },
@@ -116,8 +116,11 @@ export class ImportLlmHandler {
         collectionId: opts.collectionId,
         sousCollectionId: opts.sousCollectionId,
       });
-      if (opts.moduleId != null) {
-        await this.structure.assignCollectionToModule(opts.collectionId, opts.moduleId);
+      if (opts.tagCollectionId != null) {
+        await this.structure.assignCollectionTag(
+          opts.tagCollectionId,
+          opts.collectionId,
+        );
       }
       return result;
     }

@@ -1,6 +1,6 @@
-import { FileJson, Layers, Search, Trash2 } from "lucide-preact";
+import { FileJson, Layers, Search } from "lucide-preact";
 import type { PlayQtype } from "../../../lib/playOrder";
-import type { CollectionUi, PersonalitePickerRowUi, QuizzModuleRow } from "../../../types/quizz";
+import type { CollectionUi, PersonalitePickerRowUi } from "../../../types/quizz";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
@@ -115,32 +115,25 @@ export function JsonImportPanel({
 }
 
 export function CollectionsContent({
-  modules,
+  tagPickerPool,
+  tagFilterOptions,
   pendingDelete,
-  deleteModuleBusyId,
   assignBusyCollectionId,
   deleteCollectionBusyId,
-  deleteModuleError,
-  newModuleName,
-  createModuleBusy,
-  createModuleError,
-  onChangeNewModuleName,
-  onCreateModule,
-  onRequestDeleteModule,
   newCollName,
-  newCollModuleId,
+  newCollTagId,
   createCollBusy,
   createCollError,
   onChangeNewCollName,
-  onChangeNewCollModuleId,
+  onChangeNewCollTagId,
   onCreateCollection,
   assignError,
   deleteCollectionError,
   filter,
   onChangeFilter,
   autresCreateurs,
-  moduleFilter,
-  onChangeModuleFilter,
+  tagFilter,
+  onChangeTagFilter,
   filtered,
   filteredSourceCount,
   collectionListSearch,
@@ -157,8 +150,8 @@ export function CollectionsContent({
   onPlayQtypeChange,
   playInfinite,
   onPlayInfiniteChange,
-  onAssign,
-  onUnassign,
+  onAssignTag,
+  onUnassignTag,
   onRequestDeleteCollection,
   hierarchySubtreeRootId,
   hierarchySubtreeRootNom,
@@ -186,32 +179,25 @@ export function CollectionsContent({
   onAssignPersoToCollection,
   onUnassignPersoFromCollection,
 }: {
-  modules: QuizzModuleRow[];
+  tagPickerPool: { id: number; nom: string }[];
+  tagFilterOptions: { id: number; nom: string }[];
   pendingDelete: PendingDelete;
-  deleteModuleBusyId: number | null;
   assignBusyCollectionId: number | null;
   deleteCollectionBusyId: number | null;
-  deleteModuleError: string | null;
-  newModuleName: string;
-  createModuleBusy: boolean;
-  createModuleError: string | null;
-  onChangeNewModuleName: (value: string) => void;
-  onCreateModule: () => void;
-  onRequestDeleteModule: (module: QuizzModuleRow) => void;
   newCollName: string;
-  newCollModuleId: number | "";
+  newCollTagId: number | "";
   createCollBusy: boolean;
   createCollError: string | null;
   onChangeNewCollName: (value: string) => void;
-  onChangeNewCollModuleId: (value: number | "") => void;
+  onChangeNewCollTagId: (value: number | "") => void;
   onCreateCollection: () => void;
   assignError: string | null;
   deleteCollectionError: string | null;
   filter: CollectionFilter;
   onChangeFilter: (filter: CollectionFilter) => void;
   autresCreateurs: [number, string][];
-  moduleFilter: number | "all";
-  onChangeModuleFilter: (value: number | "all") => void;
+  tagFilter: number | "all";
+  onChangeTagFilter: (value: number | "all") => void;
   filtered: CollectionUi[];
   filteredSourceCount: number;
   collectionListSearch: string;
@@ -228,8 +214,8 @@ export function CollectionsContent({
   onPlayQtypeChange: (value: PlayQtype) => void;
   playInfinite: boolean;
   onPlayInfiniteChange: (value: boolean) => void;
-  onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
-  onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
+  onAssignTag: (collectionId: number, tagCollectionId: number) => void | Promise<void>;
+  onUnassignTag: (collectionId: number, tagCollectionId: number) => void | Promise<void>;
   onRequestDeleteCollection: (collection: CollectionUi) => void;
   hierarchySubtreeRootId: number | null;
   hierarchySubtreeRootNom: string;
@@ -256,7 +242,7 @@ export function CollectionsContent({
     naissance: number;
     mort: number | null;
     resumer: string;
-    moduleId: number | "";
+    tagCollectionId: number | "";
   }) => void | Promise<void>;
   personalitesPicker: PersonalitePickerRowUi[];
   assignPersoBusyCollectionId: number | null;
@@ -317,41 +303,6 @@ export function CollectionsContent({
       </section>
 
       <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
-        <h2 class="text-sm font-semibold tracking-tight text-base-content">Supercollections</h2>
-        {modules.length > 0 ? (
-          <ul class="mt-3 flex flex-col gap-2">
-            {modules.map((m) => (
-              <li key={m.id} class="flex items-center justify-between gap-3 rounded-xl border border-learn/25 bg-learn/10 px-3 py-2">
-                <span class="min-w-0 flex-1 text-xs font-medium text-learn">{m.nom}</span>
-                <button
-                  type="button"
-                  class="btn btn-ghost btn-xs shrink-0 gap-1 text-error hover:bg-error/10"
-                  aria-label={`Supprimer la supercollection ${m.nom}`}
-                  disabled={deleteModuleBusyId !== null || assignBusyCollectionId !== null || assignPersoBusyCollectionId !== null || deleteCollectionBusyId !== null || pendingDelete !== null}
-                  onClick={() => onRequestDeleteModule(m)}
-                >
-                  {deleteModuleBusyId === m.id ? <span class="loading loading-spinner loading-xs" aria-hidden /> : <Trash2 class="h-4 w-4" aria-hidden />}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="mt-3 text-xs text-base-content/50">Aucune supercollection pour l instant.</p>
-        )}
-        {deleteModuleError ? <p class="mt-2 text-xs text-error">{deleteModuleError}</p> : null}
-        <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div class="flex-1">
-            <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-supercollection-name">Nouvelle supercollection</label>
-            <input id="new-supercollection-name" class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100" type="text" value={newModuleName} disabled={createModuleBusy} onInput={(e) => onChangeNewModuleName((e.target as HTMLInputElement).value)} />
-          </div>
-          <Button variant="learn" class="btn-sm shrink-0" disabled={createModuleBusy || !newModuleName.trim()} onClick={onCreateModule}>
-            {createModuleBusy ? "Creation..." : "Creer"}
-          </Button>
-        </div>
-        {createModuleError ? <p class="mt-2 text-xs text-error">{createModuleError}</p> : null}
-      </section>
-
-      <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
         <h2 class="text-sm font-semibold tracking-tight text-base-content">Nouvelle collection</h2>
         <p class="mt-1 text-xs text-base-content/55">Choisis si la carte est une collection classique ou une fiche personnalité (titre automatique « Prénom Nom »).</p>
         <div class="mt-3 inline-flex flex-wrap rounded-full border border-base-content/10 bg-base-100/70 p-1">
@@ -379,10 +330,10 @@ export function CollectionsContent({
               <input id="new-collection-name" class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100" type="text" value={newCollName} disabled={createCollBusy || personnaliteModalBusy} onInput={(e) => onChangeNewCollName((e.target as HTMLInputElement).value)} />
             </div>
             <div class="w-full sm:w-auto sm:min-w-40">
-              <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-module">Supercollection (optionnel)</label>
-              <select id="new-collection-module" class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100" value={newCollModuleId === "" ? "" : String(newCollModuleId)} disabled={createCollBusy || modules.length === 0 || personnaliteModalBusy} onChange={(e) => onChangeNewCollModuleId((e.target as HTMLSelectElement).value === "" ? "" : Number((e.target as HTMLSelectElement).value))}>
+              <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-tag">Étiquette / collection de regroupement (optionnel)</label>
+              <select id="new-collection-tag" class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100" value={newCollTagId === "" ? "" : String(newCollTagId)} disabled={createCollBusy || tagPickerPool.length === 0 || personnaliteModalBusy} onChange={(e) => onChangeNewCollTagId((e.target as HTMLSelectElement).value === "" ? "" : Number((e.target as HTMLSelectElement).value))}>
                 <option value="">—</option>
-                {modules.map((m) => (
+                {tagPickerPool.map((m) => (
                   <option key={m.id} value={m.id}>{m.nom}</option>
                 ))}
               </select>
@@ -408,7 +359,7 @@ export function CollectionsContent({
         open={personnaliteModalOpen}
         busy={personnaliteModalBusy}
         error={personnaliteModalError}
-        modules={modules}
+        tagOptions={tagPickerPool}
         onClose={onClosePersonnaliteModal}
         onSubmit={(payload) => void onSubmitPersonnaliteModal(payload)}
       />
@@ -429,13 +380,13 @@ export function CollectionsContent({
       </fieldset>
 
       <fieldset class="mb-8">
-        <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">Par supercollection</legend>
-        {modules.length === 0 ? (
-          <p class="text-xs text-base-content/50">Aucune supercollection : cree-en une plus haut pour filtrer.</p>
+        <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">Par étiquette (collection liée)</legend>
+        {tagFilterOptions.length === 0 ? (
+          <p class="text-xs text-base-content/50">Aucune étiquette en base : associe des collections sur les cartes pour pouvoir filtrer ici.</p>
         ) : (
-          <select class="select select-bordered select-sm w-full max-w-md rounded-xl border-base-content/15 bg-base-100" value={moduleFilter === "all" ? "" : String(moduleFilter)} onChange={(e) => onChangeModuleFilter((e.target as HTMLSelectElement).value === "" ? "all" : Number((e.target as HTMLSelectElement).value))}>
-            <option value="">Toutes les supercollections</option>
-            {modules.map((m) => (
+          <select class="select select-bordered select-sm w-full max-w-md rounded-xl border-base-content/15 bg-base-100" value={tagFilter === "all" ? "" : String(tagFilter)} onChange={(e) => onChangeTagFilter((e.target as HTMLSelectElement).value === "" ? "all" : Number((e.target as HTMLSelectElement).value))}>
+            <option value="">Toutes les étiquettes</option>
+            {tagFilterOptions.map((m) => (
               <option key={m.id} value={m.id}>{m.nom}</option>
             ))}
           </select>
@@ -549,7 +500,7 @@ export function CollectionsContent({
               <CollectionCard
                 collection={c}
                 myUserId={userId}
-                allModules={modules}
+                tagPickerPool={tagPickerPool}
                 assignBusyCollectionId={assignBusyCollectionId}
                 deleteBusyCollectionId={deleteCollectionBusyId}
                 playMode={playMode}
@@ -564,8 +515,8 @@ export function CollectionsContent({
                       }
                     : undefined
                 }
-                onAssign={onAssign}
-                onUnassign={onUnassign}
+                onAssignTag={onAssignTag}
+                onUnassignTag={onUnassignTag}
                 interactionLocked={
                   pendingDelete !== null ||
                   assignBusyCollectionId !== null ||

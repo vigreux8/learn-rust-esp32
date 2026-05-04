@@ -104,8 +104,8 @@ export type CollectionUi = {
   /** Effectifs par type de catégorie (toute la collection). */
   question_counts_by_type: CollectionQuestionCountsByType;
   createur_pseudot: string;
-  /** Super-collections (`quizz_module`) liées via `quizz_module_collection`. */
-  modules: CollectionModuleRef[];
+  /** Collections-étiquettes (`collection_tag_lien.tag_collection_id`). */
+  collection_tags: CollectionModuleRef[];
   /** v4 : collections enfants (`relation-collection` + `quizz_collection` enfant). */
   sous_collections: CollectionSousCollectionRef[];
   /** v4 : id parent si cette collection est enfant ; sinon `null`. */
@@ -169,12 +169,5 @@ export type RefCategorieHierarchyRow = {
 export type RefQuestionScaleRow = {
   id: number;
   lvl: string;
-};
-
-export type QuizzModuleRow = {
-  id: number;
-  nom: string;
-  create_at: string;
-  update_at: string;
 };
 

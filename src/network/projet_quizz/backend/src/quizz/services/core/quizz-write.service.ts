@@ -436,10 +436,15 @@ export class QuizzWriteService {
           OR: [{ p_collection: collectionId }, { e_collection: collectionId }],
         },
       });
-      await tx.question_collection.deleteMany({
-        where: { collection_id: collectionId },
+      await tx.collection_tag_lien.deleteMany({
+        where: {
+          OR: [
+            { tag_collection_id: collectionId },
+            { tagged_collection_id: collectionId },
+          ],
+        },
       });
-      await tx.quizz_module_collection.deleteMany({
+      await tx.question_collection.deleteMany({
         where: { collection_id: collectionId },
       });
 
@@ -619,8 +624,13 @@ export class QuizzWriteService {
       await tx.question_collection.deleteMany({
         where: { collection_id: childId },
       });
-      await tx.quizz_module_collection.deleteMany({
-        where: { collection_id: childId },
+      await tx.collection_tag_lien.deleteMany({
+        where: {
+          OR: [
+            { tag_collection_id: childId },
+            { tagged_collection_id: childId },
+          ],
+        },
       });
       await tx.quizz_collection.delete({ where: { id: childId } });
       await tx.quizz_collection.update({
@@ -723,7 +733,7 @@ export class QuizzWriteService {
     naissance: number;
     mort?: number | null;
     resumer: string;
-    moduleId?: number;
+    tagCollectionId?: number;
   }): Promise<{ collectionId: number; personaliteId: number }> {
     const user = await this.prisma.prisma.user.findUnique({
       where: { id: body.userId },
@@ -731,12 +741,14 @@ export class QuizzWriteService {
     if (!user) {
       throw new NotFoundException(`Utilisateur ${body.userId} introuvable`);
     }
-    if (body.moduleId != null) {
-      const mod = await this.prisma.prisma.quizz_module.findUnique({
-        where: { id: body.moduleId },
+    if (body.tagCollectionId != null) {
+      const tag = await this.prisma.prisma.quizz_collection.findUnique({
+        where: { id: body.tagCollectionId },
       });
-      if (!mod) {
-        throw new NotFoundException(`Module ${body.moduleId} introuvable`);
+      if (!tag) {
+        throw new NotFoundException(
+          `Collection étiquette ${body.tagCollectionId} introuvable`,
+        );
       }
     }
     const colNom = `${body.prenom.trim()} ${body.nom.trim()}`.trim();
@@ -768,9 +780,12 @@ export class QuizzWriteService {
           resumer: body.resumer.trim() !== '' ? body.resumer.trim() : '—',
         },
       });
-      if (body.moduleId != null) {
-        await tx.quizz_module_collection.create({
-          data: { module_id: body.moduleId, collection_id: c.id },
+      if (body.tagCollectionId != null) {
+        await tx.collection_tag_lien.create({
+          data: {
+            tag_collection_id: body.tagCollectionId,
+            tagged_collection_id: c.id,
+          },
         });
       }
       return { collectionId: c.id, personaliteId: p.id };

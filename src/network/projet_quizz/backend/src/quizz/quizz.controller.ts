@@ -16,13 +16,12 @@ import { QuizzService } from './services';
 import { AppCollectionImportBodyDto } from './dto/import-collection.dto';
 import { LlmImportBodyDto } from './dto/import-llm.dto';
 import {
-  AssignCollectionToModuleDto,
+  AssignCollectionTagDto,
   AssignPersonaliteToCollectionDto,
   AttachQuestionToSousCollectionBodyDto,
-  CreateCollectionInModuleDto,
+  CreateCollectionUnderTagDto,
   CreatePersonaliteCollectionDto,
   CreateQuestionDto,
-  CreateQuizzModuleDto,
   CreateSousCollectionBodyDto,
   CreateStandaloneCollectionDto,
   PatchSousCollectionBodyDto,
@@ -158,28 +157,12 @@ function parsePlayQtypeQuery(raw?: string): 'histoire' | 'pratique' | 'connaissa
 export class QuizzController {
   constructor(private readonly quizz: QuizzService) {}
 
-  @Get('modules')
-  listModules() {
-    return this.quizz.listModules();
-  }
-
-  @Post('modules')
-  createModule(@Body() body: CreateQuizzModuleDto) {
-    return this.quizz.createModule(body.nom);
-  }
-
-  @Delete('modules/:moduleId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  deleteModule(@Param('moduleId', ParseIntPipe) moduleId: number) {
-    return this.quizz.deleteModule(moduleId);
-  }
-
-  @Post('modules/:moduleId/collections')
-  createCollectionInModule(
-    @Param('moduleId', ParseIntPipe) moduleId: number,
-    @Body() body: CreateCollectionInModuleDto,
+  @Post('collection-tags/:tagCollectionId/collections')
+  createCollectionUnderTag(
+    @Param('tagCollectionId', ParseIntPipe) tagCollectionId: number,
+    @Body() body: CreateCollectionUnderTagDto,
   ) {
-    return this.quizz.createCollectionInModule(moduleId, {
+    return this.quizz.createCollectionInTag(tagCollectionId, {
       userId: body.userId,
       nom: body.nom,
     });
@@ -209,7 +192,7 @@ export class QuizzController {
       naissance: body.naissance,
       mort: body.mort,
       resumer: body.resumer ?? '',
-      moduleId: body.moduleId,
+      tagCollectionId: body.tagCollectionId,
     });
   }
 
@@ -218,7 +201,7 @@ export class QuizzController {
     return this.quizz.createStandaloneCollection({
       userId: body.userId,
       nom: body.nom,
-      moduleId: body.moduleId,
+      tagCollectionId: body.tagCollectionId,
     });
   }
 
@@ -269,20 +252,20 @@ export class QuizzController {
     });
   }
 
-  @Post('collections/:id/modules')
-  assignCollectionToModule(
+  @Post('collections/:id/collection-tags')
+  assignCollectionTag(
     @Param('id', ParseIntPipe) collectionId: number,
-    @Body() body: AssignCollectionToModuleDto,
+    @Body() body: AssignCollectionTagDto,
   ) {
-    return this.quizz.assignCollectionToModule(collectionId, body.moduleId);
+    return this.quizz.assignCollectionTag(collectionId, body.tagCollectionId);
   }
 
-  @Delete('collections/:id/modules/:moduleId')
-  unassignCollectionFromModule(
+  @Delete('collections/:id/collection-tags/:tagCollectionId')
+  unassignCollectionTag(
     @Param('id', ParseIntPipe) collectionId: number,
-    @Param('moduleId', ParseIntPipe) moduleId: number,
+    @Param('tagCollectionId', ParseIntPipe) tagCollectionId: number,
   ) {
-    return this.quizz.unassignCollectionFromModule(collectionId, moduleId);
+    return this.quizz.unassignCollectionTag(collectionId, tagCollectionId);
   }
 
   @Post('collections/:id/personalites')
@@ -457,7 +440,7 @@ export class QuizzController {
   importQuestions(
     @Body() body: LlmImportBodyDto,
     @Query('collectionId') collectionIdStr?: string,
-    @Query('moduleId') moduleIdStr?: string,
+    @Query('tagCollectionId') tagCollectionIdStr?: string,
     @Query('categorie') categorieRaw?: string,
     @Query('sousCollectionId') sousCollectionIdStr?: string,
   ) {
@@ -472,17 +455,17 @@ export class QuizzController {
       return n;
     };
     const collectionId = parseOptInt('collectionId', collectionIdStr);
-    const moduleId = parseOptInt('moduleId', moduleIdStr);
+    const tagCollectionId = parseOptInt('tagCollectionId', tagCollectionIdStr);
     const sousCollectionId = parseOptInt('sousCollectionId', sousCollectionIdStr);
-    if (moduleId != null && collectionId == null) {
+    if (tagCollectionId != null && collectionId == null) {
       throw new BadRequestException(
-        'Query moduleId sans collectionId : indique collectionId pour rattacher l’import.',
+        'Query tagCollectionId sans collectionId : indique collectionId pour rattacher l’import.',
       );
     }
     const categorie = parseImportCategorie(categorieRaw);
     return this.quizz.importQuestionsFromLlmJson(body, {
       collectionId,
-      moduleId,
+      tagCollectionId,
       categorie,
       sousCollectionId,
     });

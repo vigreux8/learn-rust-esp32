@@ -1,10 +1,8 @@
-import type { QuizzModuleRow } from "../../../types/quizz";
-
 export type CreatePersonnaliteModalProps = {
   open: boolean;
   busy: boolean;
   error: string | null;
-  modules: QuizzModuleRow[];
+  tagOptions: { id: number; nom: string }[];
   onClose: () => void;
   onSubmit: (payload: {
     nom: string;
@@ -12,6 +10,6 @@ export type CreatePersonnaliteModalProps = {
     naissance: number;
     mort: number | null;
     resumer: string;
-    moduleId: number | "";
+    tagCollectionId: number | "";
   }) => void;
 };

@@ -35,14 +35,6 @@ export interface QuestionUi {
   reponses: ReponseUi[];
 }
 
-/** `quizz_module` — supercollection regroupant des collections. */
-export interface QuizzModuleRow {
-  id: number;
-  nom: string;
-  create_at: string;
-  update_at: string;
-}
-
 /** Comptage des questions de la collection par type de catégorie parent (toute la collection). */
 export interface CollectionQuestionCountsByType {
   histoire: number;
@@ -92,7 +84,8 @@ export interface CollectionUi {
   questions: QuestionUi[];
   question_counts_by_type: CollectionQuestionCountsByType;
   createur_pseudot: string;
-  modules: { id: number; nom: string }[];
+  /** Collections servant d’étiquette (`collection_tag_lien`). */
+  collection_tags: { id: number; nom: string }[];
   /** v4 : enfants du parent (`relation-collection`) ; défaut `[]` si absent. */
   sous_collections?: CollectionSousCollectionRef[];
   /** v4 : parent si collection enfant ; défaut `null` si absent. */

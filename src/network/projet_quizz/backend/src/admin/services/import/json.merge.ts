@@ -161,11 +161,6 @@ function findCollectionIdByOwnerAndName(db: Database.Database, userId: number, n
   return row?.id ?? null;
 }
 
-function findQuizzModuleIdByName(db: Database.Database, nom: string): number | null {
-  const row = db.prepare(`SELECT id FROM quizz_module WHERE nom = ?`).get(nom) as { id: number } | undefined;
-  return row?.id ?? null;
-}
-
 function nextAutoincrementId(db: Database.Database, table: string, pkCol: string): number {
   const row = db
     .prepare(`SELECT IFNULL(MAX(${quoteIdentifier(pkCol)}), 0) + 1 AS next_id FROM ${quoteIdentifier(table)}`)
@@ -349,23 +344,11 @@ export class FormatV1Strategy {
         return 'inserted';
       }
 
-      if (table === 'quizz_module') {
-        const oldId = typeof row.id === 'number' ? row.id : null;
-        const nom = typeof row.nom === 'string' ? row.nom : '';
-        if (!nom) return 'skipped';
-        const existingId = findQuizzModuleIdByName(db, nom);
-        if (existingId != null) {
-          if (oldId != null) pkMap?.set(oldId, existingId);
-          return 'mapped';
-        }
-        const cols = Object.keys(row);
-        const vals = cols.map((c) => row[c]);
-        db.exec(buildInsertSql(table, cols, vals));
-        if (oldId != null && pkCol) {
-          const newRow = db.prepare(`SELECT last_insert_rowid() AS id`).get() as { id: number };
-          pkMap?.set(oldId, newRow.id);
-        }
-        return 'inserted';
+      if (table === 'quizz_module' || table === 'quizz_module_collection') {
+        warnings.push(
+          `Table obsolète « ${table} » ignorée (remplacée par collection_tag_lien / collections).`,
+        );
+        return 'skipped';
       }
 
       if (pkCol) {

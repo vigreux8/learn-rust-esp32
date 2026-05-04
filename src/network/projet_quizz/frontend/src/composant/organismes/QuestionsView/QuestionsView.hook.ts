@@ -4,7 +4,6 @@ import {
   deleteImplicitQuestionRelation,
   deleteQuestion,
   fetchCollections,
-  fetchModules,
   fetchQuestionDetail,
   fetchQuestions,
   fetchRefCategories,
@@ -15,7 +14,7 @@ import {
 } from "../../../lib/api";
 import { useUserSession } from "../../../lib/userSession";
 import type { PlayQtype } from "../../../lib/playOrder";
-import type { CollectionUi, QuizzModuleRow, QuizzQuestionDetail, QuizzQuestionRow, RefCategorieRow } from "../../../types/quizz";
+import type { CollectionUi, QuizzQuestionDetail, QuizzQuestionRow, RefCategorieRow } from "../../../types/quizz";
 import {
   collectionFilterToQuery,
   filterFromRouteParam,
@@ -27,9 +26,8 @@ import type { QuestionCreateSavePayload } from "../QuestionEditModal/QuestionEdi
 export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   const { userId } = useUserSession();
   const [collections, setCollections] = useState<CollectionUi[]>([]);
-  const [allModules, setAllModules] = useState<QuizzModuleRow[]>([]);
   const [collectionFilter, setCollectionFilter] = useState<string>(() => filterFromRouteParam(collectionId));
-  const [importTargetModuleId, setImportTargetModuleId] = useState<number | null>(null);
+  const [importTargetTagCollectionId, setImportTargetTagCollectionId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<QuizzQuestionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,9 +63,9 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const m = new URLSearchParams(window.location.search).get("module");
-    if (m && /^\d+$/.test(m)) setImportTargetModuleId(Number(m));
-    else setImportTargetModuleId(null);
+    const m = new URLSearchParams(window.location.search).get("tagCollection");
+    if (m && /^\d+$/.test(m)) setImportTargetTagCollectionId(Number(m));
+    else setImportTargetTagCollectionId(null);
   }, [collectionId]);
 
   const reload = useCallback(async () => {
@@ -86,7 +84,6 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
 
   useEffect(() => {
     fetchCollections().then(setCollections).catch(() => {});
-    fetchModules().then(setAllModules).catch(() => {});
     fetchRefCategories().then(setRefCategories).catch(() => {});
   }, []);
 
@@ -99,11 +96,14 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
       setCollectionFilter(value);
       if (value === "" || value === "none") return void route("/questions");
       if (/^\d+$/.test(value)) {
-        const modQ = importTargetModuleId != null ? `?module=${importTargetModuleId}` : "";
-        route(`/questions/${value}${modQ}`);
+        const tagQ =
+          importTargetTagCollectionId != null
+            ? `?tagCollection=${importTargetTagCollectionId}`
+            : "";
+        route(`/questions/${value}${tagQ}`);
       }
     },
-    [importTargetModuleId],
+    [importTargetTagCollectionId],
   );
 
   const closeQuestionModal = useCallback(() => {
@@ -260,8 +260,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     data: {
       targetCollectionNumeric,
       collections,
-      allModules,
-      importTargetModuleId,
+      importTargetTagCollectionId,
       questions,
     },
     actions: {
@@ -293,9 +292,8 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   const contextBar = {
     targetCollectionNumeric,
     collections,
-    allModules,
-    importTargetModuleId,
-    setImportTargetModuleId,
+    importTargetTagCollectionId,
+    setImportTargetTagCollectionId,
   };
 
   const filtres = {

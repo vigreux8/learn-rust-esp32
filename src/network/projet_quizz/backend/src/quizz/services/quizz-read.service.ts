@@ -177,13 +177,15 @@ export class QuizzReadService {
       where: { id: collectionId },
       include: {
         user: true,
-        quizz_module_collection: {
-          orderBy: { id: 'asc' },
-          include: { quizz_module: true },
-        },
       },
     });
     if (!col) return null;
+
+    const tagLiens = await this.prisma.prisma.collection_tag_lien.findMany({
+      where: { tagged_collection_id: collectionId },
+      orderBy: { id: 'asc' },
+      include: { tag_collection: { select: { id: true, nom: true } } },
+    });
 
     const qcs = await this.prisma.prisma.question_collection.findMany({
       where: { collection_id: collectionId },
@@ -218,9 +220,9 @@ export class QuizzReadService {
 
     const questions = filtered.map((qc) => this.mapQuestionToUi(qc.quizz_question));
 
-    const modules = col.quizz_module_collection.map((mc) => ({
-      id: mc.quizz_module.id,
-      nom: mc.quizz_module.nom,
+    const collection_tags = tagLiens.map((row) => ({
+      id: row.tag_collection.id,
+      nom: row.tag_collection.nom,
     }));
 
     const childLinks = await this.prisma.prisma.relation_collection.findMany({
@@ -245,7 +247,7 @@ export class QuizzReadService {
       questions,
       question_counts_by_type,
       createur_pseudot: col.user.pseudot,
-      modules,
+      collection_tags,
       sous_collections,
       parent_collection_id,
       personnalites,

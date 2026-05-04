@@ -3,7 +3,6 @@ import {
   CollectionUi,
   PersonalitePickerRowDto,
   QuestionUi,
-  QuizzModuleRow,
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieHierarchyRow,
@@ -176,40 +175,28 @@ export class QuizzService {
     return this.write.deleteCollection(collectionId, userId);
   }
 
-  listModules(): Promise<QuizzModuleRow[]> {
-    return this.structure.listModules();
-  }
-
-  createModule(nom: string): Promise<QuizzModuleRow> {
-    return this.structure.createModule(nom);
-  }
-
-  deleteModule(moduleId: number): Promise<void> {
-    return this.structure.deleteModule(moduleId);
-  }
-
-  createCollectionInModule(
-    moduleId: number,
+  createCollectionInTag(
+    tagCollectionId: number,
     body: { userId: number; nom: string },
   ): Promise<{
     collectionId: number;
-    moduleId: number;
+    tagCollectionId: number;
     nom: string;
     create_at: string;
     update_at: string;
   }> {
-    return this.structure.createCollectionInModule({
-      moduleId,
+    return this.structure.createCollectionWithTag({
+      tagCollectionId,
       userId: body.userId,
       nom: body.nom,
     });
   }
 
-  async assignCollectionToModule(
+  async assignCollectionTag(
     collectionId: number,
-    moduleId: number,
+    tagCollectionId: number,
   ): Promise<CollectionUi> {
-    await this.structure.assignCollectionToModule(collectionId, moduleId);
+    await this.structure.assignCollectionTag(tagCollectionId, collectionId);
     const ui = await this.read.buildCollectionUi(collectionId);
     if (!ui) {
       throw new NotFoundException(`Collection ${collectionId} introuvable après assignation`);
@@ -217,11 +204,11 @@ export class QuizzService {
     return ui;
   }
 
-  async unassignCollectionFromModule(
+  async unassignCollectionTag(
     collectionId: number,
-    moduleId: number,
+    tagCollectionId: number,
   ): Promise<CollectionUi> {
-    await this.structure.unassignCollectionFromModule(collectionId, moduleId);
+    await this.structure.unassignCollectionTag(tagCollectionId, collectionId);
     const ui = await this.read.buildCollectionUi(collectionId);
     if (!ui) {
       throw new NotFoundException(
@@ -234,7 +221,7 @@ export class QuizzService {
   async createStandaloneCollection(body: {
     userId: number;
     nom: string;
-    moduleId?: number;
+    tagCollectionId?: number;
   }): Promise<CollectionUi> {
     const { collectionId } =
       await this.structure.createStandaloneCollection(body);
@@ -252,7 +239,7 @@ export class QuizzService {
     naissance: number;
     mort?: number | null;
     resumer: string;
-    moduleId?: number;
+    tagCollectionId?: number;
   }): Promise<CollectionUi> {
     const { collectionId } =
       await this.write.createPersonaliteCollection(body);
@@ -302,7 +289,7 @@ export class QuizzService {
     body: LlmImportBodyDto,
     opts?: {
       collectionId?: number;
-      moduleId?: number;
+      tagCollectionId?: number;
       categorie?: 'histoire' | 'pratique' | 'connaissance';
       sousCollectionId?: number;
     },
