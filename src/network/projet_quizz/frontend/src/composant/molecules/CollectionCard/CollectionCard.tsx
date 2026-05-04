@@ -71,6 +71,7 @@ export function CollectionCard({
             <Badge tone="flow">{n} question{n > 1 ? "s" : ""}</Badge>
             <Badge tone="learn" class="font-normal opacity-90">Histoire {counts.histoire}</Badge>
             <Badge tone="flow" class="border border-flow/25 bg-flow/10 font-normal opacity-95">Pratique {counts.pratique}</Badge>
+            <Badge tone="neutral" class="font-normal opacity-90">Connaissance {counts.connaissance}</Badge>
           </div>
           <h2 class="text-xl font-semibold tracking-tight text-base-content">{collection.nom}</h2>
           <p class="text-sm text-base-content/60">Collection · mise à jour {collection.update_at.slice(0, 10)}</p>

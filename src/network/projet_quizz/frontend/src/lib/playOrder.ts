@@ -12,8 +12,8 @@ export type PlayOrder =
 /** Tri de base (au plus un) avant les options KPI / aléatoire. */
 export type PlaySortBase = "none" | "linear" | "recent" | "ancien";
 
-/** Filtre de type de question pour une session de jeu (API `qtype`). */
-export type PlayQtype = "histoire" | "pratique" | "melanger";
+/** Filtre de type de question pour une session de jeu (API `qtype`, `ref_p_categorie.type`). */
+export type PlayQtype = "histoire" | "pratique" | "connaissance" | "melanger";
 
 const PLAY_ORDERS: readonly PlayOrder[] = [
   "random",
@@ -113,7 +113,7 @@ export function playOrdersFromSearch(): PlayOrder[] {
 export function playQtypeFromSearch(): PlayQtype {
   if (typeof window === "undefined") return "melanger";
   const v = new URLSearchParams(window.location.search).get("qtype");
-  if (v === "histoire" || v === "pratique" || v === "melanger") return v;
+  if (v === "histoire" || v === "pratique" || v === "connaissance" || v === "melanger") return v;
   return "melanger";
 }
 
@@ -213,6 +213,7 @@ export function shuffleQuestions(questions: QuestionUi[]): QuestionUi[] {
 export function playQtypeLabel(q: PlayQtype): string {
   if (q === "histoire") return "Histoire";
   if (q === "pratique") return "Pratique";
+  if (q === "connaissance") return "Connaissance";
   return "Mélanger";
 }
 

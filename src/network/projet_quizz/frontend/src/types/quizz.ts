@@ -19,9 +19,9 @@ export interface QuestionUi {
   commentaire: string;
   /** Colonne `verifier` côté API ; champ JSON d’export/import app : `fakechecker`. */
   verifier: boolean;
-  /** `ref_categorie.id` (stable entre exports/imports “app”). */
+  /** `ref_p_categorie.id` (stable entre exports/imports “app”). */
   categorie_id: number;
-  /** `ref_categorie.type` (ex. histoire, pratique). */
+  /** `ref_p_categorie.type` (ex. histoire, pratique, connaissance). */
   categorie_type: string;
   reponses: ReponseUi[];
 }
@@ -34,10 +34,11 @@ export interface QuizzModuleRow {
   update_at: string;
 }
 
-/** Comptage des questions de la collection par type de catégorie (toute la collection). */
+/** Comptage des questions de la collection par type de catégorie parent (toute la collection). */
 export interface CollectionQuestionCountsByType {
   histoire: number;
   pratique: number;
+  connaissance: number;
 }
 
 /** Collection enfant (`relation-collection`) — liste / jeu ciblé par `sousCollectionId`. */

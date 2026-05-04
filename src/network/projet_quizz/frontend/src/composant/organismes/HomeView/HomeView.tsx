@@ -68,12 +68,13 @@ export function HomeView() {
                 value={playQtype}
                 onChange={(e) => {
                   const v = (e.target as HTMLSelectElement).value;
-                  if (v === "histoire" || v === "pratique" || v === "melanger") setPlayQtype(v);
+                  if (v === "histoire" || v === "pratique" || v === "connaissance" || v === "melanger") setPlayQtype(v);
                 }}
               >
                 <option value="melanger">Melanger (tout)</option>
                 <option value="histoire">Histoire</option>
                 <option value="pratique">Pratique</option>
+                <option value="connaissance">Connaissance</option>
               </select>
             </div>
             <label class="flex cursor-pointer items-center justify-center gap-2 text-sm text-base-content/80">

@@ -62,7 +62,7 @@ export function useCollectionsView() {
   const [jsonImportBusy, setJsonImportBusy] = useState(false);
   const [jsonImportMessage, setJsonImportMessage] = useState<string | null>(null);
   const [jsonImportError, setJsonImportError] = useState<string | null>(null);
-  const [jsonImportCategorie, setJsonImportCategorie] = useState<"histoire" | "pratique">("histoire");
+  const [jsonImportCategorie, setJsonImportCategorie] = useState<"histoire" | "pratique" | "connaissance">("histoire");
 
   const loadData = useCallback(async () => {
     const [list, mods] = await Promise.all([fetchCollections(), fetchModules()]);

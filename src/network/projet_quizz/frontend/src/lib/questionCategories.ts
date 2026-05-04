@@ -5,18 +5,21 @@ import type { RefCategorieRow } from "../types/quizz";
  * La comparaison avec la base permet d’avertir si une nouvelle catégorie
  * existe côté backend mais n’a pas encore été câblée ici.
  */
-export const QUESTION_CATEGORIE_KEYS = ["histoire", "pratique"] as const;
+export const QUESTION_CATEGORIE_KEYS = ["histoire", "pratique", "connaissance"] as const;
 
 /**
- * Types `ref_categorie` (voir `ddb/inject.sql` et seed Prisma).
- * - histoire : plutôt information, contexte, culture.
+ * Types `ref_p_categorie` (seed Prisma / v4).
+ * - histoire : information, contexte, culture.
  * - pratique : mise en situation, application et cas d’usage.
+ * - connaissance : faits, définitions, repères à maîtriser (savoir structuré).
  */
 export const QUESTION_CATEGORIE_DEFINITIONS = {
   histoire:
     "Questions plutôt « information » : contexte, repères, culture — le « pourquoi / qu’est-ce que ».",
   pratique:
     "Questions sur comment appliquer l’information et dans quels cas l’utiliser — mise en situation et usage.",
+  connaissance:
+    "Questions de savoir structuré : définitions, formules, repères factuels à connaître ou reconnaître.",
 } as const satisfies Record<(typeof QUESTION_CATEGORIE_KEYS)[number], string>;
 
 export type QuestionCategorieKey = (typeof QUESTION_CATEGORIE_KEYS)[number];
@@ -27,14 +30,20 @@ export function isQuestionCategorieKey(value: string): value is QuestionCategori
 
 export function getQuestionCategorieSyncWarning(refCategories: RefCategorieRow[]): string | null {
   const backendTypes = Array.from(new Set(refCategories.map((entry) => entry.type.trim()).filter(Boolean)));
-  const frontendTypes = [...QUESTION_CATEGORIE_KEYS];
   const unknownBackendTypes = backendTypes.filter((type) => !isQuestionCategorieKey(type));
 
-  if (backendTypes.length !== frontendTypes.length || unknownBackendTypes.length > 0) {
-    return `Attention : la base expose ${backendTypes.length} catégorie(s) (${backendTypes.join(", ") || "aucune"}) alors que le frontend en gère ${frontendTypes.length} (${frontendTypes.join(", ")}).`;
+  if (unknownBackendTypes.length > 0) {
+    return `Attention : la base expose des types non gérés par l’interface : ${unknownBackendTypes.join(", ")}. Étends QUESTION_CATEGORIE_KEYS / QUESTION_CATEGORIE_DEFINITIONS dans questionCategories.ts.`;
   }
 
   return null;
+}
+
+/** Valeur pour la query `categorie` de l’import LLM (défaut : histoire). */
+export function normalizeLlmImportCategorie(value: string): QuestionCategorieKey {
+  const v = value.trim().toLowerCase();
+  if (isQuestionCategorieKey(v)) return v;
+  return "histoire";
 }
 
 export function getSupportedQuestionCategories(refCategories: RefCategorieRow[]): QuestionCategorieKey[] {

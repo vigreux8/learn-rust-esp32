@@ -52,12 +52,12 @@ export function JsonImportPanel({
 }: {
   jsonImportOpen: boolean;
   jsonImportMode: "app" | "llm";
-  jsonImportCategorie: "histoire" | "pratique";
+  jsonImportCategorie: "histoire" | "pratique" | "connaissance";
   jsonImportBusy: boolean;
   jsonImportText: string;
   jsonImportError: string | null;
   jsonImportMessage: string | null;
-  onChangeCategorie: (value: "histoire" | "pratique") => void;
+  onChangeCategorie: (value: "histoire" | "pratique" | "connaissance") => void;
   onOpenFilePicker: () => void;
   onChangeText: (value: string) => void;
   onRun: () => void;
@@ -78,10 +78,15 @@ export function JsonImportPanel({
                 class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:w-44"
                 value={jsonImportCategorie}
                 disabled={jsonImportBusy}
-                onChange={(e) => onChangeCategorie((e.target as HTMLSelectElement).value === "pratique" ? "pratique" : "histoire")}
+                onChange={(e) => {
+                  const v = (e.target as HTMLSelectElement).value;
+                  if (v === "pratique" || v === "connaissance") onChangeCategorie(v);
+                  else onChangeCategorie("histoire");
+                }}
               >
                 <option value="histoire">Histoire</option>
                 <option value="pratique">Pratique</option>
+                <option value="connaissance">Connaissance</option>
               </select>
             </div>
           ) : null}
@@ -211,12 +216,13 @@ export function CollectionsContent({
                 value={playQtype}
                 onChange={(e) => {
                   const v = (e.target as HTMLSelectElement).value;
-                  if (v === "histoire" || v === "pratique" || v === "melanger") onPlayQtypeChange(v);
+                  if (v === "histoire" || v === "pratique" || v === "connaissance" || v === "melanger") onPlayQtypeChange(v);
                 }}
               >
                 <option value="melanger">Mélanger</option>
                 <option value="histoire">Histoire</option>
                 <option value="pratique">Pratique</option>
+                <option value="connaissance">Connaissance</option>
               </select>
             </div>
             <label class="flex cursor-pointer items-center gap-2 text-xs text-base-content/70">

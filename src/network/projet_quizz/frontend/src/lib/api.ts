@@ -69,7 +69,7 @@ export async function fetchCollections(): Promise<CollectionUi[]> {
 export async function fetchCollection(
   id: number,
   opts?: {
-    qtype?: "histoire" | "pratique" | "melanger";
+    qtype?: "histoire" | "pratique" | "connaissance" | "melanger";
     orders?: PlayOrder[];
     userId?: number;
     infinite?: boolean;
@@ -158,7 +158,7 @@ export async function deleteCollection(collectionId: number, userId: number): Pr
 
 export async function fetchRandomQuiz(opts?: {
   orders?: PlayOrder[];
-  qtype?: "histoire" | "pratique" | "melanger";
+  qtype?: "histoire" | "pratique" | "connaissance" | "melanger";
   userId?: number;
   infinite?: boolean;
   excludeIds?: number[];
@@ -341,7 +341,7 @@ export async function importQuestionsJson(
   options?: {
     collectionId?: number;
     moduleId?: number;
-    categorie?: "histoire" | "pratique";
+    categorie?: "histoire" | "pratique" | "connaissance";
     sousCollectionId?: number;
   },
 ): Promise<{

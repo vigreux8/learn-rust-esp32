@@ -56,6 +56,7 @@ export type SousCollectionUi = {
 export type CollectionQuestionCountsByType = {
   histoire: number;
   pratique: number;
+  connaissance: number;
 };
 
 export type CollectionUi = {

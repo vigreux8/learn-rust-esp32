@@ -42,7 +42,7 @@ export class ImportLlmHandler {
     return u.id;
   }
 
-  private async resolveImportCategorieId(kind: 'histoire' | 'pratique'): Promise<number> {
+  private async resolveImportCategorieId(kind: 'histoire' | 'pratique' | 'connaissance'): Promise<number> {
     const row = await this.prisma.prisma.ref_p_categorie.findFirst({
       where: { type: kind },
       orderBy: { id: 'asc' },
@@ -66,7 +66,7 @@ export class ImportLlmHandler {
     opts?: {
       collectionId?: number;
       moduleId?: number;
-      categorie?: 'histoire' | 'pratique';
+      categorie?: 'histoire' | 'pratique' | 'connaissance';
       sousCollectionId?: number;
     },
   ): Promise<{

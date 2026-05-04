@@ -26,7 +26,7 @@ export type QuizPlaySessionOpts = {
   /** Modes appliqués dans l’ordre (ex. `ancien` puis `mal_repondu`). */
   orders: QuizPlayOrder[];
   /** Présent pour le tirage « toutes collections » (`GET /quizz/random`). */
-  qtype?: 'histoire' | 'pratique' | 'melanger';
+  qtype?: 'histoire' | 'pratique' | 'connaissance' | 'melanger';
   userId?: number;
   limit?: number;
   excludeIds: number[];
@@ -81,7 +81,7 @@ export class QuizzReadService {
 
   async buildCollectionUi(
     collectionId: number,
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger' = 'melanger',
   ): Promise<CollectionUi | null> {
     const col = await this.prisma.prisma.quizz_collection.findUnique({
       where: { id: collectionId },
@@ -110,11 +110,12 @@ export class QuizzReadService {
       },
     });
 
-    const question_counts_by_type = { histoire: 0, pratique: 0 };
+    const question_counts_by_type = { histoire: 0, pratique: 0, connaissance: 0 };
     for (const qc of qcs) {
       const t = qc.quizz_question.ref_p_categorie.type;
       if (t === 'histoire') question_counts_by_type.histoire += 1;
       else if (t === 'pratique') question_counts_by_type.pratique += 1;
+      else if (t === 'connaissance') question_counts_by_type.connaissance += 1;
     }
 
     const filtered =
@@ -167,7 +168,7 @@ export class QuizzReadService {
 
   async getCollection(
     collectionId: number,
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger' = 'melanger',
     play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
     let ui = await this.buildCollectionUi(collectionId, qtype);

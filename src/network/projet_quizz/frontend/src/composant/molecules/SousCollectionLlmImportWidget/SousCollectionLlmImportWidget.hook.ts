@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 import { CATEGORY_OPTION_ID, type LlmImportOption } from "../../atomes/QuestionsLlmImportOptionsPanel";
 import { importQuestionsJson } from "../../../lib/api";
 import { normalizeAndValidateImportText } from "../../../lib/llmImportNormalize";
+import { normalizeLlmImportCategorie } from "../../../lib/questionCategories";
 import {
   buildSousCollectionLlmPrompt,
   getOptionStringValue,
@@ -61,7 +62,7 @@ export function useSousCollectionLlmImportWidget(props: SousCollectionLlmImportW
     const count = getOptionStringValue(options, SOUS_LLM_QUESTION_COUNT_ID) || "5";
     const subject = getOptionStringValue(options, SOUS_LLM_SUBJECT_ID);
     const catRaw = getOptionStringValue(options, CATEGORY_OPTION_ID);
-    const categoryKey = catRaw === "pratique" ? "pratique" : "histoire";
+    const categoryKey = normalizeLlmImportCategorie(catRaw || "histoire");
     const includeOpt = options.find((o) => o.id === SOUS_LLM_INCLUDE_ASSIGNED_ID);
     const includeAssigned = includeOpt?.type === "case_a_cocher" && includeOpt.value === true;
 
@@ -80,7 +81,7 @@ export function useSousCollectionLlmImportWidget(props: SousCollectionLlmImportW
     async (importText: string): Promise<string> => {
       const dataJson = normalizeAndValidateImportText(importText);
       const opts = optionsRef.current;
-      const categorie = getOptionStringValue(opts, CATEGORY_OPTION_ID) === "pratique" ? "pratique" : "histoire";
+      const categorie = normalizeLlmImportCategorie(getOptionStringValue(opts, CATEGORY_OPTION_ID) || "histoire");
       const res = await importQuestionsJson(dataJson, {
         collectionId,
         sousCollectionId,

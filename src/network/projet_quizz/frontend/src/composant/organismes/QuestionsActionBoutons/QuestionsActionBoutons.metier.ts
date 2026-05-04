@@ -1,5 +1,5 @@
 import { LLM_PROMPT_BASE, LLM_PROMPT_COLLECTION } from "../../../lib/llmImportPrompts";
-import { QUESTION_CATEGORIE_DEFINITIONS } from "../../../lib/questionCategories";
+import { normalizeLlmImportCategorie, QUESTION_CATEGORIE_DEFINITIONS } from "../../../lib/questionCategories";
 import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
 
 type PromptBuildingBlocks = {
@@ -40,7 +40,7 @@ export function buildLlmImportPrompt(params: BuildPromptParams): string {
     allModules,
   } = params;
 
-  const catKey = category === "pratique" ? "pratique" : "histoire";
+  const catKey = normalizeLlmImportCategorie(category);
 
   const blocks: PromptBuildingBlocks = {
     countBlock:

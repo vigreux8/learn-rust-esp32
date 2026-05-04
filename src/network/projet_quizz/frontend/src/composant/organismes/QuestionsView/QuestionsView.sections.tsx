@@ -57,12 +57,13 @@ export function QuestionsViewFiltersSection({
           value={listFilterQtype}
           onChange={(e) => {
             const v = (e.target as HTMLSelectElement).value;
-            if (v === "histoire" || v === "pratique" || v === "melanger") onListFilterQtypeChange(v);
+            if (v === "histoire" || v === "pratique" || v === "connaissance" || v === "melanger") onListFilterQtypeChange(v);
           }}
         >
-          <option value="melanger">Tout (histoire + pratique)</option>
+          <option value="melanger">Tous les types</option>
           <option value="histoire">Histoire seulement</option>
           <option value="pratique">Pratique seulement</option>
+          <option value="connaissance">Connaissance seulement</option>
         </select>
       </div>
     </div>

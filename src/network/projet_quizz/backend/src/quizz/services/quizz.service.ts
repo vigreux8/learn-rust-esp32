@@ -29,7 +29,7 @@ export class QuizzService {
   // Delegation: QuizzReadService
   buildCollectionUi(
     collectionId: number,
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger' = 'melanger',
   ): Promise<CollectionUi | null> {
     return this.read.buildCollectionUi(collectionId, qtype);
   }
@@ -40,7 +40,7 @@ export class QuizzService {
 
   getCollection(
     collectionId: number,
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger' = 'melanger',
     play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
     return this.read.getCollection(collectionId, qtype, play);
@@ -219,7 +219,7 @@ export class QuizzService {
     opts?: {
       collectionId?: number;
       moduleId?: number;
-      categorie?: 'histoire' | 'pratique';
+      categorie?: 'histoire' | 'pratique' | 'connaissance';
       sousCollectionId?: number;
     },
   ): Promise<{

@@ -135,18 +135,20 @@ function assertOrdersRequireUserId(
   }
 }
 
-function parseImportCategorie(raw?: string): 'histoire' | 'pratique' {
+function parseImportCategorie(raw?: string): 'histoire' | 'pratique' | 'connaissance' {
   if (raw === undefined || raw === '') return 'histoire';
-  if (raw === 'histoire' || raw === 'pratique') return raw;
-  throw new BadRequestException('Query categorie : "histoire" (défaut) ou "pratique"');
+  if (raw === 'histoire' || raw === 'pratique' || raw === 'connaissance') return raw;
+  throw new BadRequestException(
+    'Query categorie : "histoire" (défaut), "pratique" ou "connaissance"',
+  );
 }
 
 /** Filtre de questions pour le jeu (GET random / collections/:id). */
-function parsePlayQtypeQuery(raw?: string): 'histoire' | 'pratique' | 'melanger' {
+function parsePlayQtypeQuery(raw?: string): 'histoire' | 'pratique' | 'connaissance' | 'melanger' {
   if (raw === undefined || raw === '') return 'melanger';
-  if (raw === 'histoire' || raw === 'pratique' || raw === 'melanger') return raw;
+  if (raw === 'histoire' || raw === 'pratique' || raw === 'connaissance' || raw === 'melanger') return raw;
   throw new BadRequestException(
-    'Query qtype : "histoire", "pratique" ou "melanger" (défaut : tout mélanger)',
+    'Query qtype : "histoire", "pratique", "connaissance" ou "melanger" (défaut : tout mélanger)',
   );
 }
 
