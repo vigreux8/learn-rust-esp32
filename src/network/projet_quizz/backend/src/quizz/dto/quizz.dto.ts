@@ -8,6 +8,7 @@ import {
   IsString,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { LlmImportReponseDto } from './import-llm.dto';
@@ -31,6 +32,16 @@ export class UpdateQuestionDto {
   @IsInt()
   @Min(1)
   categorie_id?: number;
+
+  /**
+   * Enfant `ref_e_categorie.id` lié au parent courant (`relation_categorie`).
+   * `null` retire l’association ; omis = inchangé sauf changement de parent (alors effacé).
+   */
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  categorie_e_id?: number | null;
 
   /** Colonne `verifier` (fakechecker côté export app). */
   @IsOptional()

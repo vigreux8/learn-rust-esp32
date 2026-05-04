@@ -6,6 +6,7 @@ import {
   deleteQuestion,
   fetchRandomQuiz,
   fetchRefCategories,
+  fetchRefCategoriesHierarchy,
   fetchSousCollections,
   patchQuestion,
   postAttachQuestionToSousCollection,
@@ -21,10 +22,31 @@ import {
 import { saveLastQuizResult } from "../../../lib/lastQuizResult";
 import { useRoutePath } from "../../../lib/routePathContext";
 import { useUserSession } from "../../../lib/userSession";
-import type { QuestionUi, QuizzQuestionDetail, RefCategorieRow } from "../../../types/quizz";
+import {
+  getSupportedQuestionCategories,
+  type QuestionCategorieKey,
+} from "../../../lib/questionCategories";
+import type {
+  QuestionUi,
+  QuizzQuestionDetail,
+  RefCategorieHierarchyRow,
+  RefCategorieRow,
+} from "../../../types/quizz";
 import type { QuestionCreateSavePayload } from "../QuestionEditModal/QuestionEditModal";
 import { buildQuestionCopyJson, isPickedCorrect, shuffleQuestionsAnswers } from "./QuizSessionView.metier";
 import type { QuizSessionViewProps, SessionData } from "./QuizSessionView.types";
+
+function ensureQuestionCategoryFields(q: QuestionUi): QuestionUi {
+  return {
+    ...q,
+    categorie_e_id: q.categorie_e_id ?? null,
+    categorie_e_type: q.categorie_e_type ?? null,
+  };
+}
+
+function mapQuestionsCategories(questions: QuestionUi[]): QuestionUi[] {
+  return questions.map(ensureQuestionCategoryFields);
+}
 
 export function useQuizSessionView(props: QuizSessionViewProps) {
   const { collectionId } = props;
@@ -43,6 +65,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const [good, setGood] = useState(0);
 
   const [refCategories, setRefCategories] = useState<RefCategorieRow[]>([]);
+  const [refCategoriesHierarchy, setRefCategoriesHierarchy] = useState<RefCategorieHierarchyRow[]>(
+    [],
+  );
+  const [categoryBusy, setCategoryBusy] = useState(false);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [questionModalVariant, setQuestionModalVariant] = useState<"edit" | "create">("edit");
   const [createParentQuestionId, setCreateParentQuestionId] = useState<number | null>(null);
@@ -65,6 +91,9 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     void fetchRefCategories()
       .then(setRefCategories)
       .catch(() => setRefCategories([]));
+    void fetchRefCategoriesHierarchy()
+      .then(setRefCategoriesHierarchy)
+      .catch(() => setRefCategoriesHierarchy([]));
   }, []);
 
   useEffect(() => {
@@ -94,7 +123,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 }
               : { qtype: pf.qtype },
           );
-          const questions = shuffleQuestionsAnswers(fetchedQuestions);
+          const questions = mapQuestionsCategories(shuffleQuestionsAnswers(fetchedQuestions));
           if (cancelled) return;
           if (questions.length === 0) {
             setLoadError("empty");
@@ -141,7 +170,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           setLoadError("empty");
           return;
         }
-        let questions = shuffleQuestionsAnswers(col.questions);
+        let questions = mapQuestionsCategories(shuffleQuestionsAnswers(col.questions));
         if (!pf.useServerPlayModes && orders.length === 1 && orders[0] === "random") {
           questions = shuffleQuestions(questions);
         }
@@ -297,6 +326,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           commentaire: updated.commentaire,
           categorie_id: updated.categorie_id,
           categorie_type: updated.categorie_type,
+          categorie_e_id: updated.categorie_e_id,
+          categorie_e_type: updated.categorie_e_type,
           verifier: updated.verifier,
         };
         return { ...prev, questions };
@@ -368,6 +399,70 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     setPickedId(reponseId);
   };
 
+  const patchQuestionCategories = async (
+    current: QuestionUi,
+    payload: { categorie_id?: number; categorie_e_id?: number | null },
+  ) => {
+    if (categoryBusy || nextBusy) return;
+    setCategoryBusy(true);
+    try {
+      const updated = await patchQuestion(current.id, payload);
+      setData((prev) => {
+        if (!prev) return prev;
+        const qs = [...prev.questions];
+        const qi = qs.findIndex((x) => x.id === current.id);
+        if (qi < 0 || !qs[qi]) return prev;
+        qs[qi] = {
+          ...qs[qi]!,
+          categorie_id: updated.categorie_id,
+          categorie_type: updated.categorie_type,
+          categorie_e_id: updated.categorie_e_id,
+          categorie_e_type: updated.categorie_e_type,
+          verifier: updated.verifier,
+        };
+        return { ...prev, questions: qs };
+      });
+    } catch {
+      setActionMessage("Impossible de mettre à jour la catégorie.");
+    } finally {
+      setCategoryBusy(false);
+    }
+  };
+
+  const handleParentCategory = (parentKey: QuestionCategorieKey) => {
+    if (data == null) return;
+    const current = data.questions[index];
+    if (!current || categoryBusy || nextBusy || fetchingMore) return;
+
+    const fromHierarchy = refCategoriesHierarchy.find((row) => row.type === parentKey);
+    const fromFlat = refCategories.find((row) => row.type === parentKey);
+    const parentId = fromHierarchy?.id ?? fromFlat?.id;
+    if (parentId == null) return;
+
+    const sameParent = current.categorie_type === parentKey;
+    if (sameParent && current.categorie_e_id != null) {
+      void patchQuestionCategories(current, { categorie_e_id: null });
+      return;
+    }
+    if (sameParent && current.categorie_e_id == null) {
+      return;
+    }
+
+    void patchQuestionCategories(current, { categorie_id: parentId });
+  };
+
+  const handleChildCategory = (enfantId: number) => {
+    if (data == null) return;
+    const current = data.questions[index];
+    if (!current || categoryBusy || nextBusy || fetchingMore) return;
+
+    if (current.categorie_e_id === enfantId) {
+      void patchQuestionCategories(current, { categorie_e_id: null });
+    } else {
+      void patchQuestionCategories(current, { categorie_e_id: enfantId });
+    }
+  };
+
   const syncVerifierIfNeeded = async (): Promise<boolean> => {
     if (data == null) return false;
     const curQ = data.questions[index];
@@ -424,7 +519,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                         sousCollectionId: data.playSousCollectionId,
                       })
                     ).questions;
-              const nextQuestions = shuffleQuestionsAnswers(nextQuestionsRaw);
+              const nextQuestions = mapQuestionsCategories(shuffleQuestionsAnswers(nextQuestionsRaw));
 
               playedTowardResultsRef.current += 1;
               if (nextQuestions.length === 0) {
@@ -598,6 +693,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     onDraftVerifier: setDraftVerifier,
     onNext: handleNext,
     onEndInfiniteSession: handleEndInfiniteSession,
+    categorieSections: {
+      hierarchy: refCategoriesHierarchy,
+      parentKeys: getSupportedQuestionCategories(refCategories),
+      categoryBusy,
+      onParentCategory: handleParentCategory,
+      onChildCategory: handleChildCategory,
+    },
   };
 
   const editModal = {

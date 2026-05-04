@@ -1,5 +1,10 @@
 import { ArrowLeft, ClipboardCopy, Pencil, Plus, Trash2 } from "lucide-preact";
 import { route } from "preact-router";
+import {
+  formatQuestionCategorieEnfantLabel,
+  formatQuestionCategorieParentLabel,
+  formatQuestionCategorieResume,
+} from "../../../lib/questionCategories";
 import { playOrdersLabel, playQtypeLabel } from "../../../lib/playOrder";
 import { cn } from "../../../lib/cn";
 import { Badge } from "../../atomes/Badge/Badge";
@@ -100,7 +105,12 @@ export function QuizSessionQuestionCard({
   onDraftVerifier,
   onNext,
   onEndInfiniteSession,
+  categorieSections,
 }: QuizSessionQuestionCardProps) {
+  const disabledCat =
+    categorieSections.categoryBusy || nextBusy || fetchingMore || deleteBusy;
+  const nodeParent = categorieSections.hierarchy.find((h) => h.type === q.categorie_type);
+  const enfantsDuParent = nodeParent?.enfants ?? [];
   return (
     <div class={QUIZ_SESSION_STYLES.bodyLayout}>
       <aside class={QUIZ_SESSION_STYLES.aside} aria-label="Actions sur la question">
@@ -172,6 +182,72 @@ export function QuizSessionQuestionCard({
           />
           <span class="pointer-events-none select-none">verifier : {draftVerifier ? "Oui" : "Non"}</span>
         </label>
+
+        <div class={QUIZ_SESSION_STYLES.categorieSeparator}>
+          <p class={QUIZ_SESSION_STYLES.categorieResume}>
+            Catégorie : {formatQuestionCategorieResume(q)}
+          </p>
+          <div class={QUIZ_SESSION_STYLES.categorieButtonRow} role="group" aria-label="Catégorie parente">
+            {categorieSections.parentKeys.map((key) => {
+              const active = q.categorie_type === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  title={
+                    active && q.categorie_e_id != null
+                      ? `Retirer la sous-catégorie pour ${formatQuestionCategorieParentLabel(key)}`
+                      : `Associer la catégorie ${formatQuestionCategorieParentLabel(key)}`
+                  }
+                  disabled={disabledCat}
+                  class={cn(
+                    QUIZ_SESSION_STYLES.categorieChip,
+                    active ? QUIZ_SESSION_STYLES.categorieChipActive : QUIZ_SESSION_STYLES.categorieChipInactive,
+                  )}
+                  onClick={() => categorieSections.onParentCategory(key)}
+                >
+                  {formatQuestionCategorieParentLabel(key)}
+                </button>
+              );
+            })}
+          </div>
+          {enfantsDuParent.length > 0 ? (
+            <div class="mt-2">
+              <p class={QUIZ_SESSION_STYLES.categorieSubLabel}>Sous-catégories</p>
+              <div
+                class={QUIZ_SESSION_STYLES.categorieButtonRow}
+                role="group"
+                aria-label="Sous-catégories pour la catégorie parente choisie"
+              >
+                {enfantsDuParent.map((e) => {
+                  const active = q.categorie_e_id === e.id;
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      title={
+                        active
+                          ? `Retirer « ${formatQuestionCategorieEnfantLabel(e.type)} »`
+                          : `Associer « ${formatQuestionCategorieEnfantLabel(e.type)} »`
+                      }
+                      disabled={disabledCat}
+                      class={cn(
+                        QUIZ_SESSION_STYLES.categorieChip,
+                        active ? QUIZ_SESSION_STYLES.categorieChipActive : QUIZ_SESSION_STYLES.categorieChipInactive,
+                      )}
+                      onClick={() => categorieSections.onChildCategory(e.id)}
+                    >
+                      {formatQuestionCategorieEnfantLabel(e.type)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          {categorieSections.categoryBusy ? (
+            <p class="mt-2 text-xs text-base-content/50">Enregistrement de la catégorie…</p>
+          ) : null}
+        </div>
       </aside>
 
       <Card class={QUIZ_SESSION_STYLES.card}>

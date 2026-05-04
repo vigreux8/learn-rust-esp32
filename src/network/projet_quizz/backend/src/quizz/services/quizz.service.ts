@@ -5,6 +5,7 @@ import {
   QuizzModuleRow,
   QuizzQuestionDetail,
   QuizzQuestionRow,
+  RefCategorieHierarchyRow,
   RefCategorieRow,
   SousCollectionUi,
 } from '../quizz.type';
@@ -101,6 +102,10 @@ export class QuizzService {
     return this.read.listRefCategories();
   }
 
+  listRefCategoriesHierarchy(): Promise<RefCategorieHierarchyRow[]> {
+    return this.read.listRefCategoriesHierarchy();
+  }
+
   getQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
     return this.read.getQuestionDetail(id);
   }
@@ -112,6 +117,7 @@ export class QuizzService {
       question?: string;
       commentaire?: string;
       categorie_id?: number;
+      categorie_e_id?: number | null;
       verifier?: boolean;
     },
   ): Promise<QuizzQuestionRow> {

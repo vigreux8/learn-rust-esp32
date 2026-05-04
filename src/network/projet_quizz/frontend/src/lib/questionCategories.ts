@@ -52,3 +52,38 @@ export function getSupportedQuestionCategories(refCategories: RefCategorieRow[])
   );
   return backendSupported.length > 0 ? backendSupported : [...QUESTION_CATEGORIE_KEYS];
 }
+
+const PARENT_LABEL_FR: Record<QuestionCategorieKey, string> = {
+  histoire: "Histoire",
+  pratique: "Pratique",
+  connaissance: "Connaissance",
+};
+
+/** Libellés des sous-catégories v4 (`ref_e_categorie.type`, seed Prisma). */
+const ENFANT_LABEL_FR: Record<string, string> = {
+  contexte: "Contexte",
+  date: "Date",
+  choix: "Choix",
+  formule: "Formule",
+};
+
+export function formatQuestionCategorieParentLabel(type: string): string {
+  if (isQuestionCategorieKey(type)) return PARENT_LABEL_FR[type];
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+export function formatQuestionCategorieEnfantLabel(type: string): string {
+  return ENFANT_LABEL_FR[type] ?? type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+/** Texte court pour l’UI (parent seul ou parent › enfant). */
+export function formatQuestionCategorieResume(q: {
+  categorie_type: string;
+  categorie_e_type: string | null;
+}): string {
+  const p = formatQuestionCategorieParentLabel(q.categorie_type);
+  if (q.categorie_e_type) {
+    return `${p} › ${formatQuestionCategorieEnfantLabel(q.categorie_e_type)}`;
+  }
+  return p;
+}

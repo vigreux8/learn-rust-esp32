@@ -16,6 +16,10 @@ export type QuestionUi = {
   categorie_id: number;
   /** `ref_p_categorie.type` (ex. histoire, pratique). */
   categorie_type: string;
+  /** `ref_e_categorie.id` si une sous-catégorie est liée (`relation_categorie`). */
+  categorie_e_id: number | null;
+  /** `ref_e_categorie.type` si `categorie_e_id` présent ; sinon `null`. */
+  categorie_e_type: string | null;
   reponses: ReponseUi[];
 };
 
@@ -104,6 +108,8 @@ export type QuizzQuestionRow = {
   categorie_id: number;
   /** `ref_p_categorie.type` (ex. histoire, pratique). */
   categorie_type: string;
+  categorie_e_id: number | null;
+  categorie_e_type: string | null;
   collections: QuizzCollectionRef[];
 };
 
@@ -114,6 +120,13 @@ export type QuizzQuestionDetail = QuizzQuestionRow & {
 export type RefCategorieRow = {
   id: number;
   type: string;
+};
+
+/** Parents `ref_p_categorie` avec leurs enfants `ref_e_categorie` (via `relation_categorie`). */
+export type RefCategorieHierarchyRow = {
+  id: number;
+  type: string;
+  enfants: { id: number; type: string }[];
 };
 
 export type QuizzModuleRow = {

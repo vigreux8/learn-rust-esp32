@@ -378,6 +378,11 @@ export class QuizzController {
     });
   }
 
+  @Get('categories/hierarchy')
+  listRefCategoriesHierarchy() {
+    return this.quizz.listRefCategoriesHierarchy();
+  }
+
   @Get('categories')
   listRefCategories() {
     return this.quizz.listRefCategories();
@@ -447,6 +452,7 @@ export class QuizzController {
       question: body?.question,
       commentaire: body?.commentaire,
       categorie_id: body?.categorie_id,
+      categorie_e_id: body?.categorie_e_id,
       verifier: body?.verifier,
     });
   }

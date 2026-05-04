@@ -1,5 +1,6 @@
 import type { PlayOrder, PlayQtype } from "../../../lib/playOrder";
-import type { QuestionUi } from "../../../types/quizz";
+import type { QuestionCategorieKey } from "../../../lib/questionCategories";
+import type { QuestionUi, RefCategorieHierarchyRow } from "../../../types/quizz";
 
 export type QuizSessionViewProps = {
   collectionId?: string;
@@ -36,6 +37,13 @@ export type QuizSessionQuestionCardProps = {
   draftVerifier: boolean;
   nextBusy: boolean;
   fetchingMore: boolean;
+  categorieSections: {
+    hierarchy: RefCategorieHierarchyRow[];
+    parentKeys: QuestionCategorieKey[];
+    categoryBusy: boolean;
+    onParentCategory: (key: QuestionCategorieKey) => void;
+    onChildCategory: (enfantId: number) => void;
+  };
   onPick: (reponseId: number) => void;
   onOpenCreateLinkedQuestionModal: (q: QuestionUi) => void;
   onOpenEditQuestionModal: (q: QuestionUi) => void;

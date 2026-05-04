@@ -10,6 +10,7 @@ import {
   QuestionUi,
   QuizzQuestionDetail,
   QuizzQuestionRow,
+  RefCategorieHierarchyRow,
   RefCategorieRow,
   SousCollectionUi,
 } from '../quizz.type';
@@ -108,13 +109,16 @@ export class QuizzReadService {
     commentaire: string;
     verifier: boolean;
     categorie_p_id: number;
+    categorie_e_id: number | null;
     ref_p_categorie: { type: string };
+    ref_e_categorie: { type: string } | null;
     quizz_question_reponse: {
       id: number;
       quizz_reponse: { id: number; reponse: string; bonne_reponse: number };
     }[];
   }): QuestionUi {
     const ordered = [...q.quizz_question_reponse].sort((a, b) => a.id - b.id);
+    const eid = q.categorie_e_id;
     return {
       id: q.id,
       user_id: q.user_id,
@@ -124,6 +128,8 @@ export class QuizzReadService {
       verifier: q.verifier,
       categorie_id: q.categorie_p_id,
       categorie_type: q.ref_p_categorie.type,
+      categorie_e_id: eid,
+      categorie_e_type: eid != null && q.ref_e_categorie ? q.ref_e_categorie.type : null,
       reponses: ordered.map((j) => ({
         id: j.quizz_reponse.id,
         reponse: j.quizz_reponse.reponse,
@@ -155,6 +161,7 @@ export class QuizzReadService {
         quizz_question: {
           include: {
             ref_p_categorie: true,
+            ref_e_categorie: true,
             quizz_question_reponse: {
               include: { quizz_reponse: true },
             },
@@ -402,6 +409,7 @@ export class QuizzReadService {
       orderBy: { id: 'asc' },
       include: {
         ref_p_categorie: true,
+        ref_e_categorie: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
         },
@@ -423,11 +431,33 @@ export class QuizzReadService {
     });
   }
 
+  /** Parents et enfants déclarés dans `relation_categorie` (v4). */
+  async listRefCategoriesHierarchy(): Promise<RefCategorieHierarchyRow[]> {
+    const parents = await this.prisma.prisma.ref_p_categorie.findMany({
+      orderBy: { id: 'asc' },
+      include: {
+        relation_categorie_parent: {
+          orderBy: { id: 'asc' },
+          include: { enfant: { select: { id: true, type: true } } },
+        },
+      },
+    });
+    return parents.map((p) => ({
+      id: p.id,
+      type: p.type,
+      enfants: p.relation_categorie_parent.map((r) => ({
+        id: r.enfant.id,
+        type: r.enfant.type,
+      })),
+    }));
+  }
+
   async getQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
     const r = await this.prisma.prisma.quizz_question.findUnique({
       where: { id },
       include: {
         ref_p_categorie: true,
+        ref_e_categorie: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
           orderBy: { id: 'asc' },
@@ -447,6 +477,7 @@ export class QuizzReadService {
       reponse: j.quizz_reponse.reponse,
       bonne_reponse: j.quizz_reponse.bonne_reponse === 1,
     }));
+    const eid = r.categorie_e_id;
     return {
       id: r.id,
       user_id: r.user_id,
@@ -456,6 +487,8 @@ export class QuizzReadService {
       verifier: r.verifier,
       categorie_id: r.categorie_p_id,
       categorie_type: r.ref_p_categorie.type,
+      categorie_e_id: eid,
+      categorie_e_type: eid != null && r.ref_e_categorie ? r.ref_e_categorie.type : null,
       collections: r.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,
@@ -483,6 +516,7 @@ export class QuizzReadService {
       orderBy: { id: 'asc' },
       include: {
         ref_p_categorie: true,
+        ref_e_categorie: true,
         question_collection: {
           include: { quizz_collection: true },
           orderBy: { id: 'asc' },
@@ -490,20 +524,25 @@ export class QuizzReadService {
       },
     });
 
-    return rows.map((r) => ({
-      id: r.id,
-      user_id: r.user_id,
-      create_at: r.create_at,
-      question: r.question,
-      commentaire: r.commentaire ?? '',
-      verifier: r.verifier,
-      categorie_id: r.categorie_p_id,
-      categorie_type: r.ref_p_categorie.type,
-      collections: r.question_collection.map((qc) => ({
-        id: qc.quizz_collection.id,
-        nom: qc.quizz_collection.nom,
-      })),
-    }));
+    return rows.map((r) => {
+      const eid = r.categorie_e_id;
+      return {
+        id: r.id,
+        user_id: r.user_id,
+        create_at: r.create_at,
+        question: r.question,
+        commentaire: r.commentaire ?? '',
+        verifier: r.verifier,
+        categorie_id: r.categorie_p_id,
+        categorie_type: r.ref_p_categorie.type,
+        categorie_e_id: eid,
+        categorie_e_type: eid != null && r.ref_e_categorie ? r.ref_e_categorie.type : null,
+        collections: r.question_collection.map((qc) => ({
+          id: qc.quizz_collection.id,
+          nom: qc.quizz_collection.nom,
+        })),
+      };
+    });
   }
 
   listQuestionsFromQuery(collectionId?: string): Promise<QuizzQuestionRow[]> {

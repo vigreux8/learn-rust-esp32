@@ -23,6 +23,9 @@ export interface QuestionUi {
   categorie_id: number;
   /** `ref_p_categorie.type` (ex. histoire, pratique, connaissance). */
   categorie_type: string;
+  /** Enfant `ref_e_categorie` (`relation_categorie`), ou `null`. */
+  categorie_e_id: number | null;
+  categorie_e_type: string | null;
   reponses: ReponseUi[];
 }
 
@@ -88,6 +91,8 @@ export interface QuizzQuestionRow {
   verifier: boolean;
   categorie_id: number;
   categorie_type: string;
+  categorie_e_id: number | null;
+  categorie_e_type: string | null;
   collections: QuizzCollectionRef[];
 }
 
@@ -98,6 +103,12 @@ export interface QuizzQuestionDetail extends QuizzQuestionRow {
 export interface RefCategorieRow {
   id: number;
   type: string;
+}
+
+export interface RefCategorieHierarchyRow {
+  id: number;
+  type: string;
+  enfants: { id: number; type: string }[];
 }
 
 /** Question liée à la collection enfant (`question_collection` sur l’id enfant). */

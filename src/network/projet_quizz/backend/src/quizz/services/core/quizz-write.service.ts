@@ -98,17 +98,30 @@ export class QuizzWriteService {
       question?: string;
       commentaire?: string;
       categorie_id?: number;
+      categorie_e_id?: number | null;
       verifier?: boolean;
     },
   ): Promise<QuizzQuestionRow> {
+    const existing = await this.prisma.prisma.quizz_question.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Question ${id} introuvable`);
+    }
+
     const patch: {
       question?: string;
       commentaire?: string;
       categorie_p_id?: number;
+      categorie_e_id?: number | null;
       verifier?: boolean;
     } = {};
     if (typeof data.question === 'string') patch.question = data.question;
     if (typeof data.commentaire === 'string') patch.commentaire = data.commentaire;
+    if (typeof data.verifier === 'boolean') {
+      patch.verifier = data.verifier;
+    }
+
     if (typeof data.categorie_id === 'number' && Number.isInteger(data.categorie_id)) {
       const cat = await this.prisma.prisma.ref_p_categorie.findUnique({
         where: { id: data.categorie_id },
@@ -116,14 +129,51 @@ export class QuizzWriteService {
       if (!cat) {
         throw new BadRequestException(`categorie_id ${data.categorie_id} introuvable`);
       }
-      patch.categorie_p_id = data.categorie_id;
+      if (data.categorie_id !== existing.categorie_p_id) {
+        patch.categorie_p_id = data.categorie_id;
+      }
     }
-    if (typeof data.verifier === 'boolean') {
-      patch.verifier = data.verifier;
+
+    const resolvedParent =
+      patch.categorie_p_id !== undefined ? patch.categorie_p_id : existing.categorie_p_id;
+    const parentChanged = patch.categorie_p_id !== undefined;
+
+    const assertLink = async (parentId: number, enfantId: number): Promise<void> => {
+      const ok = await this.prisma.prisma.relation_categorie.findFirst({
+        where: { p_categorie: parentId, e_categorie: enfantId },
+      });
+      if (!ok) {
+        throw new BadRequestException(
+          `categorie_e_id ${enfantId} incompatible avec la catégorie parente ${parentId}`,
+        );
+      }
+    };
+
+    if (data.categorie_e_id !== undefined) {
+      if (data.categorie_e_id === null) {
+        patch.categorie_e_id = null;
+      } else {
+        await assertLink(resolvedParent, data.categorie_e_id);
+        patch.categorie_e_id = data.categorie_e_id;
+      }
+    } else if (parentChanged) {
+      patch.categorie_e_id = null;
+    } else if (
+      existing.categorie_e_id != null &&
+      data.categorie_id === undefined &&
+      data.categorie_e_id === undefined
+    ) {
+      const stillOk = await this.prisma.prisma.relation_categorie.findFirst({
+        where: { p_categorie: resolvedParent, e_categorie: existing.categorie_e_id },
+      });
+      if (!stillOk) {
+        patch.categorie_e_id = null;
+      }
     }
+
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException(
-        'Au moins un champ parmi "question", "commentaire" (string), "categorie_id" (entier) ou "verifier" (booléen) requis',
+        'Au moins un champ parmi "question", "commentaire", "categorie_id", "categorie_e_id" ou "verifier" requis',
       );
     }
     try {
@@ -132,12 +182,14 @@ export class QuizzWriteService {
         data: patch,
         include: {
           ref_p_categorie: true,
+          ref_e_categorie: true,
           question_collection: {
             include: { quizz_collection: true },
             orderBy: { id: 'asc' },
           },
         },
       });
+      const eid = row.categorie_e_id;
       return {
         id: row.id,
         user_id: row.user_id,
@@ -147,6 +199,8 @@ export class QuizzWriteService {
         verifier: row.verifier,
         categorie_id: row.categorie_p_id,
         categorie_type: row.ref_p_categorie.type,
+        categorie_e_id: eid,
+        categorie_e_type: eid != null && row.ref_e_categorie ? row.ref_e_categorie.type : null,
         collections: row.question_collection.map((qc) => ({
           id: qc.quizz_collection.id,
           nom: qc.quizz_collection.nom,
@@ -254,6 +308,7 @@ export class QuizzWriteService {
         where: { id: questionId },
         include: {
           ref_p_categorie: true,
+          ref_e_categorie: true,
           question_collection: {
             include: { quizz_collection: true },
             orderBy: { id: 'asc' },
@@ -262,6 +317,7 @@ export class QuizzWriteService {
       });
     });
 
+    const eid = row.categorie_e_id;
     return {
       id: row.id,
       user_id: row.user_id,
@@ -271,6 +327,8 @@ export class QuizzWriteService {
       verifier: row.verifier,
       categorie_id: row.categorie_p_id,
       categorie_type: row.ref_p_categorie.type,
+      categorie_e_id: eid,
+      categorie_e_type: eid != null && row.ref_e_categorie ? row.ref_e_categorie.type : null,
       collections: row.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,

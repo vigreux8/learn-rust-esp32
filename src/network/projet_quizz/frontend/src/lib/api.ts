@@ -6,6 +6,7 @@ import type {
   QuizzModuleRow,
   QuizzQuestionDetail,
   QuizzQuestionRow,
+  RefCategorieHierarchyRow,
   RefCategorieRow,
   SessionDetail,
   SessionSummary,
@@ -191,6 +192,12 @@ export async function fetchRefCategories(): Promise<RefCategorieRow[]> {
   return res.json() as Promise<RefCategorieRow[]>;
 }
 
+export async function fetchRefCategoriesHierarchy(): Promise<RefCategorieHierarchyRow[]> {
+  const res = await fetch(apiUrl("/quizz/categories/hierarchy"));
+  await assertResponseOk(res);
+  return res.json() as Promise<RefCategorieHierarchyRow[]>;
+}
+
 export async function fetchQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
   const res = await fetch(apiUrl(`/quizz/questions/${id}`));
   await assertResponseOk(res);
@@ -278,7 +285,13 @@ export async function deleteDetachQuestionFromSousCollection(
 
 export async function patchQuestion(
   id: number,
-  body: { question?: string; commentaire?: string; categorie_id?: number; verifier?: boolean },
+  body: {
+    question?: string;
+    commentaire?: string;
+    categorie_id?: number;
+    categorie_e_id?: number | null;
+    verifier?: boolean;
+  },
 ): Promise<QuizzQuestionRow> {
   const res = await fetch(apiUrl(`/quizz/questions/${id}`), {
     method: "PATCH",
