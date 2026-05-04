@@ -156,6 +156,10 @@ export class QuizzService {
     return this.write.deleteQuestion(id);
   }
 
+  deleteImplicitQuestionRelation(relationId: number): Promise<void> {
+    return this.write.deleteImplicitQuestionRelation(relationId);
+  }
+
   createQuestion(body: {
     user_id: number;
     categorie_id: number;

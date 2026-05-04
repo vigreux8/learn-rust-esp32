@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { route } from "preact-router";
 import {
+  deleteImplicitQuestionRelation,
   deleteQuestion,
   fetchCollections,
   fetchModules,
@@ -167,6 +168,18 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     }
   }, [editDetail]);
 
+  const removeImplicitRelationFromEditModal = useCallback(
+    async (relationId: number) => {
+      try {
+        await deleteImplicitQuestionRelation(relationId);
+        await refreshEditDetail();
+      } catch {
+        setLoadError("delete_relation");
+      }
+    },
+    [refreshEditDetail],
+  );
+
   const saveEditModal = useCallback(async () => {
     if (editDetail == null) return;
     setSaving(true);
@@ -265,9 +278,11 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
           ? "Création de la question impossible."
           : loadError === "categories"
             ? "Catégories indisponibles. Le formulaire de création ne peut pas s’ouvrir pour l’instant."
-            : loadError === "fetch"
-              ? "Impossible de charger la liste des questions."
-              : null;
+            : loadError === "delete_relation"
+              ? "Suppression du lien implicite impossible."
+              : loadError === "fetch"
+                ? "Impossible de charger la liste des questions."
+                : null;
 
   const operationError = {
     visible: Boolean(loadError) && loadError !== "fetch",
@@ -318,6 +333,8 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
       onDraftSousCollectionId: setDraftSousCollectionId,
       onReponseUpdated: () => void refreshEditDetail(),
       onCreateSave: async (payload: QuestionCreateSavePayload) => saveCreateModal(payload),
+      onRemoveImplicitRelation: (relationId: number) =>
+        void removeImplicitRelationFromEditModal(relationId),
     },
     status: { loading: editModalLoading, saving, error: editModalError } as const,
     data: {

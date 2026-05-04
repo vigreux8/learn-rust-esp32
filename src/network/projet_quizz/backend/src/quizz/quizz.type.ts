@@ -140,8 +140,17 @@ export type QuizzQuestionRow = {
   collections: QuizzCollectionRef[];
 };
 
+/** Ligne `relation_question_implicite` où la question courante participe avec une autre question. */
+export type ImplicitRelatedQuestionUi = {
+  relation_id: number;
+  linked_question_id: number;
+  linked_question_preview: string;
+};
+
 export type QuizzQuestionDetail = QuizzQuestionRow & {
   reponses: ReponseUi[];
+  /** Paires implicitites (sans ordre métier forcé dans l’affichage). */
+  implicit_relations: ImplicitRelatedQuestionUi[];
 };
 
 export type RefCategorieRow = {

@@ -1,3 +1,4 @@
+import { X } from "lucide-preact";
 import { Button } from "../../atomes/Button";
 import { QuestionsLlmImportPromptPanel } from "../../molecules/QuestionsLlmImportPromptPanel";
 import { useQuestionEditModal } from "./QuestionEditModal.hook";
@@ -7,7 +8,7 @@ export type { QuestionCreateSavePayload } from "./QuestionEditModal.types";
 
 export function QuestionEditModal(props: QuestionEditModalProps) {
   const { settings, actions, status, data, drafts } = props;
-  const { dialogue, creation, composantExterne, editionReponses } = useQuestionEditModal(props);
+  const { dialogue, creation, composantExterne, editionReponses, implicitRelations } = useQuestionEditModal(props);
   if (!settings.open) return null;
 
   return (
@@ -47,6 +48,22 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
                   ))}
                 </select>
               </>
+            ) : null}
+            {drafts.createLinkImplicit !== undefined && actions.onDraftCreateLinkImplicit ? (
+              <label class={QUESTION_EDIT_MODAL_STYLES.createLinkCheckbox}>
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-sm checkbox-primary mt-0.5 shrink-0"
+                  checked={drafts.createLinkImplicit}
+                  disabled={status.saving}
+                  onChange={(e) =>
+                    actions.onDraftCreateLinkImplicit!((e.target as HTMLInputElement).checked)
+                  }
+                />
+                <span class="text-base-content/85">
+                  Lier cette nouvelle question à la question affichée via la relation implicite en base (<span class="font-mono text-[0.7rem]">relation_question_implicite</span>).
+                </span>
+              </label>
             ) : null}
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qm-question">Énoncé</label>
             <textarea id="qm-question" class="textarea textarea-bordered mb-4 w-full rounded-xl border-base-content/15 text-sm" rows={4} value={drafts.question} onInput={(e) => actions.onDraftQuestion((e.target as HTMLTextAreaElement).value)} />
@@ -101,9 +118,76 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
                 </li>
               ))}
             </ul>
+            {implicitRelations.items.length > 0 || implicitRelations.removalEnabled ? (
+              <div class={QUESTION_EDIT_MODAL_STYLES.implicitSection}>
+                <p class={QUESTION_EDIT_MODAL_STYLES.implicitTitle}>Relations implicites</p>
+                {implicitRelations.items.length === 0 ? (
+                  <p class="text-xs text-base-content/55">Aucune autre question liée pour l’instant.</p>
+                ) : (
+                  <ul class={QUESTION_EDIT_MODAL_STYLES.implicitList}>
+                    {implicitRelations.items.map((rel) => {
+                      const rowBusy =
+                        implicitRelations.removeBusyRelationId === rel.relation_id;
+                      const suppressImplicitRemoveClick =
+                        implicitRelations.removeBusyRelationId !== null ||
+                        editionReponses.reponseBusy ||
+                        status.saving;
+                      return (
+                        <li key={rel.relation_id}>
+                          <div class={QUESTION_EDIT_MODAL_STYLES.implicitRow}>
+                            <span
+                              class={QUESTION_EDIT_MODAL_STYLES.implicitPreview}
+                              title={`#${rel.linked_question_id}`}
+                            >
+                              <span class="font-mono text-[0.7rem] text-base-content/40">
+                                #{rel.linked_question_id}
+                              </span>{" "}
+                              {rel.linked_question_preview}
+                            </span>
+                            {implicitRelations.removalEnabled ? (
+                              <button
+                                type="button"
+                                class={QUESTION_EDIT_MODAL_STYLES.implicitRemove}
+                                aria-label={`Supprimer le lien avec la question ${rel.linked_question_id}`}
+                                title="Retirer ce lien en base"
+                                disabled={suppressImplicitRemoveClick}
+                                onClick={() => void implicitRelations.onRemoveRelation(rel.relation_id)}
+                              >
+                                {rowBusy ? (
+                                  <span
+                                    class="loading loading-spinner loading-xs text-base-content/50"
+                                    aria-hidden
+                                  />
+                                ) : (
+                                  <X class="h-4 w-4" aria-hidden />
+                                )}
+                              </button>
+                            ) : null}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            ) : null}
             <div class="mt-0 flex flex-wrap justify-end gap-2 border-t border-base-content/10 pt-4">
-              <Button variant="ghost" class="btn-sm" onClick={settings.onClose}>Annuler</Button>
-              <Button variant="flow" class="btn-sm" disabled={status.saving} onClick={actions.onSave}>{status.saving ? "Enregistrement…" : "Enregistrer"}</Button>
+              <Button
+                variant="ghost"
+                class="btn-sm"
+                disabled={dialogue.interactionLockedWhileImplicit}
+                onClick={settings.onClose}
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="flow"
+                class="btn-sm"
+                disabled={dialogue.interactionLockedWhileImplicit}
+                onClick={actions.onSave}
+              >
+                {status.saving ? "Enregistrement…" : "Enregistrer"}
+              </Button>
             </div>
           </>
         )}

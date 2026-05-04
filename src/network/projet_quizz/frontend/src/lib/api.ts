@@ -288,6 +288,13 @@ export async function fetchQuestionDetail(id: number): Promise<QuizzQuestionDeta
   return res.json() as Promise<QuizzQuestionDetail>;
 }
 
+export async function deleteImplicitQuestionRelation(relationId: number): Promise<void> {
+  const res = await fetch(apiUrl(`/quizz/questions/implicit-relations/${relationId}`), {
+    method: "DELETE",
+  });
+  await assertResponseOk(res);
+}
+
 export async function fetchQuestions(
   collectionId?: number | "none",
 ): Promise<QuizzQuestionRow[]> {

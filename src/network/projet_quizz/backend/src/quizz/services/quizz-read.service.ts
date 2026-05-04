@@ -525,6 +525,16 @@ export class QuizzReadService {
           include: { quizz_collection: true },
           orderBy: { id: 'asc' },
         },
+        relation_implicite_as_q1: {
+          include: {
+            quizz_question_2: { select: { id: true, question: true } },
+          },
+        },
+        relation_implicite_as_q2: {
+          include: {
+            quizz_question_1: { select: { id: true, question: true } },
+          },
+        },
       },
     });
     if (!r) {
@@ -537,6 +547,22 @@ export class QuizzReadService {
       bonne_reponse: j.quizz_reponse.bonne_reponse === 1,
     }));
     const eid = r.categorie_e_id;
+    const preview = (txt: string, max = 120): string => {
+      const t = txt.replace(/\s+/g, ' ').trim();
+      return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+    };
+    const implicit_relations = [
+      ...r.relation_implicite_as_q1.map((row) => ({
+        relation_id: row.id,
+        linked_question_id: row.quizz_question_2.id,
+        linked_question_preview: preview(row.quizz_question_2.question),
+      })),
+      ...r.relation_implicite_as_q2.map((row) => ({
+        relation_id: row.id,
+        linked_question_id: row.quizz_question_1.id,
+        linked_question_preview: preview(row.quizz_question_1.question),
+      })),
+    ];
     return {
       id: r.id,
       user_id: r.user_id,
@@ -554,6 +580,7 @@ export class QuizzReadService {
         nom: qc.quizz_collection.nom,
       })),
       reponses,
+      implicit_relations,
     };
   }
 

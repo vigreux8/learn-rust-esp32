@@ -532,6 +532,14 @@ export class QuizzController {
     return this.quizz.updateReponse(id, { reponse: body.reponse });
   }
 
+  /** Supprime un lien « question ↔ question » (`relation_question_implicite`). */
+  @Delete('questions/implicit-relations/:relationId')
+  deleteImplicitQuestionRelation(
+    @Param('relationId', ParseIntPipe) relationId: number,
+  ): Promise<void> {
+    return this.quizz.deleteImplicitQuestionRelation(relationId);
+  }
+
   @Delete('questions/:id')
   deleteQuestion(@Param('id', ParseIntPipe) id: number) {
     return this.quizz.deleteQuestion(id);

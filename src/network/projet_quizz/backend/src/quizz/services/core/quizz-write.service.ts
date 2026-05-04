@@ -16,6 +16,19 @@ function nowIso(): string {
 export class QuizzWriteService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Supprime une ligne `relation_question_implicite` par son id. */
+  async deleteImplicitQuestionRelation(relationId: number): Promise<void> {
+    const row = await this.prisma.prisma.relation_question_implicite.findUnique({
+      where: { id: relationId },
+    });
+    if (!row) {
+      throw new NotFoundException(`relation_question_implicite ${relationId} introuvable`);
+    }
+    await this.prisma.prisma.relation_question_implicite.delete({
+      where: { id: relationId },
+    });
+  }
+
   async insertQuestionWithAnswers(
     tx: Prisma.TransactionClient,
     body: {

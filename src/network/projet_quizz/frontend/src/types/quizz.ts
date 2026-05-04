@@ -124,8 +124,16 @@ export interface QuizzQuestionRow {
   collections: QuizzCollectionRef[];
 }
 
+/** Ligne `relation_question_implicite` où la question courante est liée à une autre. */
+export interface ImplicitRelatedQuestionUi {
+  relation_id: number;
+  linked_question_id: number;
+  linked_question_preview: string;
+}
+
 export interface QuizzQuestionDetail extends QuizzQuestionRow {
   reponses: ReponseUi[];
+  implicit_relations: ImplicitRelatedQuestionUi[];
 }
 
 export interface RefCategorieRow {

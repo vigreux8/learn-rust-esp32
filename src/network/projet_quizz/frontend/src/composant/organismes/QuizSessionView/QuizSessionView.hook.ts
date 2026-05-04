@@ -10,6 +10,7 @@ import {
   fetchRefQuestionDifficulte,
   fetchRefQuestionImportance,
   fetchSousCollections,
+  deleteImplicitQuestionRelation,
   patchQuestion,
   postAttachQuestionToSousCollection,
   postCreateQuestion,
@@ -107,6 +108,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<{ id: number; nom: string }[]>([]);
   const [draftSousCollectionId, setDraftSousCollectionId] = useState<number | null>(null);
+  const [draftCreateLinkImplicit, setDraftCreateLinkImplicit] = useState(true);
 
   useEffect(() => {
     void fetchRefCategories()
@@ -269,6 +271,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     setCreateParentQuestionId(null);
     setSousCollectionsForCreateModal([]);
     setDraftSousCollectionId(null);
+    setDraftCreateLinkImplicit(true);
   };
 
   const openEditQuestionModal = (current: QuestionUi) => {
@@ -295,6 +298,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setActionMessage("Catégories indisponibles : impossible de créer une question pour l’instant.");
       return;
     }
+    setDraftCreateLinkImplicit(true);
     setSousCollectionsForCreateModal([]);
     setDraftSousCollectionId(null);
     setQuestionModalVariant("create");
@@ -327,6 +331,16 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setQuestionModalDetail(d);
     } catch {
       /* garder l’affichage actuel */
+    }
+  };
+
+  const removeImplicitRelationFromQuestionModal = async (relationId: number) => {
+    try {
+      await deleteImplicitQuestionRelation(relationId);
+      await refreshQuestionModalDetail();
+      setActionMessage("Lien implicite retiré.");
+    } catch {
+      setActionMessage("Suppression du lien impossible.");
     }
   };
 
@@ -368,13 +382,14 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     if (createParentQuestionId == null) return;
     setQuestionModalSaving(true);
     try {
+      const withImplicitParentLink = payload.link_implicit_relation !== false;
       const created = await postCreateQuestion({
         user_id: userId,
         categorie_id: payload.categorie_id,
         question: payload.question,
         commentaire: payload.commentaire,
         reponses: payload.reponses,
-        parent_question_id: createParentQuestionId,
+        ...(withImplicitParentLink ? { parent_question_id: createParentQuestionId } : {}),
         collection_id: data?.collectionId ?? undefined,
       });
       if (payload.sous_collection_id != null) {
@@ -383,11 +398,18 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           question_id: created.id,
         });
       }
-      setActionMessage(
-        payload.sous_collection_id != null
-          ? "Question créée, liée au parent et à la sous-collection choisie."
-          : "Question créée et liée à la question affichée (parent).",
-      );
+      const sousPart = payload.sous_collection_id != null;
+      let msg: string;
+      if (withImplicitParentLink) {
+        msg = sousPart
+          ? "Question créée, liée au parent (relation implicite) et à la sous-collection choisie."
+          : "Question créée et liée à la question affichée via la relation implicite.";
+      } else {
+        msg = sousPart
+          ? "Question créée sans lien implicite avec la parente ; rattachement à la sous-collection effectué."
+          : "Question créée sans ajout de lien implicite avec la question parente.";
+      }
+      setActionMessage(msg);
       closeQuestionModal();
     } catch {
       throw new Error("create failed");
@@ -819,8 +841,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       onDraftCommentaire: setDraftCommentaire,
       onDraftCategorieId: setDraftCategorieId,
       onDraftSousCollectionId: setDraftSousCollectionId,
+      onDraftCreateLinkImplicit: setDraftCreateLinkImplicit,
       onReponseUpdated: () => void refreshQuestionModalDetail(),
       onCreateSave: (payload: QuestionCreateSavePayload) => saveCreateQuestionModal(payload),
+      onRemoveImplicitRelation: (relationId: number) => removeImplicitRelationFromQuestionModal(relationId),
     },
     status: {
       loading: questionModalLoading,
@@ -837,6 +861,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       commentaire: draftCommentaire,
       categorieId: draftCategorieId,
       sousCollectionId: draftSousCollectionId,
+      createLinkImplicit:
+        questionModalVariant === "create" && createParentQuestionId != null
+          ? draftCreateLinkImplicit
+          : undefined,
     },
   };
 
