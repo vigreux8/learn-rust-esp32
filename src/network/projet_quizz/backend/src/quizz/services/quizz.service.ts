@@ -6,6 +6,7 @@ import {
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieRow,
+  SousCollectionUi,
 } from '../quizz.type';
 import { AppCollectionImportBodyDto } from '../dto/import-collection.dto';
 import { LlmImportBodyDto } from '../dto/import-llm.dto';
@@ -43,6 +44,43 @@ export class QuizzService {
     play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
     return this.read.getCollection(collectionId, qtype, play);
+  }
+
+  listSousCollectionsForParent(parentId: number): Promise<SousCollectionUi[]> {
+    return this.read.listSousCollectionsForParent(parentId);
+  }
+
+  createChildSousCollection(
+    parentId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    return this.write.createChildSousCollection(parentId, body);
+  }
+
+  updateChildSousCollection(
+    childId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    return this.write.updateChildSousCollection(childId, body);
+  }
+
+  deleteChildSousCollection(childId: number, userId: number): Promise<void> {
+    return this.write.deleteChildSousCollection(childId, userId);
+  }
+
+  attachQuestionToChildCollection(
+    childId: number,
+    body: { user_id: number; question_id: number },
+  ): Promise<void> {
+    return this.write.attachQuestionToChildCollection(childId, body);
+  }
+
+  detachQuestionFromChildCollection(
+    childId: number,
+    questionId: number,
+    userId: number,
+  ): Promise<void> {
+    return this.write.detachQuestionFromChildCollection(childId, questionId, userId);
   }
 
   randomQuizQuestions(opts: QuizPlaySessionOpts): Promise<QuestionUi[]> {
@@ -182,6 +220,7 @@ export class QuizzService {
       collectionId?: number;
       moduleId?: number;
       categorie?: 'histoire' | 'pratique';
+      sousCollectionId?: number;
     },
   ): Promise<{
     createdQuestions: number;

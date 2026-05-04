@@ -137,7 +137,7 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 | `CollectionsView/`               | Liste et gestion des collections (découpé en sections).       |
 | `QuestionEditModal/`             | Modale d’édition ou de création d’une question (QCM).         |
 | `QuestionsView/`                 | Liste / édition des questions (filtrage par collection).      |
-| `SousCollectionsView/`           | Sous-collections d’une collection : grille, modale création, drag-and-drop des questions (`dnd-kit`). |
+| `SousCollectionsView/`           | Sous-collections (schéma **v4** : collections **enfants** via `relation-collection` + doubles liens `question_collection` parent/enfant) : grille, modale, DnD (`dnd-kit`). |
 | `QuestionsActionBoutons/`        | En-tête Questions : actions export / import LLM + panneau.   |
 | `QuizSessionView/`               | Déroulé d’une partie (questions, réponses, progression).      |
 | `QuizResultsView/`               | Résumé à la fin d’un quiz.                                    |

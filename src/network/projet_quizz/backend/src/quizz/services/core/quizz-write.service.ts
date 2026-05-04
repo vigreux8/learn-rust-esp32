@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { QuizzQuestionRow } from '../../quizz.type';
+import { QuizzQuestionRow, SousCollectionUi } from '../../quizz.type';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -344,5 +344,248 @@ export class QuizzWriteService {
 
       await tx.quizz_collection.delete({ where: { id: collectionId } });
     });
+  }
+
+  private async findParentIdForChildCollection(childId: number): Promise<number | null> {
+    const rel = await this.prisma.prisma.relation_collection.findFirst({
+      where: { e_collection: childId },
+      select: { p_collection: true },
+    });
+    return rel?.p_collection ?? null;
+  }
+
+  /**
+   * Crée une `quizz_collection` enfant et une ligne `relation-collection` vers le parent.
+   */
+  async createChildSousCollection(
+    parentId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    const parent = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent) {
+      throw new NotFoundException(`Collection parent ${parentId} introuvable`);
+    }
+    if (parent.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La collection ${parentId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+    const t = nowIso();
+    const child = await this.prisma.prisma.$transaction(async (tx) => {
+      const c = await tx.quizz_collection.create({
+        data: {
+          user_id: body.user_id,
+          create_at: t,
+          update_at: t,
+          nom: body.nom.trim(),
+          description: body.description.trim() === '' ? null : body.description.trim(),
+        },
+      });
+      await tx.relation_collection.create({
+        data: { p_collection: parentId, e_collection: c.id },
+      });
+      await tx.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      });
+      return c;
+    });
+    return {
+      id: child.id,
+      collection_id: parentId,
+      nom: child.nom,
+      description: child.description ?? '',
+      questions: [],
+    };
+  }
+
+  async updateChildSousCollection(
+    childId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(
+        `La collection ${childId} n’est pas une collection enfant (aucun lien parent).`,
+      );
+    }
+    const child = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: childId },
+    });
+    if (!child) {
+      throw new NotFoundException(`Collection ${childId} introuvable`);
+    }
+    if (child.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La collection ${childId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+    const t = nowIso();
+    const updated = await this.prisma.prisma.$transaction(async (tx) => {
+      const u = await tx.quizz_collection.update({
+        where: { id: childId },
+        data: {
+          nom: body.nom.trim(),
+          description: body.description.trim() === '' ? null : body.description.trim(),
+          update_at: t,
+        },
+      });
+      await tx.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      });
+      return u;
+    });
+    const qcs = await this.prisma.prisma.question_collection.findMany({
+      where: { collection_id: childId },
+      orderBy: { id: 'asc' },
+      include: {
+        quizz_question: { include: { ref_p_categorie: true } },
+      },
+    });
+    return {
+      id: updated.id,
+      collection_id: parentId,
+      nom: updated.nom,
+      description: updated.description ?? '',
+      questions: qcs.map((qc) => ({
+        relation_id: qc.id,
+        question_id: qc.question_id,
+        question: qc.quizz_question.question,
+        categorie_type: qc.quizz_question.ref_p_categorie.type,
+      })),
+    };
+  }
+
+  /**
+   * Supprime le lien parent → enfant, les rattachements questions de l’enfant, puis la collection enfant.
+   * Les questions restent liées au parent si elles y étaient encore.
+   */
+  async deleteChildSousCollection(childId: number, userId: number): Promise<void> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(
+        `La collection ${childId} n’est pas une collection enfant (aucun lien parent).`,
+      );
+    }
+    const child = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: childId },
+    });
+    if (!child) {
+      throw new NotFoundException(`Collection ${childId} introuvable`);
+    }
+    if (child.user_id !== userId) {
+      throw new ForbiddenException(
+        `La collection ${childId} n’appartient pas à l’utilisateur ${userId}.`,
+      );
+    }
+    const t = nowIso();
+    await this.prisma.prisma.$transaction(async (tx) => {
+      await tx.relation_collection.deleteMany({
+        where: { e_collection: childId },
+      });
+      await tx.personnalite_collection.deleteMany({
+        where: { collection_id: childId },
+      });
+      await tx.personalite.deleteMany({
+        where: { collection_id: childId },
+      });
+      await tx.question_collection.deleteMany({
+        where: { collection_id: childId },
+      });
+      await tx.quizz_module_collection.deleteMany({
+        where: { collection_id: childId },
+      });
+      await tx.quizz_collection.delete({ where: { id: childId } });
+      await tx.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      });
+    });
+  }
+
+  async attachQuestionToChildCollection(
+    childId: number,
+    body: { user_id: number; question_id: number },
+  ): Promise<void> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(
+        `La collection ${childId} n’est pas une collection enfant (aucun lien parent).`,
+      );
+    }
+    const parent = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent || parent.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `Accès refusé pour rattacher une question à la collection ${childId}.`,
+      );
+    }
+    const inParent = await this.prisma.prisma.question_collection.findFirst({
+      where: { collection_id: parentId, question_id: body.question_id },
+    });
+    if (!inParent) {
+      throw new BadRequestException(
+        `La question ${body.question_id} doit d’abord être liée à la collection parent ${parentId}.`,
+      );
+    }
+    const exists = await this.prisma.prisma.question_collection.findFirst({
+      where: { collection_id: childId, question_id: body.question_id },
+    });
+    if (exists) {
+      return;
+    }
+    const t = nowIso();
+    await this.prisma.prisma.$transaction([
+      this.prisma.prisma.question_collection.create({
+        data: { collection_id: childId, question_id: body.question_id },
+      }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: childId },
+        data: { update_at: t },
+      }),
+    ]);
+  }
+
+  async detachQuestionFromChildCollection(
+    childId: number,
+    questionId: number,
+    userId: number,
+  ): Promise<void> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(
+        `La collection ${childId} n’est pas une collection enfant (aucun lien parent).`,
+      );
+    }
+    const parent = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent || parent.user_id !== userId) {
+      throw new ForbiddenException(
+        `Accès refusé pour retirer une question de la collection ${childId}.`,
+      );
+    }
+    const t = nowIso();
+    await this.prisma.prisma.$transaction([
+      this.prisma.prisma.question_collection.deleteMany({
+        where: { collection_id: childId, question_id: questionId },
+      }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: childId },
+        data: { update_at: t },
+      }),
+    ]);
   }
 }

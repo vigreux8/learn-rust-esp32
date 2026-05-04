@@ -67,6 +67,7 @@ export class ImportLlmHandler {
       collectionId?: number;
       moduleId?: number;
       categorie?: 'histoire' | 'pratique';
+      sousCollectionId?: number;
     },
   ): Promise<{
     createdQuestions: number;
@@ -94,12 +95,26 @@ export class ImportLlmHandler {
           'Aucune question à importer : fusionne tes blocs "collections" et/ou "questions_sans_collection".',
         );
       }
+      if (opts.sousCollectionId != null) {
+        const link = await this.prisma.prisma.relation_collection.findFirst({
+          where: {
+            p_collection: opts.collectionId,
+            e_collection: opts.sousCollectionId,
+          },
+        });
+        if (!link) {
+          throw new BadRequestException(
+            `sousCollectionId ${opts.sousCollectionId} : cette collection enfant n’est pas liée au parent ${opts.collectionId}.`,
+          );
+        }
+      }
       const result = await this.importService.importQuestionsFromLlmJson({
         userId,
         categorieId,
         collections: body.collections,
         questionsSansCollection: body.questions_sans_collection,
         collectionId: opts.collectionId,
+        sousCollectionId: opts.sousCollectionId,
       });
       if (opts.moduleId != null) {
         await this.structure.assignCollectionToModule(opts.collectionId, opts.moduleId);

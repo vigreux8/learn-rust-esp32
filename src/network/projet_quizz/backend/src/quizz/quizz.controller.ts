@@ -17,10 +17,13 @@ import { AppCollectionImportBodyDto } from './dto/import-collection.dto';
 import { LlmImportBodyDto } from './dto/import-llm.dto';
 import {
   AssignCollectionToModuleDto,
+  AttachQuestionToSousCollectionBodyDto,
   CreateCollectionInModuleDto,
   CreateQuestionDto,
   CreateQuizzModuleDto,
+  CreateSousCollectionBodyDto,
   CreateStandaloneCollectionDto,
+  PatchSousCollectionBodyDto,
   UpdateQuestionDto,
   UpdateReponseDto,
 } from './dto/quizz.dto';
@@ -200,13 +203,28 @@ export class QuizzController {
     @Query('userId') userIdRaw?: string,
     @Query('infinite') infiniteRaw?: string,
     @Query('exclude') excludeRaw?: string,
+    @Query('sousCollectionId') sousCollectionIdRaw?: string,
   ) {
     const qtype = parsePlayQtypeQuery(qtypeRaw);
+    const parseOptSousId = (): number | undefined => {
+      if (sousCollectionIdRaw === undefined || sousCollectionIdRaw === '') {
+        return undefined;
+      }
+      const n = Number(sousCollectionIdRaw);
+      if (!Number.isInteger(n) || n < 1) {
+        throw new BadRequestException(
+          'Query sousCollectionId : entier ≥ 1 attendu si le paramètre est fourni',
+        );
+      }
+      return n;
+    };
+    const sousCollectionId = parseOptSousId();
     const hasPlay =
       (orderRaw != null && orderRaw !== '') ||
       (userIdRaw != null && userIdRaw !== '') ||
       (infiniteRaw != null && infiniteRaw !== '') ||
-      (excludeRaw != null && excludeRaw !== '');
+      (excludeRaw != null && excludeRaw !== '') ||
+      sousCollectionId !== undefined;
     if (!hasPlay) {
       return this.quizz.getCollection(id, qtype);
     }
@@ -220,6 +238,7 @@ export class QuizzController {
       userId,
       limit: infinite ? 15 : undefined,
       excludeIds,
+      sousCollectionId,
     });
   }
 
@@ -246,6 +265,66 @@ export class QuizzController {
     @Query('userId', ParseIntPipe) userId: number,
   ) {
     return this.quizz.deleteCollection(collectionId, userId);
+  }
+
+  @Get('collections/:collectionId/sous-collections')
+  listSousCollections(@Param('collectionId', ParseIntPipe) collectionId: number) {
+    return this.quizz.listSousCollectionsForParent(collectionId);
+  }
+
+  @Post('collections/:collectionId/sous-collections')
+  createSousCollection(
+    @Param('collectionId', ParseIntPipe) collectionId: number,
+    @Body() body: CreateSousCollectionBodyDto,
+  ) {
+    return this.quizz.createChildSousCollection(collectionId, {
+      user_id: body.user_id,
+      nom: body.nom,
+      description: body.description ?? '',
+    });
+  }
+
+  @Patch('sous-collections/:sousId')
+  patchSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Body() body: PatchSousCollectionBodyDto,
+  ) {
+    return this.quizz.updateChildSousCollection(sousId, {
+      user_id: body.user_id,
+      nom: body.nom,
+      description: body.description ?? '',
+    });
+  }
+
+  @Delete('sous-collections/:sousId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.deleteChildSousCollection(sousId, userId);
+  }
+
+  @Post('sous-collections/:sousId/questions')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  attachQuestionToSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Body() body: AttachQuestionToSousCollectionBodyDto,
+  ) {
+    return this.quizz.attachQuestionToChildCollection(sousId, {
+      user_id: body.user_id,
+      question_id: body.question_id,
+    });
+  }
+
+  @Delete('sous-collections/:sousId/questions/:questionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  detachQuestionFromSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.detachQuestionFromChildCollection(sousId, questionId, userId);
   }
 
   @Get('random')
@@ -308,6 +387,7 @@ export class QuizzController {
     @Query('collectionId') collectionIdStr?: string,
     @Query('moduleId') moduleIdStr?: string,
     @Query('categorie') categorieRaw?: string,
+    @Query('sousCollectionId') sousCollectionIdStr?: string,
   ) {
     const parseOptInt = (label: string, s?: string): number | undefined => {
       if (s === undefined || s === '') return undefined;
@@ -321,6 +401,7 @@ export class QuizzController {
     };
     const collectionId = parseOptInt('collectionId', collectionIdStr);
     const moduleId = parseOptInt('moduleId', moduleIdStr);
+    const sousCollectionId = parseOptInt('sousCollectionId', sousCollectionIdStr);
     if (moduleId != null && collectionId == null) {
       throw new BadRequestException(
         'Query moduleId sans collectionId : indique collectionId pour rattacher l’import.',
@@ -331,6 +412,7 @@ export class QuizzController {
       collectionId,
       moduleId,
       categorie,
+      sousCollectionId,
     });
   }
 

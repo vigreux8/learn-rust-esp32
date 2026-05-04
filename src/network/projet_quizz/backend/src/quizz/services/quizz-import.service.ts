@@ -90,8 +90,10 @@ export class QuizzImportService {
     targetCollectionId: number;
     questions: LlmImportQuestionDto[];
     categorieId: number;
+    /** Rattache aussi chaque question créée à cette collection enfant (`question_collection`). */
+    sousCollectionId?: number;
   }): Promise<{ createdQuestions: number }> {
-    const { userId, targetCollectionId, questions, categorieId } = params;
+    const { userId, targetCollectionId, questions, categorieId, sousCollectionId } = params;
     let createdQuestions = 0;
     const t = nowIso();
     await this.prisma.prisma.$transaction(async (tx) => {
@@ -105,12 +107,23 @@ export class QuizzImportService {
           collection_id: targetCollectionId,
           verifier: false,
         });
+        if (sousCollectionId != null) {
+          await tx.question_collection.create({
+            data: { collection_id: sousCollectionId, question_id: questionId },
+          });
+        }
         createdQuestions += 1;
       }
       await tx.quizz_collection.update({
         where: { id: targetCollectionId },
         data: { update_at: t },
       });
+      if (sousCollectionId != null) {
+        await tx.quizz_collection.update({
+          where: { id: sousCollectionId },
+          data: { update_at: t },
+        });
+      }
     });
     return { createdQuestions };
   }
@@ -122,6 +135,7 @@ export class QuizzImportService {
       collections: LlmImportCollectionBlockDto[];
       questionsSansCollection: LlmImportQuestionDto[];
       collectionId?: number;
+      sousCollectionId?: number;
     },
   ): Promise<{
     createdQuestions: number;
@@ -133,6 +147,7 @@ export class QuizzImportService {
       collections,
       questionsSansCollection,
       collectionId,
+      sousCollectionId,
     } = params;
     if (collectionId != null) {
       const flat = [...collections.flatMap((b) => b.questions), ...questionsSansCollection];
@@ -142,6 +157,7 @@ export class QuizzImportService {
           targetCollectionId: collectionId,
           questions: flat,
           categorieId,
+          sousCollectionId,
         },
       );
       return { createdQuestions, createdCollections: 0 };

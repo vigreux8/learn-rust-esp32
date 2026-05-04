@@ -24,10 +24,32 @@ export type CollectionModuleRef = {
   nom: string;
 };
 
-/** Sous-collection rattachée à une collection (liste légère pour l’UI). */
+/** Enfant d’une collection (`relation-collection.e_collection`) — liste légère pour l’UI. */
 export type CollectionSousCollectionRef = {
   id: number;
   nom: string;
+};
+
+/** Question rattachée à une collection enfant (`question_collection`). */
+export type SousCollectionQuestionRef = {
+  relation_id: number;
+  question_id: number;
+  question: string;
+  categorie_type: string;
+};
+
+/**
+ * Même forme JSON qu’en v3 : une « sous-collection » est une `quizz_collection` enfant,
+ * liée au parent par `relation-collection` ; les questions y sont liées par `question_collection`
+ * (sans retirer le lien parent).
+ */
+export type SousCollectionUi = {
+  id: number;
+  /** Identifiant de la collection parent. */
+  collection_id: number;
+  nom: string;
+  description: string;
+  questions: SousCollectionQuestionRef[];
 };
 
 /** Comptage des questions liées à la collection, par `ref_p_categorie.type` (toutes les questions, hors filtre `qtype`). */
@@ -48,7 +70,7 @@ export type CollectionUi = {
   createur_pseudot: string;
   /** Super-collections (`quizz_module`) liées via `quizz_module_collection`. */
   modules: CollectionModuleRef[];
-  /** Schéma v4 : plus de sous-collections en base ; champ conservé pour compat clients (tableau vide). */
+  /** v4 : collections enfants (`relation-collection` + `quizz_collection` enfant). */
   sous_collections: CollectionSousCollectionRef[];
 };
 

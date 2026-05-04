@@ -10,6 +10,7 @@ import {
   QuizzQuestionDetail,
   QuizzQuestionRow,
   RefCategorieRow,
+  SousCollectionUi,
 } from '../quizz.type';
 
 export type QuizPlayOrder =
@@ -29,6 +30,8 @@ export type QuizPlaySessionOpts = {
   userId?: number;
   limit?: number;
   excludeIds: number[];
+  /** Collection enfant : ne retourne que les questions aussi liées à cette enfant (`question_collection`). */
+  sousCollectionId?: number;
 };
 
 function shuffle<T>(items: T[]): T[] {
@@ -126,6 +129,16 @@ export class QuizzReadService {
       nom: mc.quizz_module.nom,
     }));
 
+    const childLinks = await this.prisma.prisma.relation_collection.findMany({
+      where: { p_collection: collectionId },
+      orderBy: { id: 'asc' },
+      include: { child_quizz: { select: { id: true, nom: true } } },
+    });
+    const sous_collections = childLinks.map((r) => ({
+      id: r.e_collection,
+      nom: r.child_quizz.nom,
+    }));
+
     return {
       id: col.id,
       user_id: col.user_id,
@@ -136,7 +149,7 @@ export class QuizzReadService {
       question_counts_by_type,
       createur_pseudot: col.user.pseudot,
       modules,
-      sous_collections: [],
+      sous_collections,
     };
   }
 
@@ -161,15 +174,35 @@ export class QuizzReadService {
     if (!ui) {
       throw new NotFoundException(`Collection ${collectionId} introuvable`);
     }
+    if (play?.sousCollectionId != null) {
+      const link = await this.prisma.prisma.relation_collection.findFirst({
+        where: {
+          p_collection: collectionId,
+          e_collection: play.sousCollectionId,
+        },
+      });
+      if (!link) {
+        throw new NotFoundException(
+          `La collection enfant ${play.sousCollectionId} n’est pas liée au parent ${collectionId}.`,
+        );
+      }
+      const childQcs = await this.prisma.prisma.question_collection.findMany({
+        where: { collection_id: play.sousCollectionId },
+        select: { question_id: true },
+      });
+      const inChild = new Set(childQcs.map((r) => r.question_id));
+      ui = { ...ui, questions: ui.questions.filter((q) => inChild.has(q.id)) };
+    }
+    /** Hors session de jeu : l’UI (sous-collections, édition) doit pouvoir charger une collection vide. */
+    if (play == null) {
+      return ui;
+    }
     if (ui.questions.length === 0) {
       throw new NotFoundException(
         qtype !== 'melanger'
           ? `Aucune question de type « ${qtype} » dans la collection ${collectionId}.`
           : `Collection ${collectionId} introuvable ou vide`,
       );
-    }
-    if (play == null) {
-      return ui;
     }
     const exclude = new Set(play.excludeIds);
     let questions = ui.questions.filter((q) => !exclude.has(q.id));
@@ -428,5 +461,38 @@ export class QuizzReadService {
       );
     }
     return this.listQuestions(n);
+  }
+
+  /** Détail des collections enfants (schéma v4) pour l’UI « sous-collections ». */
+  async listSousCollectionsForParent(parentId: number): Promise<SousCollectionUi[]> {
+    const rels = await this.prisma.prisma.relation_collection.findMany({
+      where: { p_collection: parentId },
+      orderBy: { id: 'asc' },
+      include: { child_quizz: true },
+    });
+    const out: SousCollectionUi[] = [];
+    for (const rel of rels) {
+      const childId = rel.e_collection;
+      const qcs = await this.prisma.prisma.question_collection.findMany({
+        where: { collection_id: childId },
+        orderBy: { id: 'asc' },
+        include: {
+          quizz_question: { include: { ref_p_categorie: true } },
+        },
+      });
+      out.push({
+        id: childId,
+        collection_id: parentId,
+        nom: rel.child_quizz.nom,
+        description: rel.child_quizz.description ?? '',
+        questions: qcs.map((qc) => ({
+          relation_id: qc.id,
+          question_id: qc.question_id,
+          question: qc.quizz_question.question,
+          categorie_type: qc.quizz_question.ref_p_categorie.type,
+        })),
+      });
+    }
+    return out;
   }
 }

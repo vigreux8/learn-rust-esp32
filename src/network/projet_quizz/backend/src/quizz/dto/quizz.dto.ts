@@ -108,3 +108,42 @@ export class CreateStandaloneCollectionDto {
   moduleId?: number;
 }
 
+/** Création d’une collection enfant (v4 : `quizz_collection` + `relation-collection`). */
+export class CreateSousCollectionBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class PatchSousCollectionBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class AttachQuestionToSousCollectionBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsInt()
+  @Min(1)
+  question_id!: number;
+}
+
