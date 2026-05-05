@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   CollectionPersonnaliteRef,
   CollectionUi,
+  GroupeQuestionsUi,
   PersonalitePickerRowDto,
   QuestionUi,
   QuizzQuestionDetail,
@@ -14,6 +15,7 @@ import {
   RefCategorieHierarchyRow,
   RefCategorieRow,
   RefImportancePersonaliteDto,
+  ReflexionChainEditorDto,
   RefQuestionScaleRow,
   SousCollectionUi,
 } from '../quizz.type';
@@ -704,5 +706,90 @@ export class QuizzReadService {
       prenom: r.prenom,
       collection_id: r.collection_id,
     }));
+  }
+
+  /**
+   * Liste des `groupe_questions` rattachés à une collection.
+   */
+  async listGroupeQuestionsForCollection(collectionId: number): Promise<GroupeQuestionsUi[]> {
+    const rows = await this.prisma.prisma.groupe_questions.findMany({
+      where: { collection_id: collectionId },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      collection_id: r.collection_id,
+      nom: r.nom,
+      description: r.description,
+    }));
+  }
+
+  /**
+   * Pour l’instant l’API expose le **premier** `groupe_questions` de la collection (`id` croissant).
+   * Une collection peut en avoir plusieurs ; la sélection explicite pourra suivre (query ou body).
+   */
+  async getReflexionChainEditor(
+    collectionId: number,
+    groupeQuestionsId?: number,
+  ): Promise<ReflexionChainEditorDto> {
+    const allInCollection = await this.listQuestions(collectionId);
+    const byId = new Map(allInCollection.map((q) => [q.id, q]));
+    let groupe =
+      groupeQuestionsId != null
+        ? await this.prisma.prisma.groupe_questions.findFirst({
+            where: {
+              id: groupeQuestionsId,
+              collection_id: collectionId,
+            },
+          })
+        : await this.prisma.prisma.groupe_questions.findFirst({
+            where: { collection_id: collectionId },
+            orderBy: { id: 'asc' },
+          });
+    if (groupe == null) {
+      return {
+        groupe_id: null,
+        ordered_questions: [],
+        pool_questions: allInCollection,
+      };
+    }
+    const reflexions = await this.prisma.prisma.question_reflexion.findMany({
+      where: { collection_questions_id: groupe.id },
+    });
+    const nextFrom = new Map<number, number>();
+    const prevOf = new Map<number, number>();
+    for (const r of reflexions) {
+      nextFrom.set(r.question_p_id, r.question_a_id);
+      prevOf.set(r.question_a_id, r.question_p_id);
+    }
+    let head = groupe.head_question_id;
+    if (head != null && prevOf.has(head)) {
+      const candidates = [...nextFrom.keys()].filter((p) => !prevOf.has(p));
+      head = candidates.length === 1 ? candidates[0]! : head;
+    }
+    if (head == null && reflexions.length > 0) {
+      const candidates = [...nextFrom.keys()].filter((p) => !prevOf.has(p));
+      head = candidates.length === 1 ? candidates[0]! : null;
+    }
+    const orderedIds: number[] = [];
+    if (head != null) {
+      const seen = new Set<number>();
+      let cur: number | null = head;
+      while (cur != null && !seen.has(cur)) {
+        seen.add(cur);
+        orderedIds.push(cur);
+        cur = nextFrom.get(cur) ?? null;
+      }
+    }
+    const orderedSet = new Set(orderedIds);
+    const ordered_questions = orderedIds
+      .map((id) => byId.get(id))
+      .filter((q): q is QuizzQuestionRow => q != null);
+    const pool_questions = allInCollection.filter((q) => !orderedSet.has(q.id));
+    return {
+      groupe_id: groupe.id,
+      ordered_questions,
+      pool_questions,
+    };
   }
 }

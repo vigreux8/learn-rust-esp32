@@ -1,6 +1,7 @@
 import { apiUrl } from "./config";
 import type {
   CollectionUi,
+  GroupeQuestionsUi,
   DeviceLookupResult,
   PersonalitePickerRowUi,
   QuestionUi,
@@ -10,6 +11,7 @@ import type {
   RefCategorieRow,
   RefImportancePersonaliteUi,
   RefQuestionScaleRow,
+  ReflexionChainEditorUi,
   SessionDetail,
   SessionSummary,
   SousCollectionUi,
@@ -293,6 +295,69 @@ export async function fetchSousCollections(collectionId: number): Promise<SousCo
   return res.json() as Promise<SousCollectionUi[]>;
 }
 
+export async function fetchGroupeQuestions(collectionId: number): Promise<GroupeQuestionsUi[]> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/groupe-questions`));
+  await assertResponseOk(res);
+  return res.json() as Promise<GroupeQuestionsUi[]>;
+}
+
+export async function postCreateGroupeQuestions(
+  collectionId: number,
+  body: { user_id: number; nom: string; description?: string },
+): Promise<GroupeQuestionsUi> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/groupe-questions`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<GroupeQuestionsUi>;
+}
+
+export async function patchGroupeQuestions(
+  groupeId: number,
+  body: { user_id: number; nom: string; description?: string },
+): Promise<GroupeQuestionsUi> {
+  const res = await fetch(apiUrl(`/quizz/groupe-questions/${groupeId}`), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<GroupeQuestionsUi>;
+}
+
+export async function deleteGroupeQuestions(groupeId: number, userId: number): Promise<void> {
+  const q = new URLSearchParams({ userId: String(userId) });
+  const res = await fetch(apiUrl(`/quizz/groupe-questions/${groupeId}?${q.toString()}`), {
+    method: "DELETE",
+  });
+  await assertResponseOk(res);
+}
+
+export async function fetchReflexionChain(
+  collectionId: number,
+  groupeId?: number,
+): Promise<ReflexionChainEditorUi> {
+  const q =
+    groupeId !== undefined && groupeId !== null ? `?groupeId=${encodeURIComponent(String(groupeId))}` : "";
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/reflexion-chain${q}`));
+  await assertResponseOk(res);
+  return res.json() as Promise<ReflexionChainEditorUi>;
+}
+
+export async function patchReflexionChain(
+  collectionId: number,
+  body: { user_id: number; ordered_question_ids: number[]; groupe_questions_id?: number },
+): Promise<void> {
+  const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/reflexion-chain`), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+}
+
 export async function postCreateSousCollection(
   collectionId: number,
   body: { user_id: number; nom: string; description: string },
@@ -431,6 +496,8 @@ export async function importQuestionsJson(
 ): Promise<{
   createdQuestions: number;
   createdCollections: number;
+  /** Renvoyé pour un import avec `collectionId` : IDs des questions créées dans cette collection. */
+  createdQuestionIds?: number[];
 }> {
   const q = new URLSearchParams();
   if (options?.collectionId != null) {

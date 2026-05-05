@@ -2,7 +2,7 @@ import { Fragment } from "preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { route } from "preact-router";
 import type { JSX } from "preact";
-import { ChevronRight, LayoutGrid, ListTree, Tag, Trash2, X } from "lucide-preact";
+import { ChevronRight, LayoutGrid, ListOrdered, ListTree, Tag, Trash2, X } from "lucide-preact";
 
 import {
   COLLECTION_TREE_LEVEL_BORDER_HEX,
@@ -20,7 +20,7 @@ import { Badge } from "../../atomes/Badge";
 import { Button } from "../../atomes/Button";
 import { SearchAssociateBlock } from "../SearchAssociateBlock";
 
-import { buildQuestionsRoutePath, buildSousCollectionsRoutePath } from "./CollectionCard.metier";
+import { buildQuestionsRoutePath, buildReflexionRoutePath, buildSousCollectionsRoutePath } from "./CollectionCard.metier";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";
 import type { CollectionCardProps } from "./CollectionCard.types";
 
@@ -343,6 +343,19 @@ export function CollectionCard({
         </div>
         <div class="flex shrink-0 flex-col gap-2 self-start sm:self-center sm:items-end">
           <Button variant="outline" class="btn-sm gap-1" onClick={handleQuestionsClick}><ListTree class="h-4 w-4" aria-hidden />Questions</Button>
+          {isMine && n > 0 ? (
+            <Button
+              variant="outline"
+              class="btn-sm gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                route(buildReflexionRoutePath(collection.id));
+              }}
+            >
+              <ListOrdered class="h-4 w-4" aria-hidden />
+              Suite logique
+            </Button>
+          ) : null}
           {isMine && n > 0 ? (
             <Button
               variant="outline"

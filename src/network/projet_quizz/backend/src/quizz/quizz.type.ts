@@ -140,6 +140,22 @@ export type QuizzQuestionRow = {
   collections: QuizzCollectionRef[];
 };
 
+/** `groupe_questions` lié à une collection (plusieurs suites par collection possibles). */
+export type GroupeQuestionsUi = {
+  id: number;
+  collection_id: number | null;
+  /** Champ SQL « nom » (entier historique) ; libellé préféré : `description`. */
+  nom: number;
+  description: string | null;
+};
+
+/** Éditeur de suite logique (`groupe_questions` + `question_reflexion`) pour une collection. */
+export type ReflexionChainEditorDto = {
+  groupe_id: number | null;
+  ordered_questions: QuizzQuestionRow[];
+  pool_questions: QuizzQuestionRow[];
+};
+
 /** Ligne `relation_question_implicite` où la question courante participe avec une autre question. */
 export type ImplicitRelatedQuestionUi = {
   relation_id: number;

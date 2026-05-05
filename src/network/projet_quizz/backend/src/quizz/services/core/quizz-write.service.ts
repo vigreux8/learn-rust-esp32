@@ -6,7 +6,16 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { QuizzQuestionRow, SousCollectionUi } from '../../quizz.type';
+import { GroupeQuestionsUi, QuizzQuestionRow, SousCollectionUi } from '../../quizz.type';
+
+function formatGroupeDescription(nom: string, description?: string): string {
+  const n = nom.trim();
+  const d = description?.trim() ?? '';
+  if (d === '') {
+    return n;
+  }
+  return `${n}\n${d}`;
+}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -420,6 +429,16 @@ export class QuizzWriteService {
     const questionIds = [...new Set(links.map((l) => l.question_id))];
 
     await this.prisma.prisma.$transaction(async (tx) => {
+      await tx.question_reflexion.deleteMany({
+        where: {
+          groupe_questions: {
+            collection_id: collectionId,
+          },
+        },
+      });
+      await tx.groupe_questions.deleteMany({
+        where: { collection_id: collectionId },
+      });
       await tx.personnalite_collection.deleteMany({
         where: {
           OR: [
@@ -881,6 +900,216 @@ export class QuizzWriteService {
     await this.prisma.prisma.quizz_collection.update({
       where: { id: collectionId },
       data: { update_at: nowIso() },
+    });
+  }
+
+  /**
+   * Crée un `groupe_questions` pour une collection. Le libellé est stocké dans `description` (ligne 1 = nom).
+   */
+  async createGroupeQuestions(
+    collectionId: number,
+    body: { user_id: number; nom: string; description?: string },
+  ): Promise<GroupeQuestionsUi> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (col.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+    const desc = formatGroupeDescription(body.nom, body.description);
+    const row = await this.prisma.prisma.groupe_questions.create({
+      data: {
+        nom: collectionId,
+        collection_id: collectionId,
+        description: desc,
+        head_question_id: null,
+      },
+    });
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: collectionId },
+      data: { update_at: nowIso() },
+    });
+    return {
+      id: row.id,
+      collection_id: row.collection_id,
+      nom: row.nom,
+      description: row.description,
+    };
+  }
+
+  async updateGroupeQuestions(
+    groupeId: number,
+    body: { user_id: number; nom: string; description?: string },
+  ): Promise<GroupeQuestionsUi> {
+    const existing = await this.prisma.prisma.groupe_questions.findUnique({
+      where: { id: groupeId },
+      include: { quizz_collection: true },
+    });
+    if (existing == null) {
+      throw new NotFoundException(`groupe_questions ${groupeId} introuvable`);
+    }
+    if (existing.collection_id == null) {
+      throw new BadRequestException('Ce groupe n’est pas rattaché à une collection.');
+    }
+    if (existing.quizz_collection == null) {
+      throw new NotFoundException(`Collection liée au groupe ${groupeId} introuvable.`);
+    }
+    if (existing.quizz_collection.user_id !== body.user_id) {
+      throw new ForbiddenException('Accès refusé pour modifier ce groupe.');
+    }
+    const desc = formatGroupeDescription(body.nom, body.description);
+    const row = await this.prisma.prisma.groupe_questions.update({
+      where: { id: groupeId },
+      data: { description: desc },
+    });
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: existing.collection_id },
+      data: { update_at: nowIso() },
+    });
+    return {
+      id: row.id,
+      collection_id: row.collection_id,
+      nom: row.nom,
+      description: row.description,
+    };
+  }
+
+  async deleteGroupeQuestions(groupeId: number, userId: number): Promise<void> {
+    const existing = await this.prisma.prisma.groupe_questions.findUnique({
+      where: { id: groupeId },
+      include: { quizz_collection: true },
+    });
+    if (existing == null) {
+      throw new NotFoundException(`groupe_questions ${groupeId} introuvable`);
+    }
+    if (existing.collection_id == null) {
+      throw new BadRequestException('Ce groupe n’est pas rattaché à une collection.');
+    }
+    if (existing.quizz_collection == null) {
+      throw new NotFoundException(`Collection liée au groupe ${groupeId} introuvable.`);
+    }
+    if (existing.quizz_collection.user_id !== userId) {
+      throw new ForbiddenException('Accès refusé pour supprimer ce groupe.');
+    }
+    const collectionId = existing.collection_id;
+    await this.prisma.prisma.$transaction([
+      this.prisma.prisma.question_reflexion.deleteMany({
+        where: { collection_questions_id: groupeId },
+      }),
+      this.prisma.prisma.groupe_questions.delete({ where: { id: groupeId } }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: collectionId },
+        data: { update_at: nowIso() },
+      }),
+    ]);
+  }
+
+  /**
+   * Définit l’ordre logique des questions (suite P→A dans `question_reflexion`, tête dans `groupe_questions`).
+   */
+  async setReflexionChainOrder(
+    collectionId: number,
+    body: {
+      user_id: number;
+      ordered_question_ids: number[];
+      groupe_questions_id?: number;
+    },
+  ): Promise<void> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (col.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+    const ids = body.ordered_question_ids;
+    const uniq = new Set(ids);
+    if (uniq.size !== ids.length) {
+      throw new BadRequestException('ordered_question_ids : doublons interdits');
+    }
+    const links = await this.prisma.prisma.question_collection.findMany({
+      where: { collection_id: collectionId },
+      select: { question_id: true },
+    });
+    const allowed = new Set(links.map((l) => l.question_id));
+    for (const qid of ids) {
+      if (!allowed.has(qid)) {
+        throw new BadRequestException(
+          `La question ${qid} n’est pas rattachée à la collection ${collectionId}.`,
+        );
+      }
+    }
+
+    await this.prisma.prisma.$transaction(async (tx) => {
+      let groupe =
+        body.groupe_questions_id != null
+          ? await tx.groupe_questions.findFirst({
+              where: {
+                id: body.groupe_questions_id,
+                collection_id: collectionId,
+              },
+            })
+          : await tx.groupe_questions.findFirst({
+              where: { collection_id: collectionId },
+              orderBy: { id: 'asc' },
+            });
+
+      if (body.groupe_questions_id != null && groupe == null) {
+        throw new BadRequestException(
+          `groupe_questions ${body.groupe_questions_id} introuvable pour la collection ${collectionId}.`,
+        );
+      }
+      if (groupe == null) {
+        groupe = await tx.groupe_questions.create({
+          data: {
+            nom: collectionId,
+            collection_id: collectionId,
+            description: null,
+            head_question_id: null,
+          },
+        });
+      }
+
+      await tx.question_reflexion.deleteMany({
+        where: { collection_questions_id: groupe.id },
+      });
+
+      if (ids.length === 0) {
+        await tx.groupe_questions.delete({ where: { id: groupe.id } });
+      } else if (ids.length === 1) {
+        await tx.groupe_questions.update({
+          where: { id: groupe.id },
+          data: { head_question_id: ids[0]! },
+        });
+      } else {
+        await tx.groupe_questions.update({
+          where: { id: groupe.id },
+          data: { head_question_id: ids[0]! },
+        });
+        for (let i = 0; i < ids.length - 1; i++) {
+          await tx.question_reflexion.create({
+            data: {
+              collection_questions_id: groupe.id,
+              question_p_id: ids[i]!,
+              question_a_id: ids[i + 1]!,
+            },
+          });
+        }
+      }
+
+      await tx.quizz_collection.update({
+        where: { id: collectionId },
+        data: { update_at: nowIso() },
+      });
     });
   }
 }

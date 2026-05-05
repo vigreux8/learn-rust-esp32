@@ -20,11 +20,14 @@ import {
   AssignPersonaliteToCollectionDto,
   AttachQuestionToSousCollectionBodyDto,
   CreateCollectionUnderTagDto,
+  CreateGroupeQuestionsBodyDto,
   CreatePersonaliteCollectionDto,
   CreateQuestionDto,
   CreateSousCollectionBodyDto,
   CreateStandaloneCollectionDto,
+  PatchGroupeQuestionsBodyDto,
   PatchSousCollectionBodyDto,
+  PatchReflexionChainDto,
   UpdateQuestionDto,
   UpdateReponseDto,
 } from './dto/quizz.dto';
@@ -363,6 +366,71 @@ export class QuizzController {
     @Query('userId', ParseIntPipe) userId: number,
   ) {
     return this.quizz.detachQuestionFromChildCollection(sousId, questionId, userId);
+  }
+
+  @Get('collections/:collectionId/groupe-questions')
+  listGroupeQuestions(@Param('collectionId', ParseIntPipe) collectionId: number) {
+    return this.quizz.listGroupeQuestionsForCollection(collectionId);
+  }
+
+  @Post('collections/:collectionId/groupe-questions')
+  createGroupeQuestions(
+    @Param('collectionId', ParseIntPipe) collectionId: number,
+    @Body() body: CreateGroupeQuestionsBodyDto,
+  ) {
+    return this.quizz.createGroupeQuestions(collectionId, {
+      user_id: body.user_id,
+      nom: body.nom,
+      description: body.description,
+    });
+  }
+
+  @Patch('groupe-questions/:groupeId')
+  patchGroupeQuestions(
+    @Param('groupeId', ParseIntPipe) groupeId: number,
+    @Body() body: PatchGroupeQuestionsBodyDto,
+  ) {
+    return this.quizz.updateGroupeQuestions(groupeId, {
+      user_id: body.user_id,
+      nom: body.nom,
+      description: body.description,
+    });
+  }
+
+  @Delete('groupe-questions/:groupeId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteGroupeQuestions(
+    @Param('groupeId', ParseIntPipe) groupeId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.deleteGroupeQuestions(groupeId, userId);
+  }
+
+  @Get('collections/:collectionId/reflexion-chain')
+  getReflexionChain(
+    @Param('collectionId', ParseIntPipe) collectionId: number,
+    @Query('groupeId') groupeIdRaw?: string,
+  ) {
+    const groupeId =
+      groupeIdRaw !== undefined && groupeIdRaw !== ''
+        ? Number.parseInt(groupeIdRaw, 10)
+        : undefined;
+    const groupeQuestionsId =
+      groupeId !== undefined && Number.isFinite(groupeId) && groupeId >= 1 ? groupeId : undefined;
+    return this.quizz.getReflexionChainEditor(collectionId, groupeQuestionsId);
+  }
+
+  @Patch('collections/:collectionId/reflexion-chain')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  patchReflexionChain(
+    @Param('collectionId', ParseIntPipe) collectionId: number,
+    @Body() body: PatchReflexionChainDto,
+  ) {
+    return this.quizz.setReflexionChainOrder(collectionId, {
+      user_id: body.user_id,
+      ordered_question_ids: body.ordered_question_ids,
+      groupe_questions_id: body.groupe_questions_id,
+    });
   }
 
   @Get('random')

@@ -39,7 +39,14 @@ model groupe_questions {
   /// Colonne SQL `nom` (INTEGER dans v4.sql — aligné sur l’artefact ddb).
   nom                Int
   description        String?
+  /// Collection à laquelle ce groupe appartient ; une collection peut avoir **plusieurs** `groupe_questions`.
+  collection_id      Int?
+  /// Première question de la chaîne (les suivantes sont reliées via `question_reflexion`).
+  head_question_id   Int?
+  quizz_collection   quizz_collection?    @relation(fields: [collection_id], references: [id], onDelete: Cascade)
   question_reflexion question_reflexion[]
+
+  @@index([collection_id])
 }
 
 model ref_p_categorie {
@@ -140,6 +147,7 @@ model quizz_collection {
   collection_tagged_links    collection_tag_lien[]     @relation("CollectionTagLien_tagged")
   relation_collection_parent relation_collection[]     @relation("relation_collection_parent")
   relation_collection_child  relation_collection[]     @relation("relation_collection_child")
+  groupe_questions           groupe_questions[]
   personalite                personalite[]
   personnalite_collection    personnalite_collection[]
 }

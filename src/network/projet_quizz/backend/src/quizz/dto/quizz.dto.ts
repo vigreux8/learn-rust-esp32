@@ -15,6 +15,51 @@ import {
 } from 'class-validator';
 import { LlmImportReponseDto } from './import-llm.dto';
 
+export class PatchReflexionChainDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  ordered_question_ids!: number[];
+
+  /** Si absent : premier groupe de la collection (`id` croissant) ou création à la volée. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  groupe_questions_id?: number;
+}
+
+export class CreateGroupeQuestionsBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class PatchGroupeQuestionsBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
 export class UpdateReponseDto {
   @IsString()
   @MinLength(1)

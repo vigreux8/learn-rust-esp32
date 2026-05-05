@@ -12,3 +12,7 @@ export function buildQuestionsRoutePath(
 export function buildSousCollectionsRoutePath(collectionId: number): string {
   return `/collections/${collectionId}/sous-collections`;
 }
+
+export function buildReflexionRoutePath(collectionId: number): string {
+  return `/collections/${collectionId}/reflexion`;
+}

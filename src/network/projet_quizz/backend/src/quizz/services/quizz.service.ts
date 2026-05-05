@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   CollectionUi,
+  GroupeQuestionsUi,
   PersonalitePickerRowDto,
   QuestionUi,
   QuizzQuestionDetail,
@@ -8,6 +9,7 @@ import {
   RefCategorieHierarchyRow,
   RefCategorieRow,
   RefImportancePersonaliteDto,
+  ReflexionChainEditorDto,
   RefQuestionScaleRow,
   SousCollectionUi,
 } from '../quizz.type';
@@ -126,6 +128,42 @@ export class QuizzService {
 
   getQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
     return this.read.getQuestionDetail(id);
+  }
+
+  listGroupeQuestionsForCollection(collectionId: number): Promise<GroupeQuestionsUi[]> {
+    return this.read.listGroupeQuestionsForCollection(collectionId);
+  }
+
+  getReflexionChainEditor(
+    collectionId: number,
+    groupeQuestionsId?: number,
+  ): Promise<ReflexionChainEditorDto> {
+    return this.read.getReflexionChainEditor(collectionId, groupeQuestionsId);
+  }
+
+  setReflexionChainOrder(
+    collectionId: number,
+    body: { user_id: number; ordered_question_ids: number[]; groupe_questions_id?: number },
+  ): Promise<void> {
+    return this.write.setReflexionChainOrder(collectionId, body);
+  }
+
+  createGroupeQuestions(
+    collectionId: number,
+    body: { user_id: number; nom: string; description?: string },
+  ): Promise<GroupeQuestionsUi> {
+    return this.write.createGroupeQuestions(collectionId, body);
+  }
+
+  updateGroupeQuestions(
+    groupeId: number,
+    body: { user_id: number; nom: string; description?: string },
+  ): Promise<GroupeQuestionsUi> {
+    return this.write.updateGroupeQuestions(groupeId, body);
+  }
+
+  deleteGroupeQuestions(groupeId: number, userId: number): Promise<void> {
+    return this.write.deleteGroupeQuestions(groupeId, userId);
   }
 
   // Delegation: QuizzWriteService

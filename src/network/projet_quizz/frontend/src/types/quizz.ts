@@ -117,6 +117,21 @@ export interface QuizzQuestionRow {
   collections: QuizzCollectionRef[];
 }
 
+/** Ligne `GET /quizz/collections/:id/groupe-questions` — suite logique nommée dans la collection. */
+export interface GroupeQuestionsUi {
+  id: number;
+  collection_id: number | null;
+  nom: number | string;
+  description: string | null;
+}
+
+/** Réponse GET `/quizz/collections/:id/reflexion-chain`. */
+export interface ReflexionChainEditorUi {
+  groupe_id: number | null;
+  ordered_questions: QuizzQuestionRow[];
+  pool_questions: QuizzQuestionRow[];
+}
+
 /** Ligne `relation_question_implicite` où la question courante est liée à une autre. */
 export interface ImplicitRelatedQuestionUi {
   relation_id: number;
