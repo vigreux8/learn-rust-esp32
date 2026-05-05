@@ -348,7 +348,12 @@ export async function fetchReflexionChain(
 
 export async function patchReflexionChain(
   collectionId: number,
-  body: { user_id: number; ordered_question_ids: number[]; groupe_questions_id?: number },
+  body: {
+    user_id: number;
+    ordered_question_ids: number[];
+    groupe_questions_id?: number;
+    chain_color_levels?: Record<string, number>;
+  },
 ): Promise<void> {
   const res = await fetch(apiUrl(`/quizz/collections/${collectionId}/reflexion-chain`), {
     method: "PATCH",

@@ -26,6 +26,8 @@ export type QuestionEditModalProps = {
     onDraftSousCollectionId?: (id: number | null) => void;
     onDraftCreateLinkImplicit?: (value: boolean) => void;
     onReponseUpdated: () => void | Promise<void>;
+    /** Édition locale d'une réponse (ex. brouillon non persisté). */
+    onLocalDraftReponseSave?: (reponseId: number, reponse: string) => void | Promise<void>;
     onCreateSave?: (payload: QuestionCreateSavePayload) => void | Promise<void>;
     /** Supprimer une ligne `relation_question_implicite` puis recharger le détail. */
     onRemoveImplicitRelation?: (relationId: number) => void | Promise<void>;

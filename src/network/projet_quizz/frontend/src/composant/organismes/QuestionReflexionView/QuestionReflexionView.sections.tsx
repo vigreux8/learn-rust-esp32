@@ -8,7 +8,11 @@ import { ReflexionGroupeListeSection } from "./QuestionReflexionView.groupeListe
 import type { ReflexionGroupeListeSectionProps } from "./QuestionReflexionView.groupeListe";
 import { QUESTION_REFLEXION_VIEW_STYLES } from "./QuestionReflexionView.styles";
 import type { QuizzQuestionRow } from "../../../types/quizz";
+import { cn } from "../../../lib/cn";
+import { COLLECTION_TREE_LEVEL_BORDER_HEX } from "../../../lib/collectionHierarchyVis";
 import { REFLEXION_ORDERED_INSERT_PREFIX, REFLEXION_ORDERED_SORT_GROUP } from "./QuestionReflexionView.metier";
+import { ReflexionPaletteRail } from "./QuestionReflexionView.palette";
+import { Button } from "../../atomes/Button/Button";
 
 export type ReflexionDndPayload = {
   from: "pool" | "ordered";
@@ -69,8 +73,8 @@ export function ReflexionPoolColumn(props: ReflexionPoolColumnProps) {
         <p class="mb-2 text-xs text-base-content/50">
           Brouillon local : l’import LLM remplit cette zone sans écrire en base. Glisse vers la droite pour composer la
           suite ordonnée (sans créer de ligne en base ici). Une question déjà en collection réapparaît ici si tu la fais
-          glisser depuis la suite vers cette colonne. Pour enregistrer la chaîne en base, la suite ne doit contenir que
-          des questions réelles (pas de brouillon).
+          glisser depuis la suite vers cette colonne. À l’enregistrement, seules les questions réelles sont persistées ;
+          les brouillons restent locaux et seront perdus en quittant la page.
         </p>
         <div class="max-h-[min(28rem,55vh)] space-y-2 overflow-y-auto pr-1">
           {props.poolQuestions.map((q) => (
@@ -114,6 +118,7 @@ function ReflexionOrderedInsertGap(props: { index: number; disabled: boolean }) 
 
 export type ReflexionOrderedColumnProps = {
   orderedQuestions: QuizzQuestionRow[];
+  chainColorLevels: Record<number, number>;
   orderedDraggableDisabled: boolean;
   orderedDroppableDisabled: boolean;
   chainBusy: boolean;
@@ -156,6 +161,21 @@ export function ReflexionOrderedColumn(props: ReflexionOrderedColumnProps) {
             <Fragment key={q.id}>
               <QuizzQuestionDndRow
                 data={{ row: q }}
+                visual={{
+                  leftBorderHex:
+                    props.chainColorLevels[q.id] != null
+                      ? COLLECTION_TREE_LEVEL_BORDER_HEX[
+                          Math.min(
+                            Math.max(0, props.chainColorLevels[q.id]!),
+                            COLLECTION_TREE_LEVEL_BORDER_HEX.length - 1,
+                          )
+                        ]
+                      : null,
+                  colorDrop:
+                    props.canEdit && !props.chainBusy
+                      ? { disabled: props.orderedDroppableDisabled || props.orderedDraggableDisabled }
+                      : undefined,
+                }}
                 dnd={{
                   draggableId: `ordered-q-${q.id}`,
                   disabled: props.orderedDraggableDisabled,
@@ -169,13 +189,14 @@ export function ReflexionOrderedColumn(props: ReflexionOrderedColumnProps) {
                 actions={
                   props.canEdit
                     ? {
-                        onEdit: q.id < 0 ? undefined : () => props.onEdit(q),
+                        onEdit: () => props.onEdit(q),
                         onDelete: () => props.onDelete(q.id),
                         onMoveUp: () => props.onMoveUp(index),
                         onMoveDown: () => props.onMoveDown(index),
                         canMoveUp: index > 0 && !props.chainBusy,
                         canMoveDown: index < n - 1 && !props.chainBusy,
-                        deleteBusy: props.deleteBusyId === q.id || props.chainBusy,
+                        chainBusy: props.chainBusy,
+                        rowDeleteBusy: props.deleteBusyId === q.id,
                       }
                     : undefined
                 }
@@ -201,6 +222,13 @@ export type ReflexionDndWorkspaceProps = {
   ordered: Omit<ReflexionOrderedColumnProps, "orderedDroppableRef" | "isOrderedDropTarget"> & {
     orderedDroppableDisabled: boolean;
   };
+  /** Désactive le drag des pastilles (non propriétaire, chaîne en cours…). */
+  paletteRailDisabled: boolean;
+  saveAction?: {
+    disabled: boolean;
+    busy: boolean;
+    onSave: () => void;
+  };
 };
 
 export function ReflexionDndWorkspace(props: ReflexionDndWorkspaceProps) {
@@ -212,26 +240,47 @@ export function ReflexionDndWorkspace(props: ReflexionDndWorkspaceProps) {
         </div>
       ) : null}
       <ReflexionTopBand {...props.band} />
-      <div class={QUESTION_REFLEXION_VIEW_STYLES.bottomGrid}>
-        <ReflexionPoolColumn
-          search={props.pool.search}
-          onSearchChange={props.pool.onSearchChange}
-          poolQuestions={props.pool.poolQuestions}
-          poolDraggableDisabled={props.pool.poolDraggableDisabled}
-          poolDroppableDisabled={props.pool.poolDroppableDisabled}
-        />
-        <ReflexionOrderedColumn
-          orderedQuestions={props.ordered.orderedQuestions}
-          orderedDraggableDisabled={props.ordered.orderedDraggableDisabled}
-          orderedDroppableDisabled={props.ordered.orderedDroppableDisabled}
-          chainBusy={props.ordered.chainBusy}
-          deleteBusyId={props.ordered.deleteBusyId}
-          canEdit={props.ordered.canEdit}
-          onMoveUp={props.ordered.onMoveUp}
-          onMoveDown={props.ordered.onMoveDown}
-          onEdit={props.ordered.onEdit}
-          onDelete={props.ordered.onDelete}
-        />
+      <div class={QUESTION_REFLEXION_VIEW_STYLES.gridWithPaletteRow}>
+        <div class={cn(QUESTION_REFLEXION_VIEW_STYLES.bottomGrid, "min-w-0 flex-1")}>
+          <ReflexionPoolColumn
+            search={props.pool.search}
+            onSearchChange={props.pool.onSearchChange}
+            poolQuestions={props.pool.poolQuestions}
+            poolDraggableDisabled={props.pool.poolDraggableDisabled}
+            poolDroppableDisabled={props.pool.poolDroppableDisabled}
+          />
+          <ReflexionOrderedColumn
+            orderedQuestions={props.ordered.orderedQuestions}
+            chainColorLevels={props.ordered.chainColorLevels}
+            orderedDraggableDisabled={props.ordered.orderedDraggableDisabled}
+            orderedDroppableDisabled={props.ordered.orderedDroppableDisabled}
+            chainBusy={props.ordered.chainBusy}
+            deleteBusyId={props.ordered.deleteBusyId}
+            canEdit={props.ordered.canEdit}
+            onMoveUp={props.ordered.onMoveUp}
+            onMoveDown={props.ordered.onMoveDown}
+            onEdit={props.ordered.onEdit}
+            onDelete={props.ordered.onDelete}
+          />
+        </div>
+        <aside
+          class={QUESTION_REFLEXION_VIEW_STYLES.paletteRailAside}
+          aria-label="Palette de couleurs pour les vignettes"
+        >
+          <div class="flex w-full flex-col items-center gap-3">
+            <ReflexionPaletteRail disabled={props.paletteRailDisabled} />
+            {props.saveAction != null ? (
+              <Button
+                variant="learn"
+                class="w-full max-w-[20rem] gap-2 lg:max-w-none"
+                disabled={props.saveAction.disabled}
+                onClick={props.saveAction.onSave}
+              >
+                {props.saveAction.busy ? "…" : "Save"}
+              </Button>
+            ) : null}
+          </div>
+        </aside>
       </div>
     </div>
   );

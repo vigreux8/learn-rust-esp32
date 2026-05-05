@@ -21,6 +21,30 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Indices autorisés : même palette que les bords de carte collection (profondeur d’arbre). */
+const REFLEXION_CHAIN_COLOR_MAX = 3;
+
+function normalizeChainColorLevelsForPersist(
+  input: Record<string, number>,
+  orderedIds: number[],
+): Prisma.InputJsonValue {
+  const allowed = new Set(orderedIds);
+  const out: Record<string, number> = {};
+  for (const [ks, v] of Object.entries(input)) {
+    const id = Number(ks);
+    if (!allowed.has(id)) {
+      continue;
+    }
+    if (typeof v !== 'number' || !Number.isInteger(v) || v < 0 || v > REFLEXION_CHAIN_COLOR_MAX) {
+      throw new BadRequestException(
+        `chain_color_levels : indice couleur invalide pour la question ${ks} (attendu 0..${REFLEXION_CHAIN_COLOR_MAX}).`,
+      );
+    }
+    out[String(id)] = v;
+  }
+  return out as unknown as Prisma.InputJsonValue;
+}
+
 @Injectable()
 export class QuizzWriteService {
   constructor(private readonly prisma: PrismaService) {}
@@ -1018,6 +1042,7 @@ export class QuizzWriteService {
       user_id: number;
       ordered_question_ids: number[];
       groupe_questions_id?: number;
+      chain_color_levels?: Record<string, number>;
     },
   ): Promise<void> {
     const col = await this.prisma.prisma.quizz_collection.findUnique({
@@ -1050,6 +1075,13 @@ export class QuizzWriteService {
     }
 
     await this.prisma.prisma.$transaction(async (tx) => {
+      const colorPatch =
+        body.chain_color_levels !== undefined
+          ? {
+              chain_color_levels: normalizeChainColorLevelsForPersist(body.chain_color_levels, ids),
+            }
+          : {};
+
       let groupe =
         body.groupe_questions_id != null
           ? await tx.groupe_questions.findFirst({
@@ -1088,12 +1120,12 @@ export class QuizzWriteService {
       } else if (ids.length === 1) {
         await tx.groupe_questions.update({
           where: { id: groupe.id },
-          data: { head_question_id: ids[0]! },
+          data: { head_question_id: ids[0]!, ...colorPatch },
         });
       } else {
         await tx.groupe_questions.update({
           where: { id: groupe.id },
-          data: { head_question_id: ids[0]! },
+          data: { head_question_id: ids[0]!, ...colorPatch },
         });
         for (let i = 0; i < ids.length - 1; i++) {
           await tx.question_reflexion.create({

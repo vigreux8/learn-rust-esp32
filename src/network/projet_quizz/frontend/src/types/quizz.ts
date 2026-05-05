@@ -130,6 +130,8 @@ export interface ReflexionChainEditorUi {
   groupe_id: number | null;
   ordered_questions: QuizzQuestionRow[];
   pool_questions: QuizzQuestionRow[];
+  /** Indices 0..3 — même palette que les bords de carte collection (arbre). */
+  chain_color_levels: Record<string, number>;
 }
 
 /** Ligne `relation_question_implicite` où la question courante est liée à une autre. */

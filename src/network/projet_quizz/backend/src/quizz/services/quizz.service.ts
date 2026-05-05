@@ -143,7 +143,12 @@ export class QuizzService {
 
   setReflexionChainOrder(
     collectionId: number,
-    body: { user_id: number; ordered_question_ids: number[]; groupe_questions_id?: number },
+    body: {
+      user_id: number;
+      ordered_question_ids: number[];
+      groupe_questions_id?: number;
+      chain_color_levels?: Record<string, number>;
+    },
   ): Promise<void> {
     return this.write.setReflexionChainOrder(collectionId, body);
   }

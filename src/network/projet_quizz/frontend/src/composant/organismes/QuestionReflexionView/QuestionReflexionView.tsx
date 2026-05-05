@@ -120,22 +120,13 @@ export function QuestionReflexionView(props: QuestionReflexionViewProps) {
       <div class={QUESTION_REFLEXION_VIEW_STYLES.root}>
         <AppHeader beforeNavigate={guardHeaderNavigation} />
         <PageMain>
+          <div class={QUESTION_REFLEXION_VIEW_STYLES.pageContentOuter}>
           <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div class="min-w-0 flex-1">
             <h1 class={QUESTION_REFLEXION_VIEW_STYLES.pageTitle}>Suite logique</h1>
             <p class="mt-1 text-sm text-base-content/60">Construis une chaîne de questions dans un ordre fixe pour le jeu.</p>
           </div>
           <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {status.isOwner ? (
-              <Button
-                variant="learn"
-                class="gap-2"
-                disabled={!status.chainDirty || status.chainBusy || status.chainSaveBlockedByDrafts}
-                onClick={() => void actions.saveChainDraft()}
-              >
-                {status.chainBusy ? "…" : "Enregistrer la suite"}
-              </Button>
-            ) : null}
             <Button variant="outline" class="gap-2 self-start" onClick={() => actions.navigateAwayToCollections()}>
               <ArrowLeft class="h-4 w-4" aria-hidden />
               Collections
@@ -160,52 +151,63 @@ export function QuestionReflexionView(props: QuestionReflexionViewProps) {
 
           <DragDropProvider onDragEnd={dragEnd}>
             <ReflexionDndWorkspace
+              paletteRailDisabled={orderedDraggableDisabled}
+              saveAction={
+                status.isOwner
+                  ? {
+                      disabled: !status.chainDirty || status.chainBusy,
+                      busy: status.chainBusy,
+                      onSave: () => void actions.saveChainDraft(),
+                    }
+                  : undefined
+              }
               liste={{
-                collectionNom: data.collectionNom,
-                groupes: data.groupes,
-                selectedGroupeId: data.selectedGroupeId,
-                canEdit: status.isOwner,
-                createModalOpen: liste.createModalOpen,
-                groupeFormMode: liste.groupeFormMode,
-                createNom: liste.createNom,
-                createDescription: liste.createDescription,
-                createBusy: liste.createBusy,
-                deleteBusy: liste.deleteBusy,
-                canDeleteSelected: liste.canDeleteSelected,
-                canEditSelected: liste.canEditSelected,
-                onSelectGroupe: liste.onSelectGroupe,
-                onOpenCreate: liste.onOpenCreate,
-                onOpenEdit: liste.onOpenEdit,
-                onCloseCreate: liste.onCloseCreate,
-                onChangeCreateNom: liste.onChangeCreateNom,
-                onChangeCreateDescription: liste.onChangeCreateDescription,
-                onSubmitCreate: liste.onSubmitCreate,
-                onDeleteSelected: liste.onDeleteSelected,
-              }}
-              band={{
-                collectionNom: null,
-                llmImport: llm,
-              }}
-              pool={{
-                search: data.search,
-                onSearchChange: filtres.onSearchChange,
-                poolQuestions: data.poolQuestions,
-                poolDraggableDisabled,
-                poolDroppableDisabled,
-              }}
-              ordered={{
-                orderedQuestions: data.orderedQuestions,
-                orderedDraggableDisabled,
-                orderedDroppableDisabled,
-                chainBusy: status.chainBusy,
-                deleteBusyId: status.deleteBusyId,
-                canEdit: status.isOwner,
-                onMoveUp: (index) => chain.onMoveOrdered(index, -1),
-                onMoveDown: (index) => chain.onMoveOrdered(index, 1),
-                onEdit: actions.openEditModal,
-                onDelete: actions.removeQuestion,
-              }}
-            />
+                    collectionNom: data.collectionNom,
+                    groupes: data.groupes,
+                    selectedGroupeId: data.selectedGroupeId,
+                    canEdit: status.isOwner,
+                    createModalOpen: liste.createModalOpen,
+                    groupeFormMode: liste.groupeFormMode,
+                    createNom: liste.createNom,
+                    createDescription: liste.createDescription,
+                    createBusy: liste.createBusy,
+                    deleteBusy: liste.deleteBusy,
+                    canDeleteSelected: liste.canDeleteSelected,
+                    canEditSelected: liste.canEditSelected,
+                    onSelectGroupe: liste.onSelectGroupe,
+                    onOpenCreate: liste.onOpenCreate,
+                    onOpenEdit: liste.onOpenEdit,
+                    onCloseCreate: liste.onCloseCreate,
+                    onChangeCreateNom: liste.onChangeCreateNom,
+                    onChangeCreateDescription: liste.onChangeCreateDescription,
+                    onSubmitCreate: liste.onSubmitCreate,
+                    onDeleteSelected: liste.onDeleteSelected,
+                  }}
+                  band={{
+                    collectionNom: null,
+                    llmImport: llm,
+                  }}
+                  pool={{
+                    search: data.search,
+                    onSearchChange: filtres.onSearchChange,
+                    poolQuestions: data.poolQuestions,
+                    poolDraggableDisabled,
+                    poolDroppableDisabled,
+                  }}
+                  ordered={{
+                    orderedQuestions: data.orderedQuestions,
+                    chainColorLevels: data.chainColorLevels,
+                    orderedDraggableDisabled,
+                    orderedDroppableDisabled,
+                    chainBusy: status.chainBusy,
+                    deleteBusyId: status.deleteBusyId,
+                    canEdit: status.isOwner,
+                    onMoveUp: (index) => chain.onMoveOrdered(index, -1),
+                    onMoveDown: (index) => chain.onMoveOrdered(index, 1),
+                    onEdit: actions.openEditModal,
+                  onDelete: actions.removeQuestion,
+                }}
+              />
           </DragDropProvider>
         </div>
 
@@ -216,6 +218,7 @@ export function QuestionReflexionView(props: QuestionReflexionViewProps) {
           data={editModal.data}
           drafts={editModal.drafts}
         />
+          </div>
       </PageMain>
       <AppFooter />
     </div>

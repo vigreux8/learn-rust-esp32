@@ -1,5 +1,6 @@
 import { useDroppable } from "@dnd-kit/react";
 import { Button } from "../../atomes/Button/Button";
+import { CollectionGroupEditModal } from "../../molecules/CollectionGroupEditModal";
 import { QuizzQuestionDndRow } from "../../molecules/QuizzQuestionDndRow";
 import { SousCollectionLlmImportWidget } from "../../molecules/SousCollectionLlmImportWidget";
 import { SOUS_COLLECTIONS_VIEW_STYLES } from "./SousCollectionsView.styles";
@@ -64,45 +65,25 @@ export function SousCollectionsListeSection(props: SousCollectionsListeSectionPr
 
       {props.llmImport != null ? <SousCollectionLlmImportWidget {...props.llmImport} /> : null}
 
-      {props.createModalOpen ? (
-        <dialog class="modal modal-open z-50" open>
-          <div class="modal-box rounded-2xl border border-base-content/10" onClick={(e) => e.stopPropagation()}>
-            <h3 class="text-lg font-bold">
-              {props.sousFormMode === "edit" ? "Modifier la sous-collection" : "Nouvelle sous-collection"}
-            </h3>
-            <label class="label mt-2" for="sc-create-nom">
-              <span class="label-text">Nom</span>
-            </label>
-            <input
-              id="sc-create-nom"
-              class="input input-bordered w-full rounded-xl border-base-content/15"
-              value={props.createNom}
-              disabled={props.createBusy}
-              onInput={(e) => props.onChangeCreateNom((e.target as HTMLInputElement).value)}
-            />
-            <label class="label mt-2" for="sc-create-desc">
-              <span class="label-text">Description</span>
-            </label>
-            <textarea
-              id="sc-create-desc"
-              class="textarea textarea-bordered w-full rounded-xl border-base-content/15"
-              rows={3}
-              value={props.createDescription}
-              disabled={props.createBusy}
-              onInput={(e) => props.onChangeCreateDescription((e.target as HTMLTextAreaElement).value)}
-            />
-            <div class="modal-action">
-              <button type="button" class="btn btn-ghost rounded-xl" disabled={props.createBusy} onClick={props.onCloseCreate}>
-                Annuler
-              </button>
-              <Button variant="flow" disabled={props.createBusy || props.createNom.trim() === ""} onClick={props.onSubmitCreate}>
-                {props.createBusy ? "…" : "Enregistrer"}
-              </Button>
-            </div>
-          </div>
-          <div class="modal-backdrop bg-base-content/40" role="presentation" onClick={props.onCloseCreate} />
-        </dialog>
-      ) : null}
+      <CollectionGroupEditModal
+        settings={{
+          open: props.createModalOpen,
+          title: props.sousFormMode === "edit" ? "Modifier la sous-collection" : "Nouvelle sous-collection",
+          nomInputId: "sc-create-nom",
+          descriptionInputId: "sc-create-desc",
+        }}
+        data={{
+          nom: props.createNom,
+          description: props.createDescription,
+        }}
+        status={{ busy: props.createBusy }}
+        actions={{
+          onClose: props.onCloseCreate,
+          onChangeNom: props.onChangeCreateNom,
+          onChangeDescription: props.onChangeCreateDescription,
+          onSubmit: props.onSubmitCreate,
+        }}
+      />
     </div>
   );
 }

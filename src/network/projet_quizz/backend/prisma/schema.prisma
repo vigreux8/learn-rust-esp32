@@ -43,6 +43,8 @@ model groupe_questions {
   collection_id      Int?
   /// Première question de la chaîne (les suivantes sont reliées via `question_reflexion`).
   head_question_id   Int?
+  /// JSON `{ "questionId": 0..3 }` : indices de la palette `COLLECTION_TREE_LEVEL_BORDER_HEX` (UI réflexion).
+  chain_color_levels Json?
   quizz_collection   quizz_collection?    @relation(fields: [collection_id], references: [id], onDelete: Cascade)
   question_reflexion question_reflexion[]
 

@@ -30,6 +30,13 @@ export class PatchReflexionChainDto {
   @IsInt()
   @Min(1)
   groupe_questions_id?: number;
+
+  /**
+   * Couleurs de vignettes (suite ordonnée) : clés = id question, valeurs = indice 0..3
+   * (palette alignée sur les bords de carte collection par profondeur).
+   */
+  @IsOptional()
+  chain_color_levels?: Record<string, number>;
 }
 
 export class CreateGroupeQuestionsBodyDto {

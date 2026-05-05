@@ -2,6 +2,11 @@ import type { QuizzQuestionRow } from "../../../types/quizz";
 
 export type QuizzQuestionDndRowProps = {
   data: { row: QuizzQuestionRow };
+  /** Bordure gauche / zone dépôt couleur (suite logique). */
+  visual?: {
+    leftBorderHex?: string | null;
+    colorDrop?: { disabled: boolean };
+  };
   dnd: {
     draggableId: string;
     disabled: boolean;
@@ -25,6 +30,9 @@ export type QuizzQuestionDndRowProps = {
     onMoveDown?: () => void;
     canMoveUp?: boolean;
     canMoveDown?: boolean;
-    deleteBusy?: boolean;
+    /** Sauvegarde de la chaîne / opération globale : désactive déplacer et supprimer, pas « Modifier ». */
+    chainBusy?: boolean;
+    /** Suppression en cours pour cette ligne : désactive toute la rangée d’actions. */
+    rowDeleteBusy?: boolean;
   };
 };

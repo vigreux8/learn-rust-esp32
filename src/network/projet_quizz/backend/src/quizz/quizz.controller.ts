@@ -430,6 +430,7 @@ export class QuizzController {
       user_id: body.user_id,
       ordered_question_ids: body.ordered_question_ids,
       groupe_questions_id: body.groupe_questions_id,
+      chain_color_levels: body.chain_color_levels,
     });
   }
 

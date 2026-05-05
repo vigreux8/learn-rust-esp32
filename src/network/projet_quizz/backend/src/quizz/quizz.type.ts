@@ -154,6 +154,8 @@ export type ReflexionChainEditorDto = {
   groupe_id: number | null;
   ordered_questions: QuizzQuestionRow[];
   pool_questions: QuizzQuestionRow[];
+  /** Tags couleur par id de question (indices 0..3, palette collections / arbre). */
+  chain_color_levels: Record<string, number>;
 };
 
 /** Ligne `relation_question_implicite` où la question courante participe avec une autre question. */

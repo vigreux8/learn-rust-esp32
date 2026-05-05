@@ -1,12 +1,18 @@
 import { useDraggable } from "@dnd-kit/react";
+import { useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { ChevronDown, ChevronUp, GripVertical } from "lucide-preact";
+import { cn } from "../../../lib/cn";
+import { reflexionColorTargetId } from "../../../lib/reflexionChainColors";
 import { Button } from "../../atomes/Button/Button";
 import { QUIZZ_DND_PANEL_STYLES } from "../QuizzDndQuestionPanels/QuizzDndQuestionPanels.styles";
 import type { QuizzQuestionDndRowProps } from "./QuizzQuestionDndRow.types";
 
 function RowFooter(props: NonNullable<QuizzQuestionDndRowProps["actions"]>) {
   const act = props;
+  const chain = act.chainBusy === true;
+  const rowLock = act.rowDeleteBusy === true;
+  const lockNav = chain || rowLock;
   return (
     <div
       class="mt-1.5 flex flex-wrap items-center justify-end gap-2"
@@ -17,7 +23,7 @@ function RowFooter(props: NonNullable<QuizzQuestionDndRowProps["actions"]>) {
           <button
             type="button"
             class="btn btn-ghost btn-xs min-h-8 px-2"
-            disabled={act.canMoveUp === false || act.deleteBusy}
+            disabled={act.canMoveUp === false || lockNav}
             aria-label="Monter"
             onClick={act.onMoveUp}
           >
@@ -26,7 +32,7 @@ function RowFooter(props: NonNullable<QuizzQuestionDndRowProps["actions"]>) {
           <button
             type="button"
             class="btn btn-ghost btn-xs min-h-8 px-2"
-            disabled={act.canMoveDown === false || act.deleteBusy}
+            disabled={act.canMoveDown === false || lockNav}
             aria-label="Descendre"
             onClick={act.onMoveDown}
           >
@@ -34,19 +40,19 @@ function RowFooter(props: NonNullable<QuizzQuestionDndRowProps["actions"]>) {
           </button>
         </div>
       ) : null}
+      {act.onEdit != null ? (
+        <Button variant="outline" class="btn-xs" disabled={rowLock} onClick={act.onEdit}>
+          Modifier
+        </Button>
+      ) : null}
       {act.onDelete != null ? (
         <Button
           variant="outline"
           class="btn-xs border-error/40 text-error hover:bg-error/10"
-          disabled={act.deleteBusy}
+          disabled={lockNav}
           onClick={act.onDelete}
         >
           Supprimer
-        </Button>
-      ) : null}
-      {act.onEdit != null ? (
-        <Button variant="outline" class="btn-xs" disabled={act.deleteBusy} onClick={act.onEdit}>
-          Modifier
         </Button>
       ) : null}
     </div>
@@ -82,6 +88,7 @@ function QuizzQuestionDndRowSortable(props: QuizzQuestionDndRowProps) {
   const { draggableId, disabled, payload } = props.dnd;
   const { dragActivation, sequence, sortable } = props.settings;
   const sort = sortable!;
+  const cd = props.visual?.colorDrop;
 
   const { ref, handleRef, isDragging } = useSortable({
     id: draggableId,
@@ -91,16 +98,45 @@ function QuizzQuestionDndRowSortable(props: QuizzQuestionDndRowProps) {
     data: payload,
   });
 
+  const colorDrop = useDroppable({
+    id: reflexionColorTargetId(row.id),
+    disabled: cd == null || cd.disabled,
+    data: { zone: "color-target", questionId: row.id },
+  });
+
+  const borderHex = props.visual?.leftBorderHex ?? null;
+
   /**
    * `ref` = enveloppe sortable (mesure / collision). `handleRef` = zone qui démarre le drag.
    * Si les deux pointent vers le bloc actions, les clics boutons sont avalés par le capteur pointer.
    * En mode pleine carte, seule la rangée question est poignée ; le pied reste cliquable.
    */
-  const questionRowRef = dragActivation === "fullCard" ? handleRef : undefined;
+  const innerRowRef =
+    dragActivation === "fullCard"
+      ? (el: Element | null) => {
+          handleRef(el);
+          colorDrop.ref(el);
+        }
+      : (el: Element | null) => colorDrop.ref(el);
 
   return (
     <div ref={ref} class="mb-2" style={{ opacity: isDragging ? 0.45 : 1 }}>
-      <div ref={questionRowRef} class={QUIZZ_DND_PANEL_STYLES.questionRow}>
+      <div
+        ref={innerRowRef}
+        class={cn(
+          QUIZZ_DND_PANEL_STYLES.questionRow,
+          colorDrop.isDropTarget && "ring-2 ring-learn/45 ring-offset-1 ring-offset-base-200",
+        )}
+        style={{
+          ...(borderHex != null && borderHex !== ""
+            ? {
+                borderLeftWidth: "4px",
+                borderLeftStyle: "solid",
+                borderLeftColor: borderHex,
+              }
+            : {}),
+        }}
+      >
         {dragActivation === "handle" ? (
           <span
             ref={handleRef}

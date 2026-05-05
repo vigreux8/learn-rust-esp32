@@ -751,6 +751,7 @@ export class QuizzReadService {
         groupe_id: null,
         ordered_questions: [],
         pool_questions: allInCollection,
+        chain_color_levels: {},
       };
     }
     const reflexions = await this.prisma.prisma.question_reflexion.findMany({
@@ -790,6 +791,23 @@ export class QuizzReadService {
       groupe_id: groupe.id,
       ordered_questions,
       pool_questions,
+      chain_color_levels: parseChainColorLevelsJson(groupe.chain_color_levels),
     };
   }
+}
+
+function parseChainColorLevelsJson(raw: unknown): Record<string, number> {
+  if (raw == null) {
+    return {};
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return {};
+  }
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 3) {
+      out[k] = v;
+    }
+  }
+  return out;
 }

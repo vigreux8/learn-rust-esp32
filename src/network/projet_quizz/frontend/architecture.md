@@ -65,12 +65,15 @@ frontend/
         │   ├── PopUpInformation/
         │   ├── QuestionsLlmImportPanel/
         │   ├── QuestionsLlmImportPromptPanel/
-        │   └── QuestionsTable/
+        │   ├── QuestionsTable/
+        │   ├── CollectionReflexionLlmImportWidget/
+        │   └── UnsavedChainLeaveModal/
         └── organismes/          # pages / écrans complets (dossier par composant)
             ├── CollectionsView/
             ├── DatabaseTransferView/
             ├── HomeView/
             ├── QuestionEditModal/
+            ├── QuestionReflexionView/
             ├── QuestionsActionBoutons/
             ├── QuestionsView/
             ├── SousCollectionsView/
@@ -126,6 +129,8 @@ Blocs composés qui **importent au moins un** composant sous `atomes/`.
 | `QuestionsLlmImportPromptPanel/` | Zone prompt / JSON pour l’import LLM.                            |
 | `DeviceAuthGate/`           | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`).       |
 | `QuestionsTable/`          | Table détaillée des questions (tri, actions).                       |
+| `CollectionReflexionLlmImportWidget/` | Import LLM ciblée sur la vue suite logique (brouillon pool). |
+| `UnsavedChainLeaveModal/`        | Modale « quitter sans enregistrer » pour la chaîne réflexion.     |
 
 ### `composant/organismes/`
 
@@ -144,12 +149,15 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 | `StatsDashboard/`                | Vue d’ensemble des statistiques / KPI.                        |
 | `SessionDetailsView/`            | Détail d’une session de jeu.                                  |
 | `DatabaseTransferView/`          | Écran d’import / export de données (admin côté UI).           |
+| `QuestionReflexionView/`         | **Suite logique** (`/collections/:id/reflexion`) : chaîne ordonnée `question_reflexion` par `groupe_questions`, deux colonnes DnD (`dnd-kit`), import LLM optionnel, **pastilles couleur** (palette = `COLLECTION_TREE_LEVEL_BORDER_HEX` dans `collectionHierarchyVis.ts`, persistées en JSON `groupe_questions.chain_color_levels`). |
 
 ### `lib/`
 
 | Fichier                                                                      | Rôle                                                                             |
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `api.ts`                                                                     | Fonctions fetch vers le backend (collections, questions, stats, admin, devices). |
+| `collectionHierarchyVis.ts`                                                  | Profondeur d’arbre collections, **palette hex** des bords de carte (`COLLECTION_TREE_LEVEL_BORDER_HEX`), réutilisée dans la vue réflexion pour taguer les vignettes. |
+| `reflexionChainColors.ts`                                                   | Identifiants DnD des cibles « déposer une couleur sur une vignette » (`reflexion-color-target-{questionId}`). |
 | `config.ts`                                                                  | URL d’API et constantes d’environnement côté client.                             |
 | `cn.ts`                                                                      | Fusion de classes Tailwind (`clsx` + `tailwind-merge`).                          |
 | `routePathContext.tsx`                                                       | Contexte React/Preact exposant le chemin courant (pour liens actifs, etc.).      |

@@ -12,6 +12,58 @@ export const REFLEXION_ORDERED_SORT_GROUP = "reflexion-ordered-chain";
  */
 export const REFLEXION_ORDERED_INSERT_PREFIX = "reflexion-insert-";
 
+/** Préfixe des droppables sur chaque vignette ordonnée (réception couleur). */
+export { REFLEXION_COLOR_TARGET_PREFIX, parseReflexionColorTargetId, reflexionColorTargetId } from "../../../lib/reflexionChainColors";
+
+/** Pastilles palette → vignette (`useDraggable` data.type). */
+export const REFLEXION_DRAG_PALETTE_TYPE = "reflexion-palette";
+
+/** Charge API → état local (clés numériques). */
+export function chainColorLevelsFromApi(raw: Record<string, number> | undefined): Record<number, number> {
+  if (raw == null || typeof raw !== "object") return {};
+  const out: Record<number, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const id = Number(k);
+    if (Number.isInteger(id) && typeof v === "number" && v >= 0 && v <= 3) {
+      out[id] = v;
+    }
+  }
+  return out;
+}
+
+/** Enregistrement : uniquement ids > 0 (questions réelles). */
+export function chainColorLevelsRecordForApi(levels: Record<number, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(levels)) {
+    const id = Number(k);
+    if (Number.isInteger(id) && id > 0 && typeof v === "number" && v >= 0 && v <= 3) {
+      out[String(id)] = v;
+    }
+  }
+  return out;
+}
+
+export function filterChainColorLevelsToOrderedIds(
+  levels: Record<number, number>,
+  orderedIds: number[],
+): Record<number, number> {
+  const allow = new Set(orderedIds);
+  const out: Record<number, number> = {};
+  for (const [k, v] of Object.entries(levels)) {
+    const id = Number(k);
+    if (allow.has(id)) out[id] = v;
+  }
+  return out;
+}
+
+export function serializeChainColorLevelsForDirty(levels: Record<number, number>): string {
+  const entries = Object.entries(levels)
+    .map(([k, v]) => [Number(k), v] as [number, number])
+    .filter(([k, v]) => Number.isInteger(k) && typeof v === "number")
+    .sort((a, b) => a[0] - b[0]);
+  return JSON.stringify(Object.fromEntries(entries.map(([k, v]) => [String(k), v])));
+}
+
 let localDraftIdSeq = 0;
 
 /** Identifiants négatifs : brouillons non persistés (import LLM local). */
@@ -106,6 +158,22 @@ export function arrayMoveIds(ids: number[], from: number, to: number): number[] 
   const [item] = next.splice(from, 1);
   next.splice(to, 0, item!);
   return next;
+}
+
+/** Après création en base des brouillons (id négatif → id positif), réécrit les clés des niveaux couleur. */
+export function remapChainColorLevelsAfterDraftReplace(
+  levels: Record<number, number>,
+  idReplace: Map<number, number>,
+): Record<number, number> {
+  if (idReplace.size === 0) return levels;
+  const out: Record<number, number> = {};
+  for (const [kStr, v] of Object.entries(levels)) {
+    const k = Number(kStr);
+    if (!Number.isInteger(k) || typeof v !== "number") continue;
+    const nk = k < 0 ? idReplace.get(k) ?? k : k;
+    if (nk > 0 && v >= 0 && v <= 3) out[nk] = v;
+  }
+  return out;
 }
 
 /** Répartit les lignes « ordonnées » / « pool » selon une nouvelle liste d’ids (brouillon local). */

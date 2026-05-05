@@ -40,8 +40,13 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     setReponseBusy(true);
     setReponseError(null);
     try {
-      await patchReponse(editingReponseId, { reponse: t });
-      await Promise.resolve(actions.onReponseUpdated());
+      const isLocalDraft = (data.questionDetail?.id ?? 0) < 0;
+      if (isLocalDraft && actions.onLocalDraftReponseSave != null) {
+        await Promise.resolve(actions.onLocalDraftReponseSave(editingReponseId, t));
+      } else {
+        await patchReponse(editingReponseId, { reponse: t });
+        await Promise.resolve(actions.onReponseUpdated());
+      }
       setEditingReponseId(null);
       setReponseDraft("");
     } catch {

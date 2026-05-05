@@ -13,6 +13,7 @@ import {
   patchGroupeQuestions,
   patchQuestion,
   patchReflexionChain,
+  postCreateQuestion,
   postCreateGroupeQuestions,
 } from "../../../lib/api";
 import { useUserSession } from "../../../lib/userSession";
@@ -29,12 +30,19 @@ import type { LlmImportPayload } from "../../molecules/QuestionsLlmImportPanel";
 import {
   arrayMoveIds,
   buildReflexionLocalPoolDraftsFromImport,
+  chainColorLevelsFromApi,
+  chainColorLevelsRecordForApi,
+  filterChainColorLevelsToOrderedIds,
   parseGroupeQuestionsPourFormulaire,
+  parseReflexionColorTargetId,
   partitionRowsByOrderedIds,
+  remapChainColorLevelsAfterDraftReplace,
   refCategorieIdForLlmKey,
+  REFLEXION_DRAG_PALETTE_TYPE,
   REFLEXION_ORDERED_INSERT_PREFIX,
   REFLEXION_ORDERED_SORT_GROUP,
   resetReflexionLocalDraftIdCounter,
+  serializeChainColorLevelsForDirty,
 } from "./QuestionReflexionView.metier";
 import type { QuestionReflexionViewProps, ReflexionLocalPoolDraft } from "./QuestionReflexionView.types";
 
@@ -49,6 +57,10 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
   const [selectedGroupeId, setSelectedGroupeId] = useState<number | null>(null);
   const [ordered, setOrdered] = useState<QuizzQuestionRow[]>([]);
   const [pool, setPool] = useState<QuizzQuestionRow[]>([]);
+  /** Couleurs vignettes (indices 0..3), alignées sur `COLLECTION_TREE_LEVEL_BORDER_HEX`. */
+  const [chainColorLevels, setChainColorLevels] = useState<Record<number, number>>({});
+  const [savedChainColorLevelsJson, setSavedChainColorLevelsJson] = useState("");
+
   /** Dernière version enregistrée sur le serveur (pour détecter les changements locaux). */
   const [savedOrderedIds, setSavedOrderedIds] = useState<number[]>([]);
   const [search, setSearch] = useState("");
@@ -93,6 +105,11 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
   const [unsavedLeaveModalOpen, setUnsavedLeaveModalOpen] = useState(false);
   const [leaveDiscardBusy, setLeaveDiscardBusy] = useState(false);
 
+  const applySelectedGroupeId = useCallback((id: number | null) => {
+    selectedGroupeIdRef.current = id;
+    setSelectedGroupeId(id);
+  }, []);
+
   useEffect(() => {
     localPoolDraftsRef.current = localPoolDrafts;
   }, [localPoolDrafts]);
@@ -119,14 +136,19 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
     setPoolReturnedIds([]);
     const r = await fetchReflexionChain(cid, groupeId ?? undefined);
     const ids = r.ordered_questions.map((q) => q.id);
+    const loadedColors = chainColorLevelsFromApi(r.chain_color_levels);
+    setChainColorLevels(loadedColors);
+    setSavedChainColorLevelsJson(serializeChainColorLevelsForDirty(loadedColors));
     setOrdered(r.ordered_questions);
     setPool(r.pool_questions);
     setSavedOrderedIds(ids);
-    if (r.groupe_id != null && groupeId == null) {
-      setSelectedGroupeId(r.groupe_id);
-      void fetchGroupeQuestions(cid).then(setGroupes).catch(() => {});
+    if (groupeId == null) {
+      applySelectedGroupeId(r.groupe_id ?? null);
+    } else if (r.groupe_id !== groupeId) {
+      applySelectedGroupeId(r.groupe_id ?? null);
     }
-  }, []);
+    void fetchGroupeQuestions(cid).then(setGroupes).catch(() => {});
+  }, [applySelectedGroupeId]);
 
   const reloadGroupesOnly = useCallback(() => {
     if (collectionIdNum == null) return;
@@ -149,12 +171,12 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
           selectedGroupeIdRef.current != null && groupesList.some((g) => g.id === selectedGroupeIdRef.current)
             ? selectedGroupeIdRef.current
             : groupesList[0]?.id ?? null;
-        setSelectedGroupeId(nextId);
+        applySelectedGroupeId(nextId);
         return loadChainFor(collectionIdNum, nextId);
       })
       .catch(() => setLoadError("fetch"))
       .finally(() => setLoading(false));
-  }, [collectionIdNum, loadChainFor]);
+  }, [collectionIdNum, loadChainFor, applySelectedGroupeId]);
 
   useEffect(() => {
     fetchRefCategories().then(setRefCategories).catch(() => {});
@@ -166,17 +188,19 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
       setLoadError("invalid");
       setCollection(null);
       setGroupes([]);
-      setSelectedGroupeId(null);
+      applySelectedGroupeId(null);
       setOrdered([]);
       setPool([]);
       setSavedOrderedIds([]);
+      setChainColorLevels({});
+      setSavedChainColorLevelsJson("");
       setLocalPoolDrafts([]);
       setPoolReturnedIds([]);
       resetReflexionLocalDraftIdCounter();
       return;
     }
     reloadAll();
-  }, [collectionIdNum, reloadAll]);
+  }, [collectionIdNum, reloadAll, applySelectedGroupeId]);
 
   useEffect(() => {
     if (collectionIdNum == null) return;
@@ -213,9 +237,12 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
 
   const chainDirty = useMemo(() => {
     const cur = ordered.map((q) => q.id);
-    if (cur.length !== savedOrderedIds.length) return true;
-    return cur.some((id, i) => id !== savedOrderedIds[i]);
-  }, [ordered, savedOrderedIds]);
+    const orderDirty =
+      cur.length !== savedOrderedIds.length || cur.some((id, i) => id !== savedOrderedIds[i]);
+    const colorDirty =
+      serializeChainColorLevelsForDirty(chainColorLevels) !== savedChainColorLevelsJson;
+    return orderDirty || colorDirty;
+  }, [ordered, savedOrderedIds, chainColorLevels, savedChainColorLevelsJson]);
 
   useEffect(() => {
     chainDirtyRef.current = chainDirty;
@@ -239,6 +266,14 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
     return groupes.find((g) => g.id === selectedGroupeId) ?? null;
   }, [groupes, selectedGroupeId]);
 
+  const categoryTypeForId = useCallback(
+    (id: number | null, fallback: string): string => {
+      if (id == null) return fallback;
+      return refCategories.find((c) => c.id === id)?.type ?? fallback;
+    },
+    [refCategories],
+  );
+
   const applyLocalChainIds = useCallback((nextIds: number[]) => {
     const { ordered: no, pool: np } = partitionRowsByOrderedIds(
       nextIds,
@@ -247,6 +282,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
     );
     setOrdered(no);
     setPool(np);
+    setChainColorLevels((prev) => filterChainColorLevelsToOrderedIds(prev, nextIds));
   }, []);
 
   const ingestLlmImportLocally = useCallback(
@@ -277,31 +313,113 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
 
   const saveChainDraft = useCallback(async (): Promise<boolean> => {
     if (collectionIdNum == null) return true;
-    if (orderedIdsRef.current.some((id) => id < 0)) {
-      setOperationError(
-        "La suite contient encore des questions brouillon : enlève-les de l’ordre ou crée des questions réelles depuis l’écran Questions avant d’enregistrer la chaîne en base.",
-      );
-      return false;
+    if (ordered.length === 0) {
+      setOperationError("La suite ordonnée est vide : rien à enregistrer.");
+      return true;
     }
-    const gid = selectedGroupeIdRef.current;
+
+    let gid = selectedGroupeIdRef.current;
+    /** Rempli après matérialisation des brouillons ; utilisé pour le retry « groupe stale ». */
+    let finalOrderedIds: number[] = [];
+    let remappedLevels: Record<number, number> = chainColorLevels;
+
     setChainBusy(true);
     setOperationError(null);
     try {
+      const idReplace = new Map<number, number>();
+      let nextDrafts = localPoolDrafts;
+
+      for (const q of ordered) {
+        if (q.id >= 0) continue;
+        const draft = nextDrafts.find((d) => d.id === q.id);
+        if (draft == null) {
+          throw new Error(
+            `Brouillon introuvable (id ${q.id}). Ré-importe depuis LLM ou retire cette carte de la suite.`,
+          );
+        }
+        const reps = draft.payload.reponses.map((r) => ({
+          texte: r.texte.trim(),
+          correcte: r.correcte,
+        }));
+        const created = await postCreateQuestion({
+          user_id: userId,
+          categorie_id: draft.categorie_id,
+          question: draft.payload.question.trim(),
+          commentaire: (draft.payload.commentaire ?? "").trim(),
+          reponses: reps,
+          collection_id: collectionIdNum,
+        });
+        idReplace.set(q.id, created.id);
+        nextDrafts = nextDrafts.filter((d) => d.id !== q.id);
+      }
+
+      finalOrderedIds = ordered.map((q) => {
+        if (q.id > 0) return q.id;
+        const nid = idReplace.get(q.id);
+        if (nid == null || nid <= 0) {
+          throw new Error("Erreur après création : identifiant de question invalide.");
+        }
+        return nid;
+      });
+
+      remappedLevels =
+        idReplace.size > 0
+          ? remapChainColorLevelsAfterDraftReplace(chainColorLevels, idReplace)
+          : chainColorLevels;
+
+      if (idReplace.size > 0) {
+        setLocalPoolDrafts(nextDrafts);
+      }
+
       await patchReflexionChain(collectionIdNum, {
         user_id: userId,
-        ordered_question_ids: orderedIdsRef.current,
+        ordered_question_ids: finalOrderedIds,
         groupe_questions_id: gid ?? undefined,
+        chain_color_levels: chainColorLevelsRecordForApi(remappedLevels),
       });
       await loadChainFor(collectionIdNum, gid);
       return true;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Enregistrement de la suite impossible.";
+      const staleGroupe =
+        msg.includes("groupe_questions") &&
+        (msg.includes("introuvable") || msg.includes("not found") || msg.includes("400"));
+      if (staleGroupe && finalOrderedIds.length > 0) {
+        try {
+          const groupesFresh = await fetchGroupeQuestions(collectionIdNum);
+          setGroupes(groupesFresh);
+          const validId = gid != null && groupesFresh.some((g) => g.id === gid) ? gid : (groupesFresh[0]?.id ?? null);
+          applySelectedGroupeId(validId);
+          gid = validId;
+          await patchReflexionChain(collectionIdNum, {
+            user_id: userId,
+            ordered_question_ids: finalOrderedIds,
+            groupe_questions_id: gid ?? undefined,
+            chain_color_levels: chainColorLevelsRecordForApi(remappedLevels),
+          });
+          await loadChainFor(collectionIdNum, gid);
+          return true;
+        } catch (retryError: unknown) {
+          const retryMsg =
+            retryError instanceof Error ? retryError.message : "Enregistrement de la suite impossible.";
+          setOperationError(retryMsg);
+          return false;
+        }
+      }
       setOperationError(msg);
       return false;
     } finally {
       setChainBusy(false);
     }
-  }, [collectionIdNum, userId, loadChainFor]);
+  }, [
+    collectionIdNum,
+    userId,
+    loadChainFor,
+    chainColorLevels,
+    ordered,
+    localPoolDrafts,
+    applySelectedGroupeId,
+  ]);
 
   const resolveLeavePrompt = useCallback((proceed: boolean) => {
     setUnsavedLeaveModalOpen(false);
@@ -347,6 +465,26 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
       const sourceEntity = event.operation.source;
       const targetEntity = event.operation.target;
       if (sourceEntity == null) {
+        return;
+      }
+
+      const paletteRaw = sourceEntity.data as { type?: string; level?: number | null } | undefined;
+      if (paletteRaw?.type === REFLEXION_DRAG_PALETTE_TYPE) {
+        const tid = targetEntity?.id != null ? String(targetEntity.id) : "";
+        const qid = parseReflexionColorTargetId(tid);
+        if (qid == null || !orderedIdsRef.current.includes(qid)) {
+          return;
+        }
+        const lvl = paletteRaw.level;
+        setChainColorLevels((prev) => {
+          const next = { ...prev };
+          if (lvl === null || lvl === undefined) {
+            delete next[qid];
+          } else {
+            next[qid] = lvl;
+          }
+          return next;
+        });
         return;
       }
 
@@ -449,7 +587,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
         setLocalPoolDrafts([]);
         resetReflexionLocalDraftIdCounter();
         setPoolReturnedIds([]);
-        setSelectedGroupeId(id);
+        applySelectedGroupeId(id);
         if (collectionIdNum != null) {
           void loadChainFor(collectionIdNum, id);
         }
@@ -507,7 +645,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
           setCreateNom("");
           setCreateDescription("");
           reloadGroupesOnly();
-          setSelectedGroupeId(created.id);
+          applySelectedGroupeId(created.id);
           void loadChainFor(collectionIdNum, created.id);
         })
         .catch((e: Error) => {
@@ -583,9 +721,23 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
 
   const openEditModal = useCallback((q: QuizzQuestionRow) => {
     if (q.id < 0) {
-      setOperationError(
-        "Les brouillons ne sont pas modifiables depuis ce modal : crée la question en base depuis l’écran Questions.",
-      );
+      const localDraft = localPoolDraftsRef.current.find((d) => d.id === q.id) ?? null;
+      const draftReponses = (localDraft?.payload.reponses ?? []).map((r, idx) => ({
+        id: q.id * 100 - idx - 1,
+        reponse: r.texte,
+        bonne_reponse: r.correcte,
+      }));
+      setQuestionModalOpen(true);
+      setEditModalLoading(false);
+      setEditModalError(null);
+      setEditDetail({
+        ...q,
+        reponses: draftReponses,
+        implicit_relations: [],
+      });
+      setEditDraftQuestion(q.question);
+      setEditDraftCommentaire(q.commentaire);
+      setEditDraftCategorieId(q.categorie_id);
       return;
     }
     setQuestionModalOpen(true);
@@ -605,6 +757,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
 
   const refreshEditDetail = useCallback(async () => {
     if (editDetail == null) return;
+    if (editDetail.id < 0) return;
     try {
       const d = await fetchQuestionDetail(editDetail.id);
       setEditDetail(d);
@@ -624,6 +777,65 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
         payload.categorie_id = editDraftCategorieId;
       }
       if (Object.keys(payload).length === 0) {
+        closeQuestionModal();
+        return;
+      }
+      if (editDetail.id < 0) {
+        const nextCategorieId = editDraftCategorieId ?? editDetail.categorie_id;
+        const nextCategorieType = categoryTypeForId(nextCategorieId, editDetail.categorie_type);
+        const nextReponses = editDetail.reponses.map((r) => ({
+          texte: r.reponse,
+          correcte: r.bonne_reponse,
+        })) as ReflexionLocalPoolDraft["payload"]["reponses"];
+        setOrdered((rows) =>
+          rows.map((q) =>
+            q.id === editDetail.id
+              ? {
+                  ...q,
+                  question: editDraftQuestion,
+                  commentaire: editDraftCommentaire,
+                  categorie_id: nextCategorieId,
+                  categorie_type: nextCategorieType,
+                }
+              : q,
+          ),
+        );
+        setPool((rows) =>
+          rows.map((q) =>
+            q.id === editDetail.id
+              ? {
+                  ...q,
+                  question: editDraftQuestion,
+                  commentaire: editDraftCommentaire,
+                  categorie_id: nextCategorieId,
+                  categorie_type: nextCategorieType,
+                }
+              : q,
+          ),
+        );
+        setLocalPoolDrafts((prev) =>
+          prev.map((d) =>
+            d.id === editDetail.id
+              ? {
+                  ...d,
+                  categorie_id: nextCategorieId,
+                  payload: {
+                    ...d.payload,
+                    question: editDraftQuestion,
+                    commentaire: editDraftCommentaire,
+                    reponses: nextReponses,
+                  },
+                  row: {
+                    ...d.row,
+                    question: editDraftQuestion,
+                    commentaire: editDraftCommentaire,
+                    categorie_id: nextCategorieId,
+                    categorie_type: nextCategorieType,
+                  },
+                }
+              : d,
+          ),
+        );
         closeQuestionModal();
         return;
       }
@@ -666,6 +878,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
       setSaving(false);
     }
   }, [
+    categoryTypeForId,
     closeQuestionModal,
     editDetail,
     editDraftCategorieId,
@@ -674,6 +887,34 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
     loadChainFor,
     collectionIdNum,
   ]);
+
+  const saveLocalDraftReponse = useCallback((reponseId: number, reponseTexte: string) => {
+    if (editDetail == null || editDetail.id >= 0) return;
+    const nextText = reponseTexte.trim();
+    setEditDetail((cur) => {
+      if (cur == null || cur.id !== editDetail.id) return cur;
+      return {
+        ...cur,
+        reponses: cur.reponses.map((r) => (r.id === reponseId ? { ...r, reponse: nextText } : r)),
+      };
+    });
+    setLocalPoolDrafts((prev) =>
+      prev.map((d) => {
+        if (d.id !== editDetail.id) return d;
+        const nextPayloadReponses = d.payload.reponses.map((r, idx) => {
+          const expectedId = editDetail.id * 100 - idx - 1;
+          return expectedId === reponseId ? { ...r, texte: nextText } : r;
+        }) as ReflexionLocalPoolDraft["payload"]["reponses"];
+        return {
+          ...d,
+          payload: {
+            ...d.payload,
+            reponses: nextPayloadReponses,
+          },
+        };
+      }),
+    );
+  }, [editDetail]);
 
   const removeQuestion = useCallback(
     async (id: number) => {
@@ -731,6 +972,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
     data: {
       collectionNom: collection?.nom ?? null,
       orderedQuestions: ordered,
+      chainColorLevels,
       poolQuestions,
       search,
       refCategories,
@@ -806,6 +1048,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
         onDraftCommentaire: setEditDraftCommentaire,
         onDraftCategorieId: setEditDraftCategorieId,
         onReponseUpdated: () => void refreshEditDetail(),
+        onLocalDraftReponseSave: saveLocalDraftReponse,
       },
       data: {
         questionDetail: editDetail,
