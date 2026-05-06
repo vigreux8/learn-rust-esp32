@@ -1,6 +1,6 @@
 import type { LlmImportOption } from "../../atomes/QuestionsLlmImportOptionsPanel";
 import { LLM_PROMPT_COLLECTION, LLM_QUESTION_COUNT_OPTIONS } from "../../../lib/llmImportPrompts";
-import { QUESTION_CATEGORIE_DEFINITIONS } from "../../../lib/questionCategories";
+import { QUESTION_CATEGORIE_DEFINITIONS, type QuestionCategorieKey } from "../../../lib/questionCategories";
 import type { SousCollectionUi } from "../../../types/quizz";
 
 export function getOptionStringValue(options: LlmImportOption[], id: string): string {
@@ -19,7 +19,7 @@ export { LLM_QUESTION_COUNT_OPTIONS };
 
 export type BuildSousCollectionLlmPromptParams = {
   questionCount: string;
-  categoryKey: "histoire" | "pratique";
+  categoryKey: QuestionCategorieKey;
   subject: string;
   includeAssignedStems: boolean;
   collectionNom: string | null;

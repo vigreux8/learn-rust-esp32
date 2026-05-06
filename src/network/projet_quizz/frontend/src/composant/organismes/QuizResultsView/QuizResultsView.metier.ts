@@ -19,6 +19,30 @@ export function buildReplayTarget(result: LastQuizResult, userId: number): strin
     qtype: result.playQtype ?? "melanger",
     infinite: result.playInfinite === true,
     userId: playOrdersRequireUserId(orders) ? userId : undefined,
+    includeReflexion: result.playIncludeReflexion === true ? true : undefined,
+    reflexionSharePercent:
+      result.playReflexionSharePercent != null && result.playReflexionSharePercent !== 25
+        ? result.playReflexionSharePercent
+        : undefined,
+    includeChildCollections: result.playIncludeChildCollections === true ? true : undefined,
+    childCollectionsMix:
+      result.playChildCollectionsMix != null && result.playChildCollectionsMix !== "melange"
+        ? result.playChildCollectionsMix
+        : undefined,
+    familyQuotaPercent:
+      result.playFamilyQuotaPercent != null &&
+      result.playFamilyQuotaPercent !== 100 &&
+      result.playIncludeChildCollections === true
+        ? result.playFamilyQuotaPercent
+        : undefined,
+    familyQuotaMax:
+      result.playFamilyQuotaMax != null &&
+      result.playFamilyQuotaMax > 0 &&
+      result.playIncludeChildCollections === true
+        ? result.playFamilyQuotaMax
+        : undefined,
+    includePersonnaliteFiches:
+      result.playIncludePersonnaliteFiches === true ? true : undefined,
   });
   if (result.mode === "random") return `/play/random${query}`;
   if (result.collectionId != null) return `/play/${result.collectionId}${query}`;

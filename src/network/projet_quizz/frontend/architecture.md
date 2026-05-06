@@ -65,12 +65,15 @@ frontend/
         │   ├── PopUpInformation/
         │   ├── QuestionsLlmImportPanel/
         │   ├── QuestionsLlmImportPromptPanel/
-        │   └── QuestionsTable/
+        │   ├── QuestionsTable/
+        │   ├── CollectionReflexionLlmImportWidget/
+        │   └── UnsavedChainLeaveModal/
         └── organismes/          # pages / écrans complets (dossier par composant)
             ├── CollectionsView/
             ├── DatabaseTransferView/
             ├── HomeView/
             ├── QuestionEditModal/
+            ├── QuestionReflexionView/
             ├── QuestionsActionBoutons/
             ├── QuestionsView/
             ├── SousCollectionsView/
@@ -106,7 +109,7 @@ Composants UI **sans import** d’un autre dossier `atomes/*` (feuilles de l’a
 | `ProgressBar/`                   | Barre de progression (quiz, chargements).                           |
 | `AppHeader/` / `AppFooter/`      | En-tête et pied de page communs.                                    |
 | `PageMain/`                      | Mise en page centrale des pages.                                    |
-| `PlayModePicker/`                | Choix du mode de lecture (ordre des questions).                     |
+| `PlayModePicker/`                | Choix du mode de lecture (filtres, tri, KPI, suites réflexion, inclusion des **collections enfant** `relation_collection` via query `includeChildren`). |
 | `AnswerOption/`                  | Affichage / sélection d’une réponse pendant le jeu.                 |
 | `QuestionsCollectionContextBar/` | Barre de contexte collection / import LLM sur l’écran questions.  |
 | `QuestionsLlmImportOptionsPanel/` | Options de l’import LLM (sans atome projet dans ce dossier).     |
@@ -126,6 +129,8 @@ Blocs composés qui **importent au moins un** composant sous `atomes/`.
 | `QuestionsLlmImportPromptPanel/` | Zone prompt / JSON pour l’import LLM.                            |
 | `DeviceAuthGate/`           | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`).       |
 | `QuestionsTable/`          | Table détaillée des questions (tri, actions).                       |
+| `CollectionReflexionLlmImportWidget/` | Import LLM ciblée sur la vue suite logique (brouillon pool). |
+| `UnsavedChainLeaveModal/`        | Modale « quitter sans enregistrer » pour la chaîne réflexion.     |
 
 ### `composant/organismes/`
 
@@ -137,19 +142,22 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 | `CollectionsView/`               | Liste et gestion des collections (découpé en sections).       |
 | `QuestionEditModal/`             | Modale d’édition ou de création d’une question (QCM).         |
 | `QuestionsView/`                 | Liste / édition des questions (filtrage par collection).      |
-| `SousCollectionsView/`           | Sous-collections d’une collection : grille, modale création, drag-and-drop des questions (`dnd-kit`). |
+| `SousCollectionsView/`           | Sous-collections (schéma **v4** : collections **enfants** via `relation-collection` + doubles liens `question_collection` parent/enfant) : grille, modale, DnD (`dnd-kit`). |
 | `QuestionsActionBoutons/`        | En-tête Questions : actions export / import LLM + panneau.   |
 | `QuizSessionView/`               | Déroulé d’une partie (questions, réponses, progression).      |
 | `QuizResultsView/`               | Résumé à la fin d’un quiz.                                    |
 | `StatsDashboard/`                | Vue d’ensemble des statistiques / KPI.                        |
 | `SessionDetailsView/`            | Détail d’une session de jeu.                                  |
 | `DatabaseTransferView/`          | Écran d’import / export de données (admin côté UI).           |
+| `QuestionReflexionView/`         | **Suite logique** (`/collections/:id/reflexion`) : chaîne ordonnée `question_reflexion` par `groupe_questions`, deux colonnes DnD (`dnd-kit`), import LLM optionnel, **pastilles couleur** (palette = `COLLECTION_TREE_LEVEL_BORDER_HEX` dans `collectionHierarchyVis.ts`, persistées en JSON `groupe_questions.chain_color_levels`). |
 
 ### `lib/`
 
 | Fichier                                                                      | Rôle                                                                             |
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `api.ts`                                                                     | Fonctions fetch vers le backend (collections, questions, stats, admin, devices). |
+| `collectionHierarchyVis.ts`                                                  | Profondeur d’arbre collections, **palette hex** des bords de carte (`COLLECTION_TREE_LEVEL_BORDER_HEX`), réutilisée dans la vue réflexion pour taguer les vignettes. |
+| `reflexionChainColors.ts`                                                   | Identifiants DnD des cibles « déposer une couleur sur une vignette » (`reflexion-color-target-{questionId}`). |
 | `config.ts`                                                                  | URL d’API et constantes d’environnement côté client.                             |
 | `cn.ts`                                                                      | Fusion de classes Tailwind (`clsx` + `tailwind-merge`).                          |
 | `routePathContext.tsx`                                                       | Contexte React/Preact exposant le chemin courant (pour liens actifs, etc.).      |

@@ -188,7 +188,7 @@ export function useSousCollectionsViewState(props: SousCollectionsViewProps) {
     }
     if (
       !window.confirm(
-        "Supprimer cette sous-collection ? Les questions restent dans la collection ; seuls les rattachements à cette sous-collection sont retirés.",
+        "Supprimer cette sous-collection (collection enfant) ? Les questions restent dans la collection parent ; seuls les liens vers cette enfant sont supprimés, puis la collection enfant est effacée.",
       )
     ) {
       return;

@@ -1,6 +1,6 @@
 import { LLM_PROMPT_BASE, LLM_PROMPT_COLLECTION } from "../../../lib/llmImportPrompts";
-import { QUESTION_CATEGORIE_DEFINITIONS } from "../../../lib/questionCategories";
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
+import { normalizeLlmImportCategorie, QUESTION_CATEGORIE_DEFINITIONS } from "../../../lib/questionCategories";
+import type { CollectionUi } from "../../../types/quizz";
 
 type PromptBuildingBlocks = {
   countBlock: string;
@@ -23,8 +23,7 @@ export type BuildPromptParams = {
   existingStems: string;
   targetCollectionNumeric: number | null;
   collections: CollectionUi[];
-  importTargetModuleId: number | null;
-  allModules: QuizzModuleRow[];
+  importTargetTagCollectionId: number | null;
 };
 
 export function buildLlmImportPrompt(params: BuildPromptParams): string {
@@ -36,11 +35,10 @@ export function buildLlmImportPrompt(params: BuildPromptParams): string {
     existingStems,
     targetCollectionNumeric,
     collections,
-    importTargetModuleId,
-    allModules,
+    importTargetTagCollectionId,
   } = params;
 
-  const catKey = category === "pratique" ? "pratique" : "histoire";
+  const catKey = normalizeLlmImportCategorie(category);
 
   const blocks: PromptBuildingBlocks = {
     countBlock:
@@ -64,10 +62,15 @@ export function buildLlmImportPrompt(params: BuildPromptParams): string {
 
   const col = collections.find((entry) => entry.id === targetCollectionNumeric);
   const nom = col?.nom ?? `id ${targetCollectionNumeric}`;
-  const mod = importTargetModuleId != null ? allModules.find((entry) => entry.id === importTargetModuleId) : undefined;
+  const tagCol =
+    importTargetTagCollectionId != null
+      ? collections.find((entry) => entry.id === importTargetTagCollectionId)
+      : undefined;
 
   let tail = `\n\n- Collection active: ${nom} (${targetCollectionNumeric}).`;
-  if (mod) tail += `\n- Lien supercollection: ${mod.nom} (${mod.id}).`;
+  if (tagCol) {
+    tail += `\n- Lien etiquette (collection): ${tagCol.nom} (${tagCol.id}).`;
+  }
 
   return (
     LLM_PROMPT_COLLECTION +

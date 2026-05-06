@@ -1,6 +1,7 @@
-import { useDraggable, useDroppable } from "@dnd-kit/react";
-import { GripVertical } from "lucide-preact";
+import { useDroppable } from "@dnd-kit/react";
 import { Button } from "../../atomes/Button/Button";
+import { CollectionGroupEditModal } from "../../molecules/CollectionGroupEditModal";
+import { QuizzQuestionDndRow } from "../../molecules/QuizzQuestionDndRow";
 import { SousCollectionLlmImportWidget } from "../../molecules/SousCollectionLlmImportWidget";
 import { SOUS_COLLECTIONS_VIEW_STYLES } from "./SousCollectionsView.styles";
 import type {
@@ -9,73 +10,6 @@ import type {
   SousCollectionsListeSectionProps,
   SousCollectionsQuestionsPanelProps,
 } from "./SousCollectionsView.types";
-import type { QuizzQuestionRow, SousCollectionUi } from "../../../types/quizz";
-
-function PoolQuestionDraggable({
-  row,
-  disabled,
-}: {
-  row: QuizzQuestionRow;
-  disabled: boolean;
-}) {
-  const { ref, handleRef, isDragging } = useDraggable({
-    id: `pool-q-${row.id}`,
-    disabled,
-    data: { from: "pool", questionId: row.id } satisfies SousCollectionsDndPayload,
-  });
-  return (
-    <div
-      ref={ref}
-      class={SOUS_COLLECTIONS_VIEW_STYLES.questionRow}
-      style={{ opacity: isDragging ? 0.45 : 1 }}
-    >
-      <span
-        ref={handleRef}
-        class="mt-0.5 text-base-content/40"
-        aria-label="Déplacer la question (glisser-déposer)"
-      >
-        <GripVertical class="h-4 w-4" aria-hidden />
-      </span>
-      <div class="min-w-0 flex-1">
-        <span class={SOUS_COLLECTIONS_VIEW_STYLES.badge}>{row.categorie_type}</span>
-        <p class="mt-1 line-clamp-3 text-base-content/90">{row.question}</p>
-      </div>
-    </div>
-  );
-}
-
-function AssignedQuestionDraggable({
-  item,
-  disabled,
-}: {
-  item: SousCollectionUi["questions"][number];
-  disabled: boolean;
-}) {
-  const { ref, handleRef, isDragging } = useDraggable({
-    id: `assigned-q-${item.question_id}`,
-    disabled,
-    data: { from: "assigned", questionId: item.question_id } satisfies SousCollectionsDndPayload,
-  });
-  return (
-    <div
-      ref={ref}
-      class={SOUS_COLLECTIONS_VIEW_STYLES.questionRow}
-      style={{ opacity: isDragging ? 0.45 : 1 }}
-    >
-      <span
-        ref={handleRef}
-        class="mt-0.5 text-base-content/40"
-        aria-label="Déplacer la question (glisser-déposer)"
-      >
-        <GripVertical class="h-4 w-4" aria-hidden />
-      </span>
-      <div class="min-w-0 flex-1">
-        <span class={SOUS_COLLECTIONS_VIEW_STYLES.badge}>{item.categorie_type}</span>
-        <p class="mt-1 line-clamp-3 text-base-content/90">{item.question}</p>
-      </div>
-    </div>
-  );
-}
 
 export function SousCollectionsListeSection(props: SousCollectionsListeSectionProps) {
   return (
@@ -131,45 +65,25 @@ export function SousCollectionsListeSection(props: SousCollectionsListeSectionPr
 
       {props.llmImport != null ? <SousCollectionLlmImportWidget {...props.llmImport} /> : null}
 
-      {props.createModalOpen ? (
-        <dialog class="modal modal-open z-50" open>
-          <div class="modal-box rounded-2xl border border-base-content/10" onClick={(e) => e.stopPropagation()}>
-            <h3 class="text-lg font-bold">
-              {props.sousFormMode === "edit" ? "Modifier la sous-collection" : "Nouvelle sous-collection"}
-            </h3>
-            <label class="label mt-2" for="sc-create-nom">
-              <span class="label-text">Nom</span>
-            </label>
-            <input
-              id="sc-create-nom"
-              class="input input-bordered w-full rounded-xl border-base-content/15"
-              value={props.createNom}
-              disabled={props.createBusy}
-              onInput={(e) => props.onChangeCreateNom((e.target as HTMLInputElement).value)}
-            />
-            <label class="label mt-2" for="sc-create-desc">
-              <span class="label-text">Description</span>
-            </label>
-            <textarea
-              id="sc-create-desc"
-              class="textarea textarea-bordered w-full rounded-xl border-base-content/15"
-              rows={3}
-              value={props.createDescription}
-              disabled={props.createBusy}
-              onInput={(e) => props.onChangeCreateDescription((e.target as HTMLTextAreaElement).value)}
-            />
-            <div class="modal-action">
-              <button type="button" class="btn btn-ghost rounded-xl" disabled={props.createBusy} onClick={props.onCloseCreate}>
-                Annuler
-              </button>
-              <Button variant="flow" disabled={props.createBusy || props.createNom.trim() === ""} onClick={props.onSubmitCreate}>
-                {props.createBusy ? "…" : "Enregistrer"}
-              </Button>
-            </div>
-          </div>
-          <div class="modal-backdrop bg-base-content/40" role="presentation" onClick={props.onCloseCreate} />
-        </dialog>
-      ) : null}
+      <CollectionGroupEditModal
+        settings={{
+          open: props.createModalOpen,
+          title: props.sousFormMode === "edit" ? "Modifier la sous-collection" : "Nouvelle sous-collection",
+          nomInputId: "sc-create-nom",
+          descriptionInputId: "sc-create-desc",
+        }}
+        data={{
+          nom: props.createNom,
+          description: props.createDescription,
+        }}
+        status={{ busy: props.createBusy }}
+        actions={{
+          onClose: props.onCloseCreate,
+          onChangeNom: props.onChangeCreateNom,
+          onChangeDescription: props.onChangeCreateDescription,
+          onSubmit: props.onSubmitCreate,
+        }}
+      />
     </div>
   );
 }
@@ -192,7 +106,16 @@ export function SousCollectionsQuestionsColumn(props: SousCollectionsQuestionsPa
         <p class="mb-2 text-xs text-base-content/50">Glisse une question ici pour la retirer de la sous-collection sélectionnée.</p>
         <div class="max-h-[min(28rem,55vh)] space-y-2 overflow-y-auto pr-1">
           {props.poolQuestions.map((q) => (
-            <PoolQuestionDraggable key={q.id} row={q} disabled={props.poolDraggableDisabled} />
+            <QuizzQuestionDndRow
+              key={q.id}
+              data={{ row: q }}
+              dnd={{
+                draggableId: `pool-q-${q.id}`,
+                disabled: props.poolDraggableDisabled,
+                payload: { from: "pool", questionId: q.id } satisfies SousCollectionsDndPayload,
+              }}
+              settings={{ dragActivation: "handle" }}
+            />
           ))}
         </div>
       </div>
@@ -219,7 +142,34 @@ export function SousCollectionsAssignedColumn(props: SousCollectionsAssignedPane
         </p>
         <div class="max-h-[min(28rem,55vh)] space-y-2 overflow-y-auto pr-1">
           {props.assignedQuestions.map((q) => (
-            <AssignedQuestionDraggable key={q.relation_id} item={q} disabled={props.assignedDraggableDisabled} />
+            <QuizzQuestionDndRow
+              key={q.relation_id}
+              data={{
+                row: {
+                  id: q.question_id,
+                  user_id: 0,
+                  create_at: "",
+                  question: q.question,
+                  commentaire: "",
+                  verifier: false,
+                  categorie_id: 0,
+                  categorie_type: q.categorie_type,
+                  categorie_e_id: null,
+                  categorie_e_type: null,
+                  importance_id: null,
+                  importance_lvl: null,
+                  difficulter_id: null,
+                  difficulter_lvl: null,
+                  collections: [],
+                },
+              }}
+              dnd={{
+                draggableId: `assigned-q-${q.question_id}`,
+                disabled: props.assignedDraggableDisabled,
+                payload: { from: "assigned", questionId: q.question_id } satisfies SousCollectionsDndPayload,
+              }}
+              settings={{ dragActivation: "handle" }}
+            />
           ))}
         </div>
       </div>

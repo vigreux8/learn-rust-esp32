@@ -4,17 +4,63 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { QuizzQuestionRow, SousCollectionUi } from '../../quizz.type';
+import { GroupeQuestionsUi, QuizzQuestionRow, SousCollectionUi } from '../../quizz.type';
+
+function formatGroupeDescription(nom: string, description?: string): string {
+  const n = nom.trim();
+  const d = description?.trim() ?? '';
+  if (d === '') {
+    return n;
+  }
+  return `${n}\n${d}`;
+}
 
 function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Indices autorisés : même palette que les bords de carte collection (profondeur d’arbre). */
+const REFLEXION_CHAIN_COLOR_MAX = 3;
+
+function normalizeChainColorLevelsForPersist(
+  input: Record<string, number>,
+  orderedIds: number[],
+): Prisma.InputJsonValue {
+  const allowed = new Set(orderedIds);
+  const out: Record<string, number> = {};
+  for (const [ks, v] of Object.entries(input)) {
+    const id = Number(ks);
+    if (!allowed.has(id)) {
+      continue;
+    }
+    if (typeof v !== 'number' || !Number.isInteger(v) || v < 0 || v > REFLEXION_CHAIN_COLOR_MAX) {
+      throw new BadRequestException(
+        `chain_color_levels : indice couleur invalide pour la question ${ks} (attendu 0..${REFLEXION_CHAIN_COLOR_MAX}).`,
+      );
+    }
+    out[String(id)] = v;
+  }
+  return out as unknown as Prisma.InputJsonValue;
+}
+
 @Injectable()
 export class QuizzWriteService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Supprime une ligne `relation_question_implicite` par son id. */
+  async deleteImplicitQuestionRelation(relationId: number): Promise<void> {
+    const row = await this.prisma.prisma.relation_question_implicite.findUnique({
+      where: { id: relationId },
+    });
+    if (!row) {
+      throw new NotFoundException(`relation_question_implicite ${relationId} introuvable`);
+    }
+    await this.prisma.prisma.relation_question_implicite.delete({
+      where: { id: relationId },
+    });
+  }
 
   async insertQuestionWithAnswers(
     tx: Prisma.TransactionClient,
@@ -32,7 +78,7 @@ export class QuizzWriteService {
     const qRow = await tx.quizz_question.create({
       data: {
         user_id: body.user_id,
-        categorie_id: body.categorie_id,
+        categorie_p_id: body.categorie_id,
         create_at: nowIso(),
         question: body.question,
         commentaire: body.commentaire,
@@ -64,8 +110,8 @@ export class QuizzWriteService {
     if (body.parent_question_id != null) {
       await tx.relation_question_implicite.create({
         data: {
-          question_p_id: body.parent_question_id,
-          question_e_id: qRow.id,
+          question_1_id: body.parent_question_id,
+          question_2_id: qRow.id,
           story_id: null,
         },
       });
@@ -98,32 +144,114 @@ export class QuizzWriteService {
       question?: string;
       commentaire?: string;
       categorie_id?: number;
+      categorie_e_id?: number | null;
       verifier?: boolean;
+      importance_id?: number | null;
+      difficulter_id?: number | null;
     },
   ): Promise<QuizzQuestionRow> {
+    const existing = await this.prisma.prisma.quizz_question.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Question ${id} introuvable`);
+    }
+
     const patch: {
       question?: string;
       commentaire?: string;
-      categorie_id?: number;
+      categorie_p_id?: number;
+      categorie_e_id?: number | null;
       verifier?: boolean;
+      importance_id?: number | null;
+      difficulter_id?: number | null;
     } = {};
     if (typeof data.question === 'string') patch.question = data.question;
     if (typeof data.commentaire === 'string') patch.commentaire = data.commentaire;
+    if (typeof data.verifier === 'boolean') {
+      patch.verifier = data.verifier;
+    }
+
     if (typeof data.categorie_id === 'number' && Number.isInteger(data.categorie_id)) {
-      const cat = await this.prisma.prisma.ref_categorie.findUnique({
+      const cat = await this.prisma.prisma.ref_p_categorie.findUnique({
         where: { id: data.categorie_id },
       });
       if (!cat) {
         throw new BadRequestException(`categorie_id ${data.categorie_id} introuvable`);
       }
-      patch.categorie_id = data.categorie_id;
+      if (data.categorie_id !== existing.categorie_p_id) {
+        patch.categorie_p_id = data.categorie_id;
+      }
     }
-    if (typeof data.verifier === 'boolean') {
-      patch.verifier = data.verifier;
+
+    const resolvedParent =
+      patch.categorie_p_id !== undefined ? patch.categorie_p_id : existing.categorie_p_id;
+    const parentChanged = patch.categorie_p_id !== undefined;
+
+    const assertLink = async (parentId: number, enfantId: number): Promise<void> => {
+      const ok = await this.prisma.prisma.relation_categorie.findFirst({
+        where: { p_categorie: parentId, e_categorie: enfantId },
+      });
+      if (!ok) {
+        throw new BadRequestException(
+          `categorie_e_id ${enfantId} incompatible avec la catégorie parente ${parentId}`,
+        );
+      }
+    };
+
+    if (data.categorie_e_id !== undefined) {
+      if (data.categorie_e_id === null) {
+        patch.categorie_e_id = null;
+      } else {
+        await assertLink(resolvedParent, data.categorie_e_id);
+        patch.categorie_e_id = data.categorie_e_id;
+      }
+    } else if (parentChanged) {
+      patch.categorie_e_id = null;
+    } else if (
+      existing.categorie_e_id != null &&
+      data.categorie_id === undefined &&
+      data.categorie_e_id === undefined
+    ) {
+      const stillOk = await this.prisma.prisma.relation_categorie.findFirst({
+        where: { p_categorie: resolvedParent, e_categorie: existing.categorie_e_id },
+      });
+      if (!stillOk) {
+        patch.categorie_e_id = null;
+      }
     }
+
+    if (data.importance_id !== undefined) {
+      if (data.importance_id === null) {
+        patch.importance_id = null;
+      } else {
+        const imp = await this.prisma.prisma.ref_importance.findUnique({
+          where: { id: data.importance_id },
+        });
+        if (!imp) {
+          throw new BadRequestException(`importance_id ${data.importance_id} introuvable`);
+        }
+        patch.importance_id = data.importance_id;
+      }
+    }
+
+    if (data.difficulter_id !== undefined) {
+      if (data.difficulter_id === null) {
+        patch.difficulter_id = null;
+      } else {
+        const dif = await this.prisma.prisma.ref_difficulter.findUnique({
+          where: { id: data.difficulter_id },
+        });
+        if (!dif) {
+          throw new BadRequestException(`difficulter_id ${data.difficulter_id} introuvable`);
+        }
+        patch.difficulter_id = data.difficulter_id;
+      }
+    }
+
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException(
-        'Au moins un champ parmi "question", "commentaire" (string), "categorie_id" (entier) ou "verifier" (booléen) requis',
+        'Au moins un champ parmi question, commentaire, categorie_id, categorie_e_id, verifier, importance_id ou difficulter_id requis',
       );
     }
     try {
@@ -131,13 +259,19 @@ export class QuizzWriteService {
         where: { id },
         data: patch,
         include: {
-          ref_categorie: true,
+          ref_p_categorie: true,
+          ref_e_categorie: true,
+          ref_importance: true,
+          ref_difficulter: true,
           question_collection: {
             include: { quizz_collection: true },
             orderBy: { id: 'asc' },
           },
         },
       });
+      const eid = row.categorie_e_id;
+      const impId = row.importance_id;
+      const difId = row.difficulter_id;
       return {
         id: row.id,
         user_id: row.user_id,
@@ -145,8 +279,14 @@ export class QuizzWriteService {
         question: row.question,
         commentaire: row.commentaire ?? '',
         verifier: row.verifier,
-        categorie_id: row.categorie_id,
-        categorie_type: row.ref_categorie.type,
+        categorie_id: row.categorie_p_id,
+        categorie_type: row.ref_p_categorie.type,
+        categorie_e_id: eid,
+        categorie_e_type: eid != null && row.ref_e_categorie ? row.ref_e_categorie.type : null,
+        importance_id: impId,
+        importance_lvl: impId != null && row.ref_importance ? row.ref_importance.lvl : null,
+        difficulter_id: difId,
+        difficulter_lvl: difId != null && row.ref_difficulter ? row.ref_difficulter.lvl : null,
         collections: row.question_collection.map((qc) => ({
           id: qc.quizz_collection.id,
           nom: qc.quizz_collection.nom,
@@ -165,11 +305,13 @@ export class QuizzWriteService {
     if (!exists) throw new NotFoundException(`Question ${id} introuvable`);
 
     await this.prisma.prisma.$transaction([
+      this.prisma.prisma.question_reflexion.deleteMany({
+        where: { OR: [{ question_p_id: id }, { question_a_id: id }] },
+      }),
       this.prisma.prisma.relation_question_implicite.deleteMany({
-        where: { OR: [{ question_p_id: id }, { question_e_id: id }] },
+        where: { OR: [{ question_1_id: id }, { question_2_id: id }] },
       }),
       this.prisma.prisma.user_kpi.deleteMany({ where: { question_id: id } }),
-      this.prisma.prisma.relation_sous_collections.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.quizz_question_reponse.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.question_collection.deleteMany({ where: { question_id: id } }),
       this.prisma.prisma.quizz_question.delete({ where: { id } }),
@@ -207,7 +349,7 @@ export class QuizzWriteService {
     if (!user) {
       throw new BadRequestException(`Utilisateur ${body.user_id} introuvable`);
     }
-    const cat = await this.prisma.prisma.ref_categorie.findUnique({
+    const cat = await this.prisma.prisma.ref_p_categorie.findUnique({
       where: { id: body.categorie_id },
     });
     if (!cat) {
@@ -251,7 +393,10 @@ export class QuizzWriteService {
       return tx.quizz_question.findUniqueOrThrow({
         where: { id: questionId },
         include: {
-          ref_categorie: true,
+          ref_p_categorie: true,
+          ref_e_categorie: true,
+          ref_importance: true,
+          ref_difficulter: true,
           question_collection: {
             include: { quizz_collection: true },
             orderBy: { id: 'asc' },
@@ -260,6 +405,9 @@ export class QuizzWriteService {
       });
     });
 
+    const eid = row.categorie_e_id;
+    const impId = row.importance_id;
+    const difId = row.difficulter_id;
     return {
       id: row.id,
       user_id: row.user_id,
@@ -267,8 +415,14 @@ export class QuizzWriteService {
       question: row.question,
       commentaire: row.commentaire ?? '',
       verifier: row.verifier,
-      categorie_id: row.categorie_id,
-      categorie_type: row.ref_categorie.type,
+      categorie_id: row.categorie_p_id,
+      categorie_type: row.ref_p_categorie.type,
+      categorie_e_id: eid,
+      categorie_e_type: eid != null && row.ref_e_categorie ? row.ref_e_categorie.type : null,
+      importance_id: impId,
+      importance_lvl: impId != null && row.ref_importance ? row.ref_importance.lvl : null,
+      difficulter_id: difId,
+      difficulter_lvl: difId != null && row.ref_difficulter ? row.ref_difficulter.lvl : null,
       collections: row.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,
@@ -299,16 +453,41 @@ export class QuizzWriteService {
     const questionIds = [...new Set(links.map((l) => l.question_id))];
 
     await this.prisma.prisma.$transaction(async (tx) => {
+      await tx.question_reflexion.deleteMany({
+        where: {
+          groupe_questions: {
+            collection_id: collectionId,
+          },
+        },
+      });
+      await tx.groupe_questions.deleteMany({
+        where: { collection_id: collectionId },
+      });
+      await tx.personnalite_collection.deleteMany({
+        where: {
+          OR: [
+            { collection_id: collectionId },
+            { personalite: { collection_id: collectionId } },
+          ],
+        },
+      });
+      await tx.personalite.deleteMany({
+        where: { collection_id: collectionId },
+      });
+      await tx.relation_collection.deleteMany({
+        where: {
+          OR: [{ p_collection: collectionId }, { e_collection: collectionId }],
+        },
+      });
+      await tx.collection_tag_lien.deleteMany({
+        where: {
+          OR: [
+            { tag_collection_id: collectionId },
+            { tagged_collection_id: collectionId },
+          ],
+        },
+      });
       await tx.question_collection.deleteMany({
-        where: { collection_id: collectionId },
-      });
-      await tx.relation_sous_collections.deleteMany({
-        where: { question_id: { in: questionIds } },
-      });
-      await tx.sous_collections.deleteMany({
-        where: { collection_id: collectionId },
-      });
-      await tx.quizz_module_collection.deleteMany({
         where: { collection_id: collectionId },
       });
 
@@ -317,6 +496,16 @@ export class QuizzWriteService {
           where: { question_id: qid },
         });
         if (remaining === 0) {
+          await tx.question_reflexion.deleteMany({
+            where: {
+              OR: [{ question_p_id: qid }, { question_a_id: qid }],
+            },
+          });
+          await tx.relation_question_implicite.deleteMany({
+            where: {
+              OR: [{ question_1_id: qid }, { question_2_id: qid }],
+            },
+          });
           await tx.user_kpi.deleteMany({ where: { question_id: qid } });
           await tx.quizz_question_reponse.deleteMany({
             where: { question_id: qid },
@@ -329,10 +518,422 @@ export class QuizzWriteService {
     });
   }
 
-  async createSousCollection(
-    collectionId: number,
+  private async findParentIdForChildCollection(childId: number): Promise<number | null> {
+    const rel = await this.prisma.prisma.relation_collection.findFirst({
+      where: { e_collection: childId },
+      select: { p_collection: true },
+    });
+    return rel?.p_collection ?? null;
+  }
+
+  /**
+   * Crée une `quizz_collection` enfant et une ligne `relation-collection` vers le parent.
+   */
+  async createChildSousCollection(
+    parentId: number,
     body: { user_id: number; nom: string; description: string },
   ): Promise<SousCollectionUi> {
+    const parent = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent) {
+      throw new NotFoundException(`Collection parent ${parentId} introuvable`);
+    }
+    if (parent.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La collection ${parentId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+    const t = nowIso();
+    const child = await this.prisma.prisma.$transaction(async (tx) => {
+      const c = await tx.quizz_collection.create({
+        data: {
+          user_id: body.user_id,
+          create_at: t,
+          update_at: t,
+          nom: body.nom.trim(),
+          description: body.description.trim() === '' ? null : body.description.trim(),
+        },
+      });
+      await tx.relation_collection.create({
+        data: { p_collection: parentId, e_collection: c.id },
+      });
+      await tx.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      });
+      return c;
+    });
+    return {
+      id: child.id,
+      collection_id: parentId,
+      nom: child.nom,
+      description: child.description ?? '',
+      questions: [],
+    };
+  }
+
+  async updateChildSousCollection(
+    childId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(
+        `La collection ${childId} n’est pas une collection enfant (aucun lien parent).`,
+      );
+    }
+    const child = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: childId },
+    });
+    if (!child) {
+      throw new NotFoundException(`Collection ${childId} introuvable`);
+    }
+    if (child.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La collection ${childId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+    const t = nowIso();
+    const updated = await this.prisma.prisma.$transaction(async (tx) => {
+      const u = await tx.quizz_collection.update({
+        where: { id: childId },
+        data: {
+          nom: body.nom.trim(),
+          description: body.description.trim() === '' ? null : body.description.trim(),
+          update_at: t,
+        },
+      });
+      await tx.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      });
+      return u;
+    });
+    const qcs = await this.prisma.prisma.question_collection.findMany({
+      where: { collection_id: childId },
+      orderBy: { id: 'asc' },
+      include: {
+        quizz_question: { include: { ref_p_categorie: true } },
+      },
+    });
+    return {
+      id: updated.id,
+      collection_id: parentId,
+      nom: updated.nom,
+      description: updated.description ?? '',
+      questions: qcs.map((qc) => ({
+        relation_id: qc.id,
+        question_id: qc.question_id,
+        question: qc.quizz_question.question,
+        categorie_type: qc.quizz_question.ref_p_categorie.type,
+      })),
+    };
+  }
+
+  /**
+   * Supprime le lien parent → enfant, les rattachements questions de l’enfant, puis la collection enfant.
+   * Les questions restent liées au parent si elles y étaient encore.
+   */
+  async deleteChildSousCollection(childId: number, userId: number): Promise<void> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(
+        `La collection ${childId} n’est pas une collection enfant (aucun lien parent).`,
+      );
+    }
+    const child = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: childId },
+    });
+    if (!child) {
+      throw new NotFoundException(`Collection ${childId} introuvable`);
+    }
+    if (child.user_id !== userId) {
+      throw new ForbiddenException(
+        `La collection ${childId} n’appartient pas à l’utilisateur ${userId}.`,
+      );
+    }
+    const t = nowIso();
+    await this.prisma.prisma.$transaction(async (tx) => {
+      await tx.relation_collection.deleteMany({
+        where: { e_collection: childId },
+      });
+      await tx.personnalite_collection.deleteMany({
+        where: { collection_id: childId },
+      });
+      await tx.personalite.deleteMany({
+        where: { collection_id: childId },
+      });
+      await tx.question_collection.deleteMany({
+        where: { collection_id: childId },
+      });
+      await tx.collection_tag_lien.deleteMany({
+        where: {
+          OR: [
+            { tag_collection_id: childId },
+            { tagged_collection_id: childId },
+          ],
+        },
+      });
+      await tx.quizz_collection.delete({ where: { id: childId } });
+      await tx.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      });
+    });
+  }
+
+  async attachQuestionToChildCollection(
+    childId: number,
+    body: { user_id: number; question_id: number },
+  ): Promise<void> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(
+        `La collection ${childId} n’est pas une collection enfant (aucun lien parent).`,
+      );
+    }
+    const parent = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent || parent.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `Accès refusé pour rattacher une question à la collection ${childId}.`,
+      );
+    }
+    const inParent = await this.prisma.prisma.question_collection.findFirst({
+      where: { collection_id: parentId, question_id: body.question_id },
+    });
+    if (!inParent) {
+      throw new BadRequestException(
+        `La question ${body.question_id} doit d’abord être liée à la collection parent ${parentId}.`,
+      );
+    }
+    const exists = await this.prisma.prisma.question_collection.findFirst({
+      where: { collection_id: childId, question_id: body.question_id },
+    });
+    if (exists) {
+      return;
+    }
+    const t = nowIso();
+    await this.prisma.prisma.$transaction([
+      this.prisma.prisma.question_collection.create({
+        data: { collection_id: childId, question_id: body.question_id },
+      }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: childId },
+        data: { update_at: t },
+      }),
+    ]);
+  }
+
+  async detachQuestionFromChildCollection(
+    childId: number,
+    questionId: number,
+    userId: number,
+  ): Promise<void> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(
+        `La collection ${childId} n’est pas une collection enfant (aucun lien parent).`,
+      );
+    }
+    const parent = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent || parent.user_id !== userId) {
+      throw new ForbiddenException(
+        `Accès refusé pour retirer une question de la collection ${childId}.`,
+      );
+    }
+    const t = nowIso();
+    await this.prisma.prisma.$transaction([
+      this.prisma.prisma.question_collection.deleteMany({
+        where: { collection_id: childId, question_id: questionId },
+      }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: childId },
+        data: { update_at: t },
+      }),
+    ]);
+  }
+
+  /**
+   * Crée une collection dont le nom est « Prénom Nom » et la fiche `personalite` associée.
+   */
+  async createPersonaliteCollection(body: {
+    userId: number;
+    nom: string;
+    prenom: string;
+    naissance: number;
+    mort?: number | null;
+    resumer: string;
+    tagCollectionId?: number;
+  }): Promise<{ collectionId: number; personaliteId: number }> {
+    const user = await this.prisma.prisma.user.findUnique({
+      where: { id: body.userId },
+    });
+    if (!user) {
+      throw new NotFoundException(`Utilisateur ${body.userId} introuvable`);
+    }
+    if (body.tagCollectionId != null) {
+      const tag = await this.prisma.prisma.quizz_collection.findUnique({
+        where: { id: body.tagCollectionId },
+      });
+      if (!tag) {
+        throw new NotFoundException(
+          `Collection étiquette ${body.tagCollectionId} introuvable`,
+        );
+      }
+    }
+    const colNom = `${body.prenom.trim()} ${body.nom.trim()}`.trim();
+    if (!colNom) {
+      throw new BadRequestException('Le nom complet (prénom + nom) ne peut pas être vide');
+    }
+    if (body.mort != null && body.mort < body.naissance) {
+      throw new BadRequestException(
+        "L'année de décès ne peut pas être antérieure à l'année de naissance.",
+      );
+    }
+    const t = nowIso();
+    const res = await this.prisma.prisma.$transaction(async (tx) => {
+      const c = await tx.quizz_collection.create({
+        data: {
+          user_id: body.userId,
+          create_at: t,
+          update_at: t,
+          nom: colNom,
+        },
+      });
+      const p = await tx.personalite.create({
+        data: {
+          collection_id: c.id,
+          nom: body.nom.trim(),
+          prenom: body.prenom.trim(),
+          naissance: body.naissance,
+          mort: body.mort != null ? body.mort : null,
+          resumer: body.resumer.trim() !== '' ? body.resumer.trim() : '—',
+        },
+      });
+      if (body.tagCollectionId != null) {
+        await tx.collection_tag_lien.create({
+          data: {
+            tag_collection_id: body.tagCollectionId,
+            tagged_collection_id: c.id,
+          },
+        });
+      }
+      return { collectionId: c.id, personaliteId: p.id };
+    });
+    return res;
+  }
+
+  async assignPersonaliteToCollection(
+    collectionId: number,
+    body: {
+      userId: number;
+      personaliteId: number;
+      importanceType?: string | null;
+    },
+  ): Promise<void> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (col.user_id !== body.userId) {
+      throw new ForbiddenException(
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${body.userId}.`,
+      );
+    }
+    const perso = await this.prisma.prisma.personalite.findUnique({
+      where: { id: body.personaliteId },
+    });
+    if (!perso) {
+      throw new NotFoundException(`Personnalité ${body.personaliteId} introuvable`);
+    }
+    if (perso.collection_id === collectionId) {
+      throw new BadRequestException(
+        'Cette collection est déjà la fiche principale de cette personnalité.',
+      );
+    }
+    const dup = await this.prisma.prisma.personnalite_collection.findFirst({
+      where: { collection_id: collectionId, personalite_id: body.personaliteId },
+    });
+    if (dup != null) {
+      throw new BadRequestException(
+        'Cette personnalité est déjà associée à cette collection.',
+      );
+    }
+    let importance_id: number | null = null;
+    const it = body.importanceType?.trim();
+    if (it != null && it !== '') {
+      const ref = await this.prisma.prisma.ref_importance_personalite.findFirst({
+        where: { type: it },
+      });
+      if (!ref) {
+        throw new BadRequestException(`Type d’importance inconnu : « ${it} »`);
+      }
+      importance_id = ref.id;
+    }
+    const t = nowIso();
+    await this.prisma.prisma.personnalite_collection.create({
+      data: {
+        personalite_id: body.personaliteId,
+        collection_id: collectionId,
+        importance_id,
+      },
+    });
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: collectionId },
+      data: { update_at: t },
+    });
+  }
+
+  async unassignPersonaliteFromCollection(
+    collectionId: number,
+    personaliteId: number,
+    userId: number,
+  ): Promise<void> {
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
+    });
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    if (col.user_id !== userId) {
+      throw new ForbiddenException(
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${userId}.`,
+      );
+    }
+    const rm = await this.prisma.prisma.personnalite_collection.deleteMany({
+      where: { collection_id: collectionId, personalite_id: personaliteId },
+    });
+    if (rm.count === 0) {
+      throw new NotFoundException('Association personnalité / collection introuvable');
+    }
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: collectionId },
+      data: { update_at: nowIso() },
+    });
+  }
+
+  /**
+   * Crée un `groupe_questions` pour une collection. Le libellé est stocké dans `description` (ligne 1 = nom).
+   */
+  async createGroupeQuestions(
+    collectionId: number,
+    body: { user_id: number; nom: string; description?: string },
+  ): Promise<GroupeQuestionsUi> {
     const col = await this.prisma.prisma.quizz_collection.findUnique({
       where: { id: collectionId },
     });
@@ -344,180 +945,203 @@ export class QuizzWriteService {
         `La collection ${collectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
       );
     }
-
-    const row = await this.prisma.prisma.sous_collections.create({
+    const desc = formatGroupeDescription(body.nom, body.description);
+    const row = await this.prisma.prisma.groupe_questions.create({
       data: {
+        nom: collectionId,
         collection_id: collectionId,
-        nom: body.nom.trim(),
-        description: body.description.trim(),
+        description: desc,
+        head_question_id: null,
       },
     });
-
-    return {
-      id: row.id,
-      collection_id: row.collection_id,
-      nom: row.nom,
-      description: row.description ?? '',
-      questions: [],
-    };
-  }
-
-  async updateSousCollection(
-    sousCollectionId: number,
-    body: { user_id: number; nom: string; description: string },
-  ): Promise<SousCollectionUi> {
-    const sc = await this.prisma.prisma.sous_collections.findUnique({
-      where: { id: sousCollectionId },
-      include: { quizz_collection: true },
-    });
-    if (!sc) {
-      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
-    }
-    if (sc.quizz_collection.user_id !== body.user_id) {
-      throw new ForbiddenException(
-        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
-      );
-    }
-
-    const t = nowIso();
-    const row = await this.prisma.prisma.sous_collections.update({
-      where: { id: sousCollectionId },
-      data: {
-        nom: body.nom.trim(),
-        description: body.description.trim(),
-      },
-      include: {
-        relation_sous_collections: {
-          orderBy: { id: 'asc' },
-          include: {
-            quizz_question: {
-              include: { ref_categorie: true },
-            },
-          },
-        },
-      },
-    });
-
     await this.prisma.prisma.quizz_collection.update({
-      where: { id: row.collection_id },
-      data: { update_at: t },
+      where: { id: collectionId },
+      data: { update_at: nowIso() },
     });
-
     return {
       id: row.id,
       collection_id: row.collection_id,
       nom: row.nom,
-      description: row.description ?? '',
-      questions: row.relation_sous_collections.map((rel) => ({
-        relation_id: rel.id,
-        question_id: rel.quizz_question.id,
-        question: rel.quizz_question.question,
-        categorie_type: rel.quizz_question.ref_categorie.type,
-      })),
+      description: row.description,
     };
   }
 
-  async deleteSousCollection(sousCollectionId: number, userId: number): Promise<void> {
-    const sc = await this.prisma.prisma.sous_collections.findUnique({
-      where: { id: sousCollectionId },
+  async updateGroupeQuestions(
+    groupeId: number,
+    body: { user_id: number; nom: string; description?: string },
+  ): Promise<GroupeQuestionsUi> {
+    const existing = await this.prisma.prisma.groupe_questions.findUnique({
+      where: { id: groupeId },
       include: { quizz_collection: true },
     });
-    if (!sc) {
-      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
+    if (existing == null) {
+      throw new NotFoundException(`groupe_questions ${groupeId} introuvable`);
     }
-    if (sc.quizz_collection.user_id !== userId) {
-      throw new ForbiddenException(
-        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${userId}.`,
-      );
+    if (existing.collection_id == null) {
+      throw new BadRequestException('Ce groupe n’est pas rattaché à une collection.');
     }
+    if (existing.quizz_collection == null) {
+      throw new NotFoundException(`Collection liée au groupe ${groupeId} introuvable.`);
+    }
+    if (existing.quizz_collection.user_id !== body.user_id) {
+      throw new ForbiddenException('Accès refusé pour modifier ce groupe.');
+    }
+    const desc = formatGroupeDescription(body.nom, body.description);
+    const row = await this.prisma.prisma.groupe_questions.update({
+      where: { id: groupeId },
+      data: { description: desc },
+    });
+    await this.prisma.prisma.quizz_collection.update({
+      where: { id: existing.collection_id },
+      data: { update_at: nowIso() },
+    });
+    return {
+      id: row.id,
+      collection_id: row.collection_id,
+      nom: row.nom,
+      description: row.description,
+    };
+  }
 
+  async deleteGroupeQuestions(groupeId: number, userId: number): Promise<void> {
+    const existing = await this.prisma.prisma.groupe_questions.findUnique({
+      where: { id: groupeId },
+      include: { quizz_collection: true },
+    });
+    if (existing == null) {
+      throw new NotFoundException(`groupe_questions ${groupeId} introuvable`);
+    }
+    if (existing.collection_id == null) {
+      throw new BadRequestException('Ce groupe n’est pas rattaché à une collection.');
+    }
+    if (existing.quizz_collection == null) {
+      throw new NotFoundException(`Collection liée au groupe ${groupeId} introuvable.`);
+    }
+    if (existing.quizz_collection.user_id !== userId) {
+      throw new ForbiddenException('Accès refusé pour supprimer ce groupe.');
+    }
+    const collectionId = existing.collection_id;
     await this.prisma.prisma.$transaction([
-      this.prisma.prisma.relation_sous_collections.deleteMany({
-        where: { sous_collection_id: sousCollectionId },
+      this.prisma.prisma.question_reflexion.deleteMany({
+        where: { collection_questions_id: groupeId },
       }),
-      this.prisma.prisma.sous_collections.delete({
-        where: { id: sousCollectionId },
+      this.prisma.prisma.groupe_questions.delete({ where: { id: groupeId } }),
+      this.prisma.prisma.quizz_collection.update({
+        where: { id: collectionId },
+        data: { update_at: nowIso() },
       }),
     ]);
   }
 
-  async attachQuestionToSousCollection(
-    sousCollectionId: number,
-    body: { user_id: number; question_id: number },
+  /**
+   * Définit l’ordre logique des questions (suite P→A dans `question_reflexion`, tête dans `groupe_questions`).
+   */
+  async setReflexionChainOrder(
+    collectionId: number,
+    body: {
+      user_id: number;
+      ordered_question_ids: number[];
+      groupe_questions_id?: number;
+      chain_color_levels?: Record<string, number>;
+    },
   ): Promise<void> {
-    const sc = await this.prisma.prisma.sous_collections.findUnique({
-      where: { id: sousCollectionId },
-      include: { quizz_collection: true },
+    const col = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: collectionId },
     });
-    if (!sc) {
-      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
+    if (!col) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
     }
-    if (sc.quizz_collection.user_id !== body.user_id) {
+    if (col.user_id !== body.user_id) {
       throw new ForbiddenException(
-        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
+        `La collection ${collectionId} n’appartient pas à l’utilisateur ${body.user_id}.`,
       );
     }
-
-    const inCollection = await this.prisma.prisma.question_collection.findFirst({
-      where: {
-        collection_id: sc.collection_id,
-        question_id: body.question_id,
-      },
+    const ids = body.ordered_question_ids;
+    const uniq = new Set(ids);
+    if (uniq.size !== ids.length) {
+      throw new BadRequestException('ordered_question_ids : doublons interdits');
+    }
+    const links = await this.prisma.prisma.question_collection.findMany({
+      where: { collection_id: collectionId },
+      select: { question_id: true },
     });
-    if (!inCollection) {
-      throw new BadRequestException(
-        'La question doit être liée à la collection avant d’être ajoutée à une sous-collection.',
-      );
-    }
-
-    try {
-      await this.prisma.prisma.relation_sous_collections.create({
-        data: {
-          sous_collection_id: sousCollectionId,
-          question_id: body.question_id,
-        },
-      });
-    } catch (e) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        e.code === 'P2002'
-      ) {
+    const allowed = new Set(links.map((l) => l.question_id));
+    for (const qid of ids) {
+      if (!allowed.has(qid)) {
         throw new BadRequestException(
-          'Cette question est déjà présente dans cette sous-collection.',
+          `La question ${qid} n’est pas rattachée à la collection ${collectionId}.`,
         );
       }
-      throw e;
-    }
-  }
-
-  async detachQuestionFromSousCollection(
-    sousCollectionId: number,
-    userId: number,
-    questionId: number,
-  ): Promise<void> {
-    const sc = await this.prisma.prisma.sous_collections.findUnique({
-      where: { id: sousCollectionId },
-      include: { quizz_collection: true },
-    });
-    if (!sc) {
-      throw new NotFoundException(`Sous-collection ${sousCollectionId} introuvable`);
-    }
-    if (sc.quizz_collection.user_id !== userId) {
-      throw new ForbiddenException(
-        `La sous-collection ${sousCollectionId} n’appartient pas à l’utilisateur ${userId}.`,
-      );
     }
 
-    const res = await this.prisma.prisma.relation_sous_collections.deleteMany({
-      where: {
-        sous_collection_id: sousCollectionId,
-        question_id: questionId,
-      },
+    await this.prisma.prisma.$transaction(async (tx) => {
+      const colorPatch =
+        body.chain_color_levels !== undefined
+          ? {
+              chain_color_levels: normalizeChainColorLevelsForPersist(body.chain_color_levels, ids),
+            }
+          : {};
+
+      let groupe =
+        body.groupe_questions_id != null
+          ? await tx.groupe_questions.findFirst({
+              where: {
+                id: body.groupe_questions_id,
+                collection_id: collectionId,
+              },
+            })
+          : await tx.groupe_questions.findFirst({
+              where: { collection_id: collectionId },
+              orderBy: { id: 'asc' },
+            });
+
+      if (body.groupe_questions_id != null && groupe == null) {
+        throw new BadRequestException(
+          `groupe_questions ${body.groupe_questions_id} introuvable pour la collection ${collectionId}.`,
+        );
+      }
+      if (groupe == null) {
+        groupe = await tx.groupe_questions.create({
+          data: {
+            nom: collectionId,
+            collection_id: collectionId,
+            description: null,
+            head_question_id: null,
+          },
+        });
+      }
+
+      await tx.question_reflexion.deleteMany({
+        where: { collection_questions_id: groupe.id },
+      });
+
+      if (ids.length === 0) {
+        await tx.groupe_questions.delete({ where: { id: groupe.id } });
+      } else if (ids.length === 1) {
+        await tx.groupe_questions.update({
+          where: { id: groupe.id },
+          data: { head_question_id: ids[0]!, ...colorPatch },
+        });
+      } else {
+        await tx.groupe_questions.update({
+          where: { id: groupe.id },
+          data: { head_question_id: ids[0]!, ...colorPatch },
+        });
+        for (let i = 0; i < ids.length - 1; i++) {
+          await tx.question_reflexion.create({
+            data: {
+              collection_questions_id: groupe.id,
+              question_p_id: ids[i]!,
+              question_a_id: ids[i + 1]!,
+            },
+          });
+        }
+      }
+
+      await tx.quizz_collection.update({
+        where: { id: collectionId },
+        data: { update_at: nowIso() },
+      });
     });
-    if (res.count === 0) {
-      throw new NotFoundException(
-        `Aucun lien sous-collection / question pour la question ${questionId}.`,
-      );
-    }
   }
 }

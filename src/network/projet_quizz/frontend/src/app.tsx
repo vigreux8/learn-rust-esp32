@@ -3,6 +3,7 @@ import Router, { Route } from "preact-router";
 import { DeviceAuthGate } from "./composant/molecules/DeviceAuthGate/DeviceAuthGate";
 import { RoutePathContext } from "./lib/routePathContext";
 import { CollectionsView } from "./composant/organismes/CollectionsView/CollectionsView";
+import { QuestionReflexionView } from "./composant/organismes/QuestionReflexionView";
 import { SousCollectionsView } from "./composant/organismes/SousCollectionsView";
 import { DatabaseTransferView } from "./composant/organismes/DatabaseTransferView/DatabaseTransferView";
 import { HomeView } from "./composant/organismes/HomeView/HomeView";
@@ -32,6 +33,7 @@ export function App() {
         >
           <Route path="/" component={HomeView} />
           <Route path="/collections/:collectionId/sous-collections" component={SousCollectionsView} />
+          <Route path="/collections/:collectionId/reflexion" component={QuestionReflexionView} />
           <Route path="/collections" component={CollectionsView} />
           <Route path="/database" component={DatabaseTransferView} />
           <Route path="/questions/:collectionId" component={QuestionsView} />

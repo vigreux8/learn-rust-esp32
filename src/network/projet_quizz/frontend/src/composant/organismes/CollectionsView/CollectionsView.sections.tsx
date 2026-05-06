@@ -1,11 +1,12 @@
-import { FileJson, Layers, Trash2 } from "lucide-preact";
+import { FileJson, Layers, Search } from "lucide-preact";
 import type { PlayQtype } from "../../../lib/playOrder";
-import type { CollectionUi, QuizzModuleRow } from "../../../types/quizz";
+import type { CollectionUi, PersonalitePickerRowUi } from "../../../types/quizz";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
 import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 import { CollectionCard } from "../../molecules/CollectionCard/CollectionCard";
+import { CreatePersonnaliteModal } from "../../molecules/CreatePersonnaliteModal/CreatePersonnaliteModal";
 import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 
 export function CollectionsHeader({
@@ -52,12 +53,12 @@ export function JsonImportPanel({
 }: {
   jsonImportOpen: boolean;
   jsonImportMode: "app" | "llm";
-  jsonImportCategorie: "histoire" | "pratique";
+  jsonImportCategorie: "histoire" | "pratique" | "connaissance";
   jsonImportBusy: boolean;
   jsonImportText: string;
   jsonImportError: string | null;
   jsonImportMessage: string | null;
-  onChangeCategorie: (value: "histoire" | "pratique") => void;
+  onChangeCategorie: (value: "histoire" | "pratique" | "connaissance") => void;
   onOpenFilePicker: () => void;
   onChangeText: (value: string) => void;
   onRun: () => void;
@@ -78,10 +79,15 @@ export function JsonImportPanel({
                 class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 sm:w-44"
                 value={jsonImportCategorie}
                 disabled={jsonImportBusy}
-                onChange={(e) => onChangeCategorie((e.target as HTMLSelectElement).value === "pratique" ? "pratique" : "histoire")}
+                onChange={(e) => {
+                  const v = (e.target as HTMLSelectElement).value;
+                  if (v === "pratique" || v === "connaissance") onChangeCategorie(v);
+                  else onChangeCategorie("histoire");
+                }}
               >
                 <option value="histoire">Histoire</option>
                 <option value="pratique">Pratique</option>
+                <option value="connaissance">Connaissance</option>
               </select>
             </div>
           ) : null}
@@ -109,33 +115,34 @@ export function JsonImportPanel({
 }
 
 export function CollectionsContent({
-  modules,
+  tagPickerPool,
+  tagFilterOptions,
   pendingDelete,
-  deleteModuleBusyId,
   assignBusyCollectionId,
   deleteCollectionBusyId,
-  deleteModuleError,
-  newModuleName,
-  createModuleBusy,
-  createModuleError,
-  onChangeNewModuleName,
-  onCreateModule,
-  onRequestDeleteModule,
   newCollName,
-  newCollModuleId,
+  newCollTagId,
   createCollBusy,
   createCollError,
   onChangeNewCollName,
-  onChangeNewCollModuleId,
+  onChangeNewCollTagId,
   onCreateCollection,
   assignError,
   deleteCollectionError,
   filter,
   onChangeFilter,
   autresCreateurs,
-  moduleFilter,
-  onChangeModuleFilter,
+  tagFilter,
+  onChangeTagFilter,
   filtered,
+  filteredSourceCount,
+  collectionListSearch,
+  onCollectionListSearch,
+  collectionListSuggestions,
+  showCollectionListSuggestPanel,
+  onCollectionListSuggestFocus,
+  onCollectionListSuggestBlur,
+  onPickCollectionListSuggestion,
   userId,
   playMode,
   onPlayModeChange,
@@ -143,37 +150,63 @@ export function CollectionsContent({
   onPlayQtypeChange,
   playInfinite,
   onPlayInfiniteChange,
-  onAssign,
-  onUnassign,
+  onAssignTag,
+  onUnassignTag,
   onRequestDeleteCollection,
+  hierarchySubtreeRootId,
+  hierarchySubtreeRootNom,
+  hierarchySubtreeSearch,
+  onHierarchySubtreeSearch,
+  hierarchySearchSuggestions,
+  showHierarchySuggestPanel,
+  onHierarchySuggestFocus,
+  onHierarchySuggestBlur,
+  onPickHierarchySuggestion,
+  clearHierarchySubtree,
+  setHierarchyRootFromCard,
+  getTreeDepth,
+  newCollectionKind,
+  onChangeNewCollectionKind,
+  personnaliteModalOpen,
+  personnaliteModalBusy,
+  personnaliteModalError,
+  onOpenPersonnaliteModal,
+  onClosePersonnaliteModal,
+  onSubmitPersonnaliteModal,
+  personalitesPicker,
+  assignPersoBusyCollectionId,
+  assignPersoError,
+  onAssignPersoToCollection,
+  onUnassignPersoFromCollection,
 }: {
-  modules: QuizzModuleRow[];
+  tagPickerPool: { id: number; nom: string }[];
+  tagFilterOptions: { id: number; nom: string }[];
   pendingDelete: PendingDelete;
-  deleteModuleBusyId: number | null;
   assignBusyCollectionId: number | null;
   deleteCollectionBusyId: number | null;
-  deleteModuleError: string | null;
-  newModuleName: string;
-  createModuleBusy: boolean;
-  createModuleError: string | null;
-  onChangeNewModuleName: (value: string) => void;
-  onCreateModule: () => void;
-  onRequestDeleteModule: (module: QuizzModuleRow) => void;
   newCollName: string;
-  newCollModuleId: number | "";
+  newCollTagId: number | "";
   createCollBusy: boolean;
   createCollError: string | null;
   onChangeNewCollName: (value: string) => void;
-  onChangeNewCollModuleId: (value: number | "") => void;
+  onChangeNewCollTagId: (value: number | "") => void;
   onCreateCollection: () => void;
   assignError: string | null;
   deleteCollectionError: string | null;
   filter: CollectionFilter;
   onChangeFilter: (filter: CollectionFilter) => void;
   autresCreateurs: [number, string][];
-  moduleFilter: number | "all";
-  onChangeModuleFilter: (value: number | "all") => void;
+  tagFilter: number | "all";
+  onChangeTagFilter: (value: number | "all") => void;
   filtered: CollectionUi[];
+  filteredSourceCount: number;
+  collectionListSearch: string;
+  onCollectionListSearch: (value: string) => void;
+  collectionListSuggestions: { id: number; nom: string }[];
+  showCollectionListSuggestPanel: boolean;
+  onCollectionListSuggestFocus: () => void;
+  onCollectionListSuggestBlur: () => void;
+  onPickCollectionListSuggestion: (nom: string) => void;
   userId: number;
   playMode: PlayModeSettings;
   onPlayModeChange: (patch: Partial<PlayModeSettings>) => void;
@@ -181,9 +214,45 @@ export function CollectionsContent({
   onPlayQtypeChange: (value: PlayQtype) => void;
   playInfinite: boolean;
   onPlayInfiniteChange: (value: boolean) => void;
-  onAssign: (collectionId: number, moduleId: number) => void | Promise<void>;
-  onUnassign: (collectionId: number, moduleId: number) => void | Promise<void>;
+  onAssignTag: (collectionId: number, tagCollectionId: number) => void | Promise<void>;
+  onUnassignTag: (collectionId: number, tagCollectionId: number) => void | Promise<void>;
   onRequestDeleteCollection: (collection: CollectionUi) => void;
+  hierarchySubtreeRootId: number | null;
+  hierarchySubtreeRootNom: string;
+  hierarchySubtreeSearch: string;
+  onHierarchySubtreeSearch: (value: string) => void;
+  hierarchySearchSuggestions: { id: number; nom: string }[];
+  showHierarchySuggestPanel: boolean;
+  onHierarchySuggestFocus: () => void;
+  onHierarchySuggestBlur: () => void;
+  onPickHierarchySuggestion: (nom: string) => void;
+  clearHierarchySubtree: () => void;
+  setHierarchyRootFromCard: (collectionId: number, enabled: boolean) => void;
+  getTreeDepth: (collection: CollectionUi) => number;
+  newCollectionKind: "normale" | "personnalite";
+  onChangeNewCollectionKind: (value: "normale" | "personnalite") => void;
+  personnaliteModalOpen: boolean;
+  personnaliteModalBusy: boolean;
+  personnaliteModalError: string | null;
+  onOpenPersonnaliteModal: () => void;
+  onClosePersonnaliteModal: () => void;
+  onSubmitPersonnaliteModal: (payload: {
+    nom: string;
+    prenom: string;
+    naissance: number;
+    mort: number | null;
+    resumer: string;
+    tagCollectionId: number | "";
+  }) => void | Promise<void>;
+  personalitesPicker: PersonalitePickerRowUi[];
+  assignPersoBusyCollectionId: number | null;
+  assignPersoError: string | null;
+  onAssignPersoToCollection: (
+    collectionId: number,
+    personaliteId: number,
+    importanceType: "" | "pionnier" | "important" | "secondaire",
+  ) => void | Promise<void>;
+  onUnassignPersoFromCollection: (collectionId: number, personaliteId: number) => void | Promise<void>;
 }) {
   return (
     <>
@@ -211,12 +280,13 @@ export function CollectionsContent({
                 value={playQtype}
                 onChange={(e) => {
                   const v = (e.target as HTMLSelectElement).value;
-                  if (v === "histoire" || v === "pratique" || v === "melanger") onPlayQtypeChange(v);
+                  if (v === "histoire" || v === "pratique" || v === "connaissance" || v === "melanger") onPlayQtypeChange(v);
                 }}
               >
                 <option value="melanger">Mélanger</option>
                 <option value="histoire">Histoire</option>
                 <option value="pratique">Pratique</option>
+                <option value="connaissance">Connaissance</option>
               </select>
             </div>
             <label class="flex cursor-pointer items-center gap-2 text-xs text-base-content/70">
@@ -233,64 +303,69 @@ export function CollectionsContent({
       </section>
 
       <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
-        <h2 class="text-sm font-semibold tracking-tight text-base-content">Supercollections</h2>
-        {modules.length > 0 ? (
-          <ul class="mt-3 flex flex-col gap-2">
-            {modules.map((m) => (
-              <li key={m.id} class="flex items-center justify-between gap-3 rounded-xl border border-learn/25 bg-learn/10 px-3 py-2">
-                <span class="min-w-0 flex-1 text-xs font-medium text-learn">{m.nom}</span>
-                <button
-                  type="button"
-                  class="btn btn-ghost btn-xs shrink-0 gap-1 text-error hover:bg-error/10"
-                  aria-label={`Supprimer la supercollection ${m.nom}`}
-                  disabled={deleteModuleBusyId !== null || assignBusyCollectionId !== null || deleteCollectionBusyId !== null || pendingDelete !== null}
-                  onClick={() => onRequestDeleteModule(m)}
-                >
-                  {deleteModuleBusyId === m.id ? <span class="loading loading-spinner loading-xs" aria-hidden /> : <Trash2 class="h-4 w-4" aria-hidden />}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="mt-3 text-xs text-base-content/50">Aucune supercollection pour l instant.</p>
-        )}
-        {deleteModuleError ? <p class="mt-2 text-xs text-error">{deleteModuleError}</p> : null}
-        <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div class="flex-1">
-            <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-supercollection-name">Nouvelle supercollection</label>
-            <input id="new-supercollection-name" class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100" type="text" value={newModuleName} disabled={createModuleBusy} onInput={(e) => onChangeNewModuleName((e.target as HTMLInputElement).value)} />
-          </div>
-          <Button variant="learn" class="btn-sm shrink-0" disabled={createModuleBusy || !newModuleName.trim()} onClick={onCreateModule}>
-            {createModuleBusy ? "Creation..." : "Creer"}
-          </Button>
-        </div>
-        {createModuleError ? <p class="mt-2 text-xs text-error">{createModuleError}</p> : null}
-      </section>
-
-      <section class="mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
         <h2 class="text-sm font-semibold tracking-tight text-base-content">Nouvelle collection</h2>
-        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <div class="min-w-0 flex-1 sm:min-w-48">
-            <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-name">Nom</label>
-            <input id="new-collection-name" class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100" type="text" value={newCollName} disabled={createCollBusy} onInput={(e) => onChangeNewCollName((e.target as HTMLInputElement).value)} />
-          </div>
-          <div class="w-full sm:w-auto sm:min-w-40">
-            <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-module">Supercollection (optionnel)</label>
-            <select id="new-collection-module" class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100" value={newCollModuleId === "" ? "" : String(newCollModuleId)} disabled={createCollBusy || modules.length === 0} onChange={(e) => onChangeNewCollModuleId((e.target as HTMLSelectElement).value === "" ? "" : Number((e.target as HTMLSelectElement).value))}>
-              <option value="">—</option>
-              {modules.map((m) => (
-                <option key={m.id} value={m.id}>{m.nom}</option>
-              ))}
-            </select>
-          </div>
-          <Button variant="flow" class="btn-sm shrink-0" disabled={createCollBusy || !newCollName.trim()} onClick={onCreateCollection}>
-            {createCollBusy ? "Creation..." : "Creer collection"}
-          </Button>
+        <p class="mt-1 text-xs text-base-content/55">Choisis si la carte est une collection classique ou une fiche personnalité (titre automatique « Prénom Nom »).</p>
+        <div class="mt-3 inline-flex flex-wrap rounded-full border border-base-content/10 bg-base-100/70 p-1">
+          <button
+            type="button"
+            class={newCollectionKind === "normale" ? "btn btn-xs btn-primary rounded-full px-4" : "btn btn-ghost btn-xs rounded-full px-4"}
+            disabled={personnaliteModalBusy}
+            onClick={() => onChangeNewCollectionKind("normale")}
+          >
+            Normale
+          </button>
+          <button
+            type="button"
+            class={newCollectionKind === "personnalite" ? "btn btn-xs btn-primary rounded-full px-4" : "btn btn-ghost btn-xs rounded-full px-4"}
+            disabled={personnaliteModalBusy}
+            onClick={() => onChangeNewCollectionKind("personnalite")}
+          >
+            Personnalité
+          </button>
         </div>
+        {newCollectionKind === "normale" ? (
+          <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div class="min-w-0 flex-1 sm:min-w-48">
+              <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-name">Nom</label>
+              <input id="new-collection-name" class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100" type="text" value={newCollName} disabled={createCollBusy || personnaliteModalBusy} onInput={(e) => onChangeNewCollName((e.target as HTMLInputElement).value)} />
+            </div>
+            <div class="w-full sm:w-auto sm:min-w-40">
+              <label class="mb-1 block text-xs font-medium text-base-content/60" for="new-collection-tag">Étiquette / collection de regroupement (optionnel)</label>
+              <select id="new-collection-tag" class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100" value={newCollTagId === "" ? "" : String(newCollTagId)} disabled={createCollBusy || tagPickerPool.length === 0 || personnaliteModalBusy} onChange={(e) => onChangeNewCollTagId((e.target as HTMLSelectElement).value === "" ? "" : Number((e.target as HTMLSelectElement).value))}>
+                <option value="">—</option>
+                {tagPickerPool.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nom}</option>
+                ))}
+              </select>
+            </div>
+            <Button variant="flow" class="btn-sm shrink-0" disabled={createCollBusy || personnaliteModalBusy || !newCollName.trim()} onClick={onCreateCollection}>
+              {createCollBusy ? "Creation..." : "Creer collection"}
+            </Button>
+          </div>
+        ) : (
+          <div class="mt-4 flex flex-col gap-2 rounded-xl border border-flow/20 bg-flow/8 p-4">
+            <p class="text-sm text-base-content/80">
+              Une pop-up permet de saisir la personnalité. La collection sera nommée exactement comme sa fiche (prénom + nom).
+            </p>
+            <Button variant="flow" class="btn-sm w-fit" disabled={createCollBusy} onClick={onOpenPersonnaliteModal}>
+              Ouvrir le formulaire personnalité
+            </Button>
+          </div>
+        )}
         {createCollError ? <p class="mt-2 text-xs text-error">{createCollError}</p> : null}
       </section>
 
+      <CreatePersonnaliteModal
+        open={personnaliteModalOpen}
+        busy={personnaliteModalBusy}
+        error={personnaliteModalError}
+        tagOptions={tagPickerPool}
+        onClose={onClosePersonnaliteModal}
+        onSubmit={(payload) => void onSubmitPersonnaliteModal(payload)}
+      />
+
       {assignError ? <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{assignError}</p> : null}
+      {assignPersoError ? <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{assignPersoError}</p> : null}
       {deleteCollectionError ? <p class="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{deleteCollectionError}</p> : null}
 
       <fieldset class="mb-6">
@@ -305,21 +380,119 @@ export function CollectionsContent({
       </fieldset>
 
       <fieldset class="mb-8">
-        <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">Par supercollection</legend>
-        {modules.length === 0 ? (
-          <p class="text-xs text-base-content/50">Aucune supercollection : cree-en une plus haut pour filtrer.</p>
+        <legend class="mb-3 text-xs font-medium uppercase tracking-wide text-base-content/45">Par étiquette (collection liée)</legend>
+        {tagFilterOptions.length === 0 ? (
+          <p class="text-xs text-base-content/50">Aucune étiquette en base : associe des collections sur les cartes pour pouvoir filtrer ici.</p>
         ) : (
-          <select class="select select-bordered select-sm w-full max-w-md rounded-xl border-base-content/15 bg-base-100" value={moduleFilter === "all" ? "" : String(moduleFilter)} onChange={(e) => onChangeModuleFilter((e.target as HTMLSelectElement).value === "" ? "all" : Number((e.target as HTMLSelectElement).value))}>
-            <option value="">Toutes les supercollections</option>
-            {modules.map((m) => (
+          <select class="select select-bordered select-sm w-full max-w-md rounded-xl border-base-content/15 bg-base-100" value={tagFilter === "all" ? "" : String(tagFilter)} onChange={(e) => onChangeTagFilter((e.target as HTMLSelectElement).value === "" ? "all" : Number((e.target as HTMLSelectElement).value))}>
+            <option value="">Toutes les étiquettes</option>
+            {tagFilterOptions.map((m) => (
               <option key={m.id} value={m.id}>{m.nom}</option>
             ))}
           </select>
         )}
       </fieldset>
 
-      {filtered.length === 0 ? (
+      <section class="relative mb-8 rounded-box border border-base-content/10 bg-base-200/30 p-4 sm:p-5">
+        <h2 class="mb-1 text-sm font-semibold tracking-tight text-base-content">Rechercher une collection</h2>
+        <p class="mb-3 max-w-xl text-xs text-base-content/55">
+          Filtre la liste par titre (insensible à la casse). Suggestions au focus.
+        </p>
+        <div class="relative max-w-xl">
+          <label class="sr-only" for="collections-global-search">Recherche par titre</label>
+          <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-base-content/40">
+            <Search class="h-4 w-4" aria-hidden />
+          </span>
+          <input
+            id="collections-global-search"
+            type="search"
+            autoComplete="off"
+            class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100 pl-9"
+            placeholder="Titre de la collection…"
+            value={collectionListSearch}
+            onFocus={onCollectionListSuggestFocus}
+            onBlur={onCollectionListSuggestBlur}
+            onInput={(e) => onCollectionListSearch((e.target as HTMLInputElement).value)}
+          />
+          {showCollectionListSuggestPanel ? (
+            <ul
+              class="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border border-base-content/15 bg-base-100 py-1 shadow-lg"
+              role="listbox"
+            >
+              {collectionListSuggestions.map((s) => (
+                <li key={s.id} role="option">
+                  <button
+                    type="button"
+                    class="flex w-full px-3 py-2 text-left text-sm hover:bg-base-200"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => onPickCollectionListSuggestion(s.nom)}
+                  >
+                    {s.nom}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </section>
+
+      {hierarchySubtreeRootId != null ? (
+        <section class="relative mb-6 rounded-box border border-flow/25 bg-flow/8 p-4 sm:p-5">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0 flex-1 space-y-2">
+              <p class="text-xs font-medium uppercase tracking-wide text-base-content/50">Vue sous-arbre</p>
+              <p class="text-sm text-base-content/85">
+                Collections affichées : « <span class="font-semibold text-base-content">{hierarchySubtreeRootNom}</span> » et toutes ses sous-collections (descendants).
+              </p>
+              <div class="relative max-w-xl">
+                <label class="mb-1 block text-xs font-medium text-base-content/60" for="collections-hierarchy-search">
+                  Recherche (titre)
+                </label>
+                <input
+                  id="collections-hierarchy-search"
+                  type="search"
+                  autoComplete="off"
+                  class="input input-bordered input-sm w-full rounded-xl border-base-content/15 bg-base-100"
+                  placeholder="Filtrer par nom de collection…"
+                  value={hierarchySubtreeSearch}
+                  onFocus={onHierarchySuggestFocus}
+                  onBlur={onHierarchySuggestBlur}
+                  onInput={(e) => onHierarchySubtreeSearch((e.target as HTMLInputElement).value)}
+                />
+                {showHierarchySuggestPanel ? (
+                  <ul
+                    class="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border border-base-content/15 bg-base-100 py-1 shadow-lg"
+                    role="listbox"
+                  >
+                    {hierarchySearchSuggestions.map((s) => (
+                      <li key={s.id} role="option">
+                        <button
+                          type="button"
+                          class="flex w-full px-3 py-2 text-left text-sm hover:bg-base-200"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => onPickHierarchySuggestion(s.nom)}
+                        >
+                          {s.nom}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </div>
+            <Button variant="outline" class="btn-sm shrink-0" onClick={clearHierarchySubtree}>
+              Tout afficher
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {filteredSourceCount === 0 ? (
         <p class="rounded-box border border-base-content/10 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/65">Aucune collection pour ce filtre.</p>
+      ) : filtered.length === 0 ? (
+        <p class="rounded-box border border-base-content/10 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/65">
+          Aucune collection ne correspond à cette recherche. Efface le champ ou modifie le titre recherché.
+        </p>
       ) : (
         <ul class="flex flex-col gap-4">
           {filtered.map((c) => (
@@ -327,16 +500,33 @@ export function CollectionsContent({
               <CollectionCard
                 collection={c}
                 myUserId={userId}
-                allModules={modules}
+                tagPickerPool={tagPickerPool}
                 assignBusyCollectionId={assignBusyCollectionId}
                 deleteBusyCollectionId={deleteCollectionBusyId}
                 playMode={playMode}
                 playQtype={playQtype}
                 playInfinite={playInfinite}
-                onAssign={onAssign}
-                onUnassign={onUnassign}
-                interactionLocked={pendingDelete !== null}
+                treeDepth={getTreeDepth(c)}
+                hierarchyViewToggle={
+                  (c.sous_collections?.length ?? 0) > 0
+                    ? {
+                        checked: hierarchySubtreeRootId === c.id,
+                        onChange: (v) => setHierarchyRootFromCard(c.id, v),
+                      }
+                    : undefined
+                }
+                onAssignTag={onAssignTag}
+                onUnassignTag={onUnassignTag}
+                interactionLocked={
+                  pendingDelete !== null ||
+                  assignBusyCollectionId !== null ||
+                  assignPersoBusyCollectionId !== null
+                }
                 onDeleteCollection={onRequestDeleteCollection}
+                personalitesPicker={personalitesPicker}
+                assignPersoBusyCollectionId={assignPersoBusyCollectionId}
+                onAssignPerso={onAssignPersoToCollection}
+                onUnassignPerso={onUnassignPersoFromCollection}
               />
             </li>
           ))}

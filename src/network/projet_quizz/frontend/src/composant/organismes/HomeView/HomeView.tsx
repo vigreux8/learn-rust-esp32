@@ -23,6 +23,13 @@ export function HomeView() {
     sortBase: "none",
     errorPriority: false,
     shuffleExtra: false,
+    includeReflexion: false,
+    reflexionSharePercent: 25,
+    includeChildCollections: false,
+    childCollectionsMix: "famille",
+    familyQuotaPercent: 100,
+    familyQuotaMax: 0,
+    includePersonnaliteFiches: false,
   });
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
   const [playInfinite, setPlayInfinite] = useState(false);
@@ -57,6 +64,7 @@ export function HomeView() {
               idPrefix="home"
               settings={playMode}
               onChange={(patch) => setPlayMode((prev) => ({ ...prev, ...patch }))}
+              showReflexionOptions={false}
             />
             <div>
               <label class="mb-1 block text-center text-xs font-semibold uppercase tracking-wide text-base-content/45" for="home-play-qtype">
@@ -68,12 +76,13 @@ export function HomeView() {
                 value={playQtype}
                 onChange={(e) => {
                   const v = (e.target as HTMLSelectElement).value;
-                  if (v === "histoire" || v === "pratique" || v === "melanger") setPlayQtype(v);
+                  if (v === "histoire" || v === "pratique" || v === "connaissance" || v === "melanger") setPlayQtype(v);
                 }}
               >
                 <option value="melanger">Melanger (tout)</option>
                 <option value="histoire">Histoire</option>
                 <option value="pratique">Pratique</option>
+                <option value="connaissance">Connaissance</option>
               </select>
             </div>
             <label class="flex cursor-pointer items-center justify-center gap-2 text-sm text-base-content/80">

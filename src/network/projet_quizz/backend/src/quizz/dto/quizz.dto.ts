@@ -3,14 +3,69 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
+  Max,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { LlmImportReponseDto } from './import-llm.dto';
+
+export class PatchReflexionChainDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  ordered_question_ids!: number[];
+
+  /** Si absent : premier groupe de la collection (`id` croissant) ou création à la volée. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  groupe_questions_id?: number;
+
+  /**
+   * Couleurs de vignettes (suite ordonnée) : clés = id question, valeurs = indice 0..3
+   * (palette alignée sur les bords de carte collection par profondeur).
+   */
+  @IsOptional()
+  chain_color_levels?: Record<string, number>;
+}
+
+export class CreateGroupeQuestionsBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class PatchGroupeQuestionsBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
 
 export class UpdateReponseDto {
   @IsString()
@@ -32,10 +87,34 @@ export class UpdateQuestionDto {
   @Min(1)
   categorie_id?: number;
 
+  /**
+   * Enfant `ref_e_categorie.id` lié au parent courant (`relation_categorie`).
+   * `null` retire l’association ; omis = inchangé sauf changement de parent (alors effacé).
+   */
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  categorie_e_id?: number | null;
+
   /** Colonne `verifier` (fakechecker côté export app). */
   @IsOptional()
   @IsBoolean()
   verifier?: boolean;
+
+  /** `ref_importance.id` ; `null` retire le lien sur la question. */
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  importance_id?: number | null;
+
+  /** `ref_difficulter.id` ; `null` retire le lien sur la question. */
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  difficulter_id?: number | null;
 }
 
 /** Création d’une question (4 réponses, une seule correcte) avec rattachements optionnels. */
@@ -73,12 +152,7 @@ export class CreateQuestionDto {
   parent_question_id?: number;
 }
 
-export class CreateQuizzModuleDto {
-  @IsString()
-  nom!: string;
-}
-
-export class CreateCollectionInModuleDto {
+export class CreateCollectionUnderTagDto {
   @IsInt()
   @Min(1)
   userId!: number;
@@ -87,10 +161,10 @@ export class CreateCollectionInModuleDto {
   nom!: string;
 }
 
-export class AssignCollectionToModuleDto {
+export class AssignCollectionTagDto {
   @IsInt()
   @Min(1)
-  moduleId!: number;
+  tagCollectionId!: number;
 }
 
 export class CreateStandaloneCollectionDto {
@@ -105,11 +179,11 @@ export class CreateStandaloneCollectionDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  moduleId?: number;
+  tagCollectionId?: number;
 }
 
-/** Création d’une sous-collection rattachée à une collection existante. */
-export class CreateSousCollectionDto {
+/** Création d’une collection enfant (v4 : `quizz_collection` + `relation-collection`). */
+export class CreateSousCollectionBodyDto {
   @IsInt()
   @Min(1)
   user_id!: number;
@@ -118,12 +192,26 @@ export class CreateSousCollectionDto {
   @MinLength(1)
   nom!: string;
 
+  @IsOptional()
   @IsString()
-  description!: string;
+  description?: string;
 }
 
-/** Rattache une question déjà liée à la collection parente à une sous-collection. */
-export class AttachQuestionToSousCollectionDto {
+export class PatchSousCollectionBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class AttachQuestionToSousCollectionBodyDto {
   @IsInt()
   @Min(1)
   user_id!: number;
@@ -131,5 +219,55 @@ export class AttachQuestionToSousCollectionDto {
   @IsInt()
   @Min(1)
   question_id!: number;
+}
+
+export class CreatePersonaliteCollectionDto {
+  @IsInt()
+  @Min(1)
+  userId!: number;
+
+  @IsString()
+  @MinLength(1)
+  nom!: string;
+
+  @IsString()
+  @MinLength(1)
+  prenom!: string;
+
+  @IsInt()
+  @Min(-10000)
+  @Max(9999)
+  naissance!: number;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsInt()
+  @Min(-10000)
+  @Max(9999)
+  mort?: number | null;
+
+  @IsString()
+  resumer!: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  tagCollectionId?: number;
+}
+
+export class AssignPersonaliteToCollectionDto {
+  @IsInt()
+  @Min(1)
+  userId!: number;
+
+  @IsInt()
+  @Min(1)
+  personaliteId!: number;
+
+  /** `null` ou omis : `importance_id` NULL dans `personnalité_collection`. */
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null && v !== '')
+  @IsIn(['pionnier', 'important', 'secondaire'])
+  importanceType?: 'pionnier' | 'important' | 'secondaire' | null;
 }
 

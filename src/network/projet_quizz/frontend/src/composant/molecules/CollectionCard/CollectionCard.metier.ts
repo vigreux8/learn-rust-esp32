@@ -1,11 +1,18 @@
-import type { LinkedModule } from "./CollectionCard.types";
+import type { CollectionTagRef } from "./CollectionCard.types";
 
-export function buildQuestionsRoutePath(collectionId: number, linkedModules: LinkedModule[]): string {
-  const first = linkedModules[0];
-  const q = first != null ? `?module=${first.id}` : "";
+export function buildQuestionsRoutePath(
+  collectionId: number,
+  linkedTags: CollectionTagRef[],
+): string {
+  const first = linkedTags[0];
+  const q = first != null ? `?tagCollection=${first.id}` : "";
   return `/questions/${collectionId}${q}`;
 }
 
 export function buildSousCollectionsRoutePath(collectionId: number): string {
   return `/collections/${collectionId}/sous-collections`;
+}
+
+export function buildReflexionRoutePath(collectionId: number): string {
+  return `/collections/${collectionId}/reflexion`;
 }

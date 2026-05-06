@@ -5,6 +5,7 @@ import {
   LLM_QUESTION_COUNT_OPTIONS,
   formatExistingQuestionStemsForPrompt,
 } from "../../../lib/llmImportPrompts";
+import { normalizeLlmImportCategorie } from "../../../lib/questionCategories";
 import { CATEGORY_OPTION_ID, type LlmImportOption } from "../../atomes/QuestionsLlmImportOptionsPanel";
 import type { LlmImportWorkflow } from "../../molecules/QuestionsLlmImportPanel";
 import {
@@ -20,7 +21,7 @@ import { getOptionValue } from "./QuestionsActionBoutons.utils";
 
 export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
   const { data, actions, llmImportExtras } = props;
-  const { targetCollectionNumeric, collections, allModules, importTargetModuleId, questions } = data;
+  const { targetCollectionNumeric, collections, importTargetTagCollectionId, questions } = data;
 
   const [importOpen, setImportOpen] = useState(false);
   const [options, setOptions] = useState<LlmImportOption[]>([]);
@@ -79,7 +80,9 @@ export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
         disabled: targetCollectionNumeric == null,
         value: targetCollectionNumeric == null ? false : (previousExistingValue ?? false),
         action: () => {
-          const selectedCategory = getOptionValue(optionsRef.current, CATEGORY_OPTION_ID) || "histoire";
+          const selectedCategory = normalizeLlmImportCategorie(
+            getOptionValue(optionsRef.current, CATEGORY_OPTION_ID) || "histoire",
+          );
           const filteredQuestions = questions.filter((q) => q.categorie_type === selectedCategory);
           return filteredQuestions.length > 0 ? formatExistingQuestionStemsForPrompt(filteredQuestions) : "";
         },
@@ -97,10 +100,9 @@ export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
         existingStems: getOptionValue(currentOptions, EXISTING_STEMS_OPTION_ID).trim(),
         targetCollectionNumeric,
         collections,
-        importTargetModuleId,
-        allModules,
+        importTargetTagCollectionId,
       }),
-    [targetCollectionNumeric, collections, importTargetModuleId, allModules],
+    [targetCollectionNumeric, collections, importTargetTagCollectionId],
   );
 
   const llmImportWorkflow = useMemo<LlmImportWorkflow>(
@@ -109,12 +111,13 @@ export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
       importFromJson: async (importText: string): Promise<string> => {
         const dataJson = normalizeAndValidateImportText(importText);
         const cid = targetCollectionNumeric ?? undefined;
-        const mid = cid != null && importTargetModuleId != null ? importTargetModuleId : undefined;
-        const categorieApi = getOptionValue(options, CATEGORY_OPTION_ID) === "pratique" ? "pratique" : "histoire";
+        const tid =
+          cid != null && importTargetTagCollectionId != null ? importTargetTagCollectionId : undefined;
+        const categorieApi = normalizeLlmImportCategorie(getOptionValue(options, CATEGORY_OPTION_ID) || "histoire");
         const sousId = llmImportExtras?.sousCollectionId;
         const res = await importQuestionsJson(dataJson, {
           collectionId: cid,
-          moduleId: mid,
+          tagCollectionId: tid,
           categorie: categorieApi,
           ...(sousId != null ? { sousCollectionId: sousId } : {}),
         });
@@ -122,7 +125,7 @@ export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
         return buildImportSuccessMessage(res, cid != null);
       },
     }),
-    [buildPrompt, options, targetCollectionNumeric, importTargetModuleId, actions, llmImportExtras],
+    [buildPrompt, options, targetCollectionNumeric, importTargetTagCollectionId, actions, llmImportExtras],
   );
 
   const toggleImport = () => setImportOpen((o) => !o);

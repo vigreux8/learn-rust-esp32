@@ -16,13 +16,18 @@ import { QuizzService } from './services';
 import { AppCollectionImportBodyDto } from './dto/import-collection.dto';
 import { LlmImportBodyDto } from './dto/import-llm.dto';
 import {
-  AssignCollectionToModuleDto,
-  AttachQuestionToSousCollectionDto,
-  CreateCollectionInModuleDto,
+  AssignCollectionTagDto,
+  AssignPersonaliteToCollectionDto,
+  AttachQuestionToSousCollectionBodyDto,
+  CreateCollectionUnderTagDto,
+  CreateGroupeQuestionsBodyDto,
+  CreatePersonaliteCollectionDto,
   CreateQuestionDto,
-  CreateQuizzModuleDto,
-  CreateSousCollectionDto,
+  CreateSousCollectionBodyDto,
   CreateStandaloneCollectionDto,
+  PatchGroupeQuestionsBodyDto,
+  PatchSousCollectionBodyDto,
+  PatchReflexionChainDto,
   UpdateQuestionDto,
   UpdateReponseDto,
 } from './dto/quizz.dto';
@@ -85,6 +90,33 @@ function parsePlayOrdersQuery(orderRaw?: string): QuizPlayOrderQuery[] {
   return out;
 }
 
+function parseFamilyQuotaQuery(raw?: string): number {
+  if (raw === undefined || raw.trim() === '') return 100;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    throw new BadRequestException('Query familyQuota : nombre entre 0 et 100');
+  }
+  const q = Math.round(n);
+  if (q < 0 || q > 100) {
+    throw new BadRequestException('Query familyQuota : nombre entre 0 et 100');
+  }
+  return q;
+}
+
+/** 0 ou absent : pas de plafond ; ≥ 1 : max questions par famille (après pourcentage). */
+function parseFamilyMaxQuery(raw?: string): number | undefined {
+  if (raw === undefined || raw.trim() === '') return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n)) {
+    throw new BadRequestException('Query familyMax : entier ≥ 0 attendu');
+  }
+  if (n < 0) {
+    throw new BadRequestException('Query familyMax : entier ≥ 0 attendu');
+  }
+  if (n === 0) return undefined;
+  return n;
+}
+
 function parseUserIdQueryOptional(raw?: string): number | undefined {
   if (raw === undefined || raw === '') return undefined;
   const n = Number(raw);
@@ -98,6 +130,11 @@ function parseInfiniteQuery(raw?: string): boolean {
   if (raw === undefined || raw === '') return false;
   const v = raw.trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'yes';
+}
+
+/** Questions des fiches personnalités liées à la carte (`persoFiches=1`). */
+function parsePersoFichesQuery(raw?: string): boolean {
+  return parseInfiniteQuery(raw);
 }
 
 function parseExcludeIdsQuery(raw?: string): number[] {
@@ -134,18 +171,20 @@ function assertOrdersRequireUserId(
   }
 }
 
-function parseImportCategorie(raw?: string): 'histoire' | 'pratique' {
+function parseImportCategorie(raw?: string): 'histoire' | 'pratique' | 'connaissance' {
   if (raw === undefined || raw === '') return 'histoire';
-  if (raw === 'histoire' || raw === 'pratique') return raw;
-  throw new BadRequestException('Query categorie : "histoire" (défaut) ou "pratique"');
+  if (raw === 'histoire' || raw === 'pratique' || raw === 'connaissance') return raw;
+  throw new BadRequestException(
+    'Query categorie : "histoire" (défaut), "pratique" ou "connaissance"',
+  );
 }
 
 /** Filtre de questions pour le jeu (GET random / collections/:id). */
-function parsePlayQtypeQuery(raw?: string): 'histoire' | 'pratique' | 'melanger' {
+function parsePlayQtypeQuery(raw?: string): 'histoire' | 'pratique' | 'connaissance' | 'melanger' {
   if (raw === undefined || raw === '') return 'melanger';
-  if (raw === 'histoire' || raw === 'pratique' || raw === 'melanger') return raw;
+  if (raw === 'histoire' || raw === 'pratique' || raw === 'connaissance' || raw === 'melanger') return raw;
   throw new BadRequestException(
-    'Query qtype : "histoire", "pratique" ou "melanger" (défaut : tout mélanger)',
+    'Query qtype : "histoire", "pratique", "connaissance" ou "melanger" (défaut : tout mélanger)',
   );
 }
 
@@ -153,28 +192,12 @@ function parsePlayQtypeQuery(raw?: string): 'histoire' | 'pratique' | 'melanger'
 export class QuizzController {
   constructor(private readonly quizz: QuizzService) {}
 
-  @Get('modules')
-  listModules() {
-    return this.quizz.listModules();
-  }
-
-  @Post('modules')
-  createModule(@Body() body: CreateQuizzModuleDto) {
-    return this.quizz.createModule(body.nom);
-  }
-
-  @Delete('modules/:moduleId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  deleteModule(@Param('moduleId', ParseIntPipe) moduleId: number) {
-    return this.quizz.deleteModule(moduleId);
-  }
-
-  @Post('modules/:moduleId/collections')
-  createCollectionInModule(
-    @Param('moduleId', ParseIntPipe) moduleId: number,
-    @Body() body: CreateCollectionInModuleDto,
+  @Post('collection-tags/:tagCollectionId/collections')
+  createCollectionUnderTag(
+    @Param('tagCollectionId', ParseIntPipe) tagCollectionId: number,
+    @Body() body: CreateCollectionUnderTagDto,
   ) {
-    return this.quizz.createCollectionInModule(moduleId, {
+    return this.quizz.createCollectionInTag(tagCollectionId, {
       userId: body.userId,
       nom: body.nom,
     });
@@ -185,66 +208,36 @@ export class QuizzController {
     return this.quizz.listCollections();
   }
 
+  @Get('ref-importance-personnalite')
+  listRefImportancePersonalite() {
+    return this.quizz.listRefImportancePersonalite();
+  }
+
+  @Get('personalites')
+  listPersonalitesPicker() {
+    return this.quizz.listPersonalitesPicker();
+  }
+
+  @Post('personalites/collections')
+  createPersonaliteCollection(@Body() body: CreatePersonaliteCollectionDto) {
+    return this.quizz.createPersonaliteCollection({
+      userId: body.userId,
+      nom: body.nom,
+      prenom: body.prenom,
+      naissance: body.naissance,
+      mort: body.mort,
+      resumer: body.resumer ?? '',
+      tagCollectionId: body.tagCollectionId,
+    });
+  }
+
   @Post('collections')
   createStandaloneCollection(@Body() body: CreateStandaloneCollectionDto) {
     return this.quizz.createStandaloneCollection({
       userId: body.userId,
       nom: body.nom,
-      moduleId: body.moduleId,
+      tagCollectionId: body.tagCollectionId,
     });
-  }
-
-  @Get('collections/:id/sous-collections')
-  listSousCollections(@Param('id', ParseIntPipe) collectionId: number) {
-    return this.quizz.listSousCollectionsByCollection(collectionId);
-  }
-
-  @Post('collections/:id/sous-collections')
-  createSousCollection(
-    @Param('id', ParseIntPipe) collectionId: number,
-    @Body() body: CreateSousCollectionDto,
-  ) {
-    return this.quizz.createSousCollection(collectionId, body);
-  }
-
-  @Patch('sous-collections/:sousId')
-  updateSousCollection(
-    @Param('sousId', ParseIntPipe) sousId: number,
-    @Body() body: CreateSousCollectionDto,
-  ) {
-    return this.quizz.updateSousCollection(sousId, body);
-  }
-
-  @Delete('sous-collections/:sousId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  deleteSousCollection(
-    @Param('sousId', ParseIntPipe) sousId: number,
-    @Query('userId', ParseIntPipe) userId: number,
-  ) {
-    return this.quizz.deleteSousCollection(sousId, userId);
-  }
-
-  @Post('sous-collections/:sousId/questions')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  attachQuestionToSousCollection(
-    @Param('sousId', ParseIntPipe) sousId: number,
-    @Body() body: AttachQuestionToSousCollectionDto,
-  ) {
-    return this.quizz.attachQuestionToSousCollection(sousId, body);
-  }
-
-  @Delete('sous-collections/:sousId/questions/:questionId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  detachQuestionFromSousCollection(
-    @Param('sousId', ParseIntPipe) sousId: number,
-    @Param('questionId', ParseIntPipe) questionId: number,
-    @Query('userId', ParseIntPipe) userId: number,
-  ) {
-    return this.quizz.detachQuestionFromSousCollection(
-      sousId,
-      userId,
-      questionId,
-    );
   }
 
   @Get('collections/:id')
@@ -256,28 +249,45 @@ export class QuizzController {
     @Query('infinite') infiniteRaw?: string,
     @Query('exclude') excludeRaw?: string,
     @Query('sousCollectionId') sousCollectionIdRaw?: string,
+    @Query('includeChildren') includeChildrenRaw?: string,
+    @Query('childrenMix') childrenMixRaw?: string,
+    @Query('familyQuota') familyQuotaRaw?: string,
+    @Query('familyMax') familyMaxRaw?: string,
+    @Query('persoFiches') persoFichesRaw?: string,
   ) {
-    const parseOptPositiveInt = (label: string, s?: string): number | undefined => {
-      if (s === undefined || s === '') return undefined;
-      const n = Number(s);
+    const qtype = parsePlayQtypeQuery(qtypeRaw);
+    const parseOptSousId = (): number | undefined => {
+      if (sousCollectionIdRaw === undefined || sousCollectionIdRaw === '') {
+        return undefined;
+      }
+      const n = Number(sousCollectionIdRaw);
       if (!Number.isInteger(n) || n < 1) {
         throw new BadRequestException(
-          `Query ${label} : entier ≥ 1 attendu si le paramètre est fourni`,
+          'Query sousCollectionId : entier ≥ 1 attendu si le paramètre est fourni',
         );
       }
       return n;
     };
-    const qtype = parsePlayQtypeQuery(qtypeRaw);
-    const sousCollectionId = parseOptPositiveInt(
-      'sousCollectionId',
-      sousCollectionIdRaw,
-    );
+    const sousCollectionId = parseOptSousId();
+    const includeChildCollections =
+      includeChildrenRaw === '1' ||
+      includeChildrenRaw === 'true' ||
+      includeChildrenRaw === 'yes';
+    const childCollectionsMix =
+      childrenMixRaw != null && childrenMixRaw.trim().toLowerCase() === 'famille'
+        ? 'famille'
+        : 'melange';
     const hasPlay =
       (orderRaw != null && orderRaw !== '') ||
       (userIdRaw != null && userIdRaw !== '') ||
       (infiniteRaw != null && infiniteRaw !== '') ||
       (excludeRaw != null && excludeRaw !== '') ||
-      sousCollectionId != null;
+      sousCollectionId !== undefined ||
+      (includeChildrenRaw != null && includeChildrenRaw !== '') ||
+      (childrenMixRaw != null && childrenMixRaw !== '') ||
+      (familyQuotaRaw != null && familyQuotaRaw !== '') ||
+      (familyMaxRaw != null && familyMaxRaw !== '') ||
+      (persoFichesRaw != null && persoFichesRaw !== '');
     if (!hasPlay) {
       return this.quizz.getCollection(id, qtype);
     }
@@ -292,23 +302,67 @@ export class QuizzController {
       limit: infinite ? 15 : undefined,
       excludeIds,
       sousCollectionId,
+      includeChildCollections:
+        includeChildCollections && sousCollectionId === undefined ? true : undefined,
+      childCollectionsMix:
+        includeChildCollections && sousCollectionId === undefined
+          ? childCollectionsMix
+          : undefined,
+      familyQuotaPercent:
+        includeChildCollections && sousCollectionId === undefined
+          ? parseFamilyQuotaQuery(familyQuotaRaw)
+          : undefined,
+      familyQuotaMax:
+        includeChildCollections && sousCollectionId === undefined
+          ? parseFamilyMaxQuery(familyMaxRaw)
+          : undefined,
+      includePersonnaliteFiches:
+        sousCollectionId === undefined ? parsePersoFichesQuery(persoFichesRaw) : undefined,
     });
   }
 
-  @Post('collections/:id/modules')
-  assignCollectionToModule(
+  @Post('collections/:id/collection-tags')
+  assignCollectionTag(
     @Param('id', ParseIntPipe) collectionId: number,
-    @Body() body: AssignCollectionToModuleDto,
+    @Body() body: AssignCollectionTagDto,
   ) {
-    return this.quizz.assignCollectionToModule(collectionId, body.moduleId);
+    return this.quizz.assignCollectionTag(collectionId, body.tagCollectionId);
   }
 
-  @Delete('collections/:id/modules/:moduleId')
-  unassignCollectionFromModule(
+  @Delete('collections/:id/collection-tags/:tagCollectionId')
+  unassignCollectionTag(
     @Param('id', ParseIntPipe) collectionId: number,
-    @Param('moduleId', ParseIntPipe) moduleId: number,
+    @Param('tagCollectionId', ParseIntPipe) tagCollectionId: number,
   ) {
-    return this.quizz.unassignCollectionFromModule(collectionId, moduleId);
+    return this.quizz.unassignCollectionTag(collectionId, tagCollectionId);
+  }
+
+  @Post('collections/:id/personalites')
+  assignPersonaliteToCollection(
+    @Param('id', ParseIntPipe) collectionId: number,
+    @Body() body: AssignPersonaliteToCollectionDto,
+  ) {
+    return this.quizz.assignPersonaliteToCollection(collectionId, {
+      userId: body.userId,
+      personaliteId: body.personaliteId,
+      importanceType:
+        body.importanceType === null || body.importanceType === undefined
+          ? null
+          : body.importanceType,
+    });
+  }
+
+  @Delete('collections/:id/personalites/:personaliteId')
+  unassignPersonaliteFromCollection(
+    @Param('id', ParseIntPipe) collectionId: number,
+    @Param('personaliteId', ParseIntPipe) personaliteId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.unassignPersonaliteFromCollection(
+      collectionId,
+      personaliteId,
+      userId,
+    );
   }
 
   @Delete('collections/:id')
@@ -318,6 +372,132 @@ export class QuizzController {
     @Query('userId', ParseIntPipe) userId: number,
   ) {
     return this.quizz.deleteCollection(collectionId, userId);
+  }
+
+  @Get('collections/:collectionId/sous-collections')
+  listSousCollections(@Param('collectionId', ParseIntPipe) collectionId: number) {
+    return this.quizz.listSousCollectionsForParent(collectionId);
+  }
+
+  @Post('collections/:collectionId/sous-collections')
+  createSousCollection(
+    @Param('collectionId', ParseIntPipe) collectionId: number,
+    @Body() body: CreateSousCollectionBodyDto,
+  ) {
+    return this.quizz.createChildSousCollection(collectionId, {
+      user_id: body.user_id,
+      nom: body.nom,
+      description: body.description ?? '',
+    });
+  }
+
+  @Patch('sous-collections/:sousId')
+  patchSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Body() body: PatchSousCollectionBodyDto,
+  ) {
+    return this.quizz.updateChildSousCollection(sousId, {
+      user_id: body.user_id,
+      nom: body.nom,
+      description: body.description ?? '',
+    });
+  }
+
+  @Delete('sous-collections/:sousId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.deleteChildSousCollection(sousId, userId);
+  }
+
+  @Post('sous-collections/:sousId/questions')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  attachQuestionToSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Body() body: AttachQuestionToSousCollectionBodyDto,
+  ) {
+    return this.quizz.attachQuestionToChildCollection(sousId, {
+      user_id: body.user_id,
+      question_id: body.question_id,
+    });
+  }
+
+  @Delete('sous-collections/:sousId/questions/:questionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  detachQuestionFromSousCollection(
+    @Param('sousId', ParseIntPipe) sousId: number,
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.detachQuestionFromChildCollection(sousId, questionId, userId);
+  }
+
+  @Get('collections/:collectionId/groupe-questions')
+  listGroupeQuestions(@Param('collectionId', ParseIntPipe) collectionId: number) {
+    return this.quizz.listGroupeQuestionsForCollection(collectionId);
+  }
+
+  @Post('collections/:collectionId/groupe-questions')
+  createGroupeQuestions(
+    @Param('collectionId', ParseIntPipe) collectionId: number,
+    @Body() body: CreateGroupeQuestionsBodyDto,
+  ) {
+    return this.quizz.createGroupeQuestions(collectionId, {
+      user_id: body.user_id,
+      nom: body.nom,
+      description: body.description,
+    });
+  }
+
+  @Patch('groupe-questions/:groupeId')
+  patchGroupeQuestions(
+    @Param('groupeId', ParseIntPipe) groupeId: number,
+    @Body() body: PatchGroupeQuestionsBodyDto,
+  ) {
+    return this.quizz.updateGroupeQuestions(groupeId, {
+      user_id: body.user_id,
+      nom: body.nom,
+      description: body.description,
+    });
+  }
+
+  @Delete('groupe-questions/:groupeId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteGroupeQuestions(
+    @Param('groupeId', ParseIntPipe) groupeId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.deleteGroupeQuestions(groupeId, userId);
+  }
+
+  @Get('collections/:collectionId/reflexion-chain')
+  getReflexionChain(
+    @Param('collectionId', ParseIntPipe) collectionId: number,
+    @Query('groupeId') groupeIdRaw?: string,
+  ) {
+    const groupeId =
+      groupeIdRaw !== undefined && groupeIdRaw !== ''
+        ? Number.parseInt(groupeIdRaw, 10)
+        : undefined;
+    const groupeQuestionsId =
+      groupeId !== undefined && Number.isFinite(groupeId) && groupeId >= 1 ? groupeId : undefined;
+    return this.quizz.getReflexionChainEditor(collectionId, groupeQuestionsId);
+  }
+
+  @Patch('collections/:collectionId/reflexion-chain')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  patchReflexionChain(
+    @Param('collectionId', ParseIntPipe) collectionId: number,
+    @Body() body: PatchReflexionChainDto,
+  ) {
+    return this.quizz.setReflexionChainOrder(collectionId, {
+      user_id: body.user_id,
+      ordered_question_ids: body.ordered_question_ids,
+      groupe_questions_id: body.groupe_questions_id,
+      chain_color_levels: body.chain_color_levels,
+    });
   }
 
   @Get('random')
@@ -369,16 +549,33 @@ export class QuizzController {
     });
   }
 
+  @Get('categories/hierarchy')
+  listRefCategoriesHierarchy() {
+    return this.quizz.listRefCategoriesHierarchy();
+  }
+
   @Get('categories')
   listRefCategories() {
     return this.quizz.listRefCategories();
+  }
+
+  /** `ref_importance` pour les questions (distinct de `ref-importance-personnalite`). */
+  @Get('ref-question-importance')
+  listRefQuestionImportance() {
+    return this.quizz.listRefImportanceQuestions();
+  }
+
+  /** `ref_difficulter` pour les questions. */
+  @Get('ref-question-difficulte')
+  listRefQuestionDifficulte() {
+    return this.quizz.listRefDifficulteQuestions();
   }
 
   @Post('questions/import')
   importQuestions(
     @Body() body: LlmImportBodyDto,
     @Query('collectionId') collectionIdStr?: string,
-    @Query('moduleId') moduleIdStr?: string,
+    @Query('tagCollectionId') tagCollectionIdStr?: string,
     @Query('categorie') categorieRaw?: string,
     @Query('sousCollectionId') sousCollectionIdStr?: string,
   ) {
@@ -393,22 +590,17 @@ export class QuizzController {
       return n;
     };
     const collectionId = parseOptInt('collectionId', collectionIdStr);
-    const moduleId = parseOptInt('moduleId', moduleIdStr);
+    const tagCollectionId = parseOptInt('tagCollectionId', tagCollectionIdStr);
     const sousCollectionId = parseOptInt('sousCollectionId', sousCollectionIdStr);
-    if (moduleId != null && collectionId == null) {
+    if (tagCollectionId != null && collectionId == null) {
       throw new BadRequestException(
-        'Query moduleId sans collectionId : indique collectionId pour rattacher l’import.',
-      );
-    }
-    if (sousCollectionId != null && collectionId == null) {
-      throw new BadRequestException(
-        'Query sousCollectionId sans collectionId : indique collectionId pour rattacher l’import.',
+        'Query tagCollectionId sans collectionId : indique collectionId pour rattacher l’import.',
       );
     }
     const categorie = parseImportCategorie(categorieRaw);
     return this.quizz.importQuestionsFromLlmJson(body, {
       collectionId,
-      moduleId,
+      tagCollectionId,
       categorie,
       sousCollectionId,
     });
@@ -443,7 +635,10 @@ export class QuizzController {
       question: body?.question,
       commentaire: body?.commentaire,
       categorie_id: body?.categorie_id,
+      categorie_e_id: body?.categorie_e_id,
       verifier: body?.verifier,
+      importance_id: body?.importance_id,
+      difficulter_id: body?.difficulter_id,
     });
   }
 
@@ -453,6 +648,14 @@ export class QuizzController {
     @Body() body: UpdateReponseDto,
   ) {
     return this.quizz.updateReponse(id, { reponse: body.reponse });
+  }
+
+  /** Supprime un lien « question ↔ question » (`relation_question_implicite`). */
+  @Delete('questions/implicit-relations/:relationId')
+  deleteImplicitQuestionRelation(
+    @Param('relationId', ParseIntPipe) relationId: number,
+  ): Promise<void> {
+    return this.quizz.deleteImplicitQuestionRelation(relationId);
   }
 
   @Delete('questions/:id')

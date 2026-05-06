@@ -20,6 +20,7 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
   const [reponseError, setReponseError] = useState<string | null>(null);
   const [createReponses, setCreateReponses] = useState(defaultCreateReponses);
   const [createFormError, setCreateFormError] = useState<string | null>(null);
+  const [implicitRelationRemoveBusyId, setImplicitRelationRemoveBusyId] = useState<number | null>(null);
 
   const isCreate = variant === "create";
   const title = settings.modalTitle ?? (isCreate ? "Nouvelle question" : "Modifier la question");
@@ -39,8 +40,13 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     setReponseBusy(true);
     setReponseError(null);
     try {
-      await patchReponse(editingReponseId, { reponse: t });
-      await Promise.resolve(actions.onReponseUpdated());
+      const isLocalDraft = (data.questionDetail?.id ?? 0) < 0;
+      if (isLocalDraft && actions.onLocalDraftReponseSave != null) {
+        await Promise.resolve(actions.onLocalDraftReponseSave(editingReponseId, t));
+      } else {
+        await patchReponse(editingReponseId, { reponse: t });
+        await Promise.resolve(actions.onReponseUpdated());
+      }
       setEditingReponseId(null);
       setReponseDraft("");
     } catch {
@@ -68,6 +74,9 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     if (data.sousCollectionsForCreate != null && data.sousCollectionsForCreate.length > 0) {
       payload.sous_collection_id = drafts.sousCollectionId ?? null;
     }
+    if (drafts.createLinkImplicit !== undefined) {
+      payload.link_implicit_relation = drafts.createLinkImplicit;
+    }
     await Promise.resolve(actions.onCreateSave(payload));
   };
 
@@ -82,7 +91,17 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
   };
 
   const onBackdropClick = () => {
-    if (!status.saving && !reponseBusy) settings.onClose();
+    if (!status.saving && !reponseBusy && implicitRelationRemoveBusyId === null) settings.onClose();
+  };
+
+  const removeImplicitRelationClick = async (relationId: number) => {
+    if (actions.onRemoveImplicitRelation == null) return;
+    setImplicitRelationRemoveBusyId(relationId);
+    try {
+      await Promise.resolve(actions.onRemoveImplicitRelation(relationId));
+    } finally {
+      setImplicitRelationRemoveBusyId(null);
+    }
   };
 
   const setCreateReponseCorrectAt = (idx: number) => {
@@ -98,10 +117,21 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     setReponseDraft(reponse);
   };
 
+  const interactionLockedWhileImplicit =
+    status.saving || reponseBusy || implicitRelationRemoveBusyId !== null;
+
   const dialogue = {
     title,
     isCreate,
     onBackdropClick,
+    interactionLockedWhileImplicit,
+  };
+
+  const implicitRelations = {
+    items: data.questionDetail?.implicit_relations ?? [],
+    removeBusyRelationId: implicitRelationRemoveBusyId,
+    onRemoveRelation: removeImplicitRelationClick,
+    removalEnabled: actions.onRemoveImplicitRelation != null,
   };
 
   const creation = {
@@ -146,5 +176,6 @@ export function useQuestionEditModal(props: QuestionEditModalProps) {
     creation,
     composantExterne: llmPanel,
     editionReponses,
+    implicitRelations,
   };
 }

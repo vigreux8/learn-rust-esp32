@@ -90,6 +90,7 @@ export class QuizzImportService {
     targetCollectionId: number;
     questions: LlmImportQuestionDto[];
     categorieId: number;
+    /** Rattache aussi chaque question créée à cette collection enfant (`question_collection`). */
     sousCollectionId?: number;
   }): Promise<{ createdQuestions: number }> {
     const { userId, targetCollectionId, questions, categorieId, sousCollectionId } = params;
@@ -106,20 +107,23 @@ export class QuizzImportService {
           collection_id: targetCollectionId,
           verifier: false,
         });
-        createdQuestions += 1;
         if (sousCollectionId != null) {
-          await tx.relation_sous_collections.create({
-            data: {
-              sous_collection_id: sousCollectionId,
-              question_id: questionId,
-            },
+          await tx.question_collection.create({
+            data: { collection_id: sousCollectionId, question_id: questionId },
           });
         }
+        createdQuestions += 1;
       }
       await tx.quizz_collection.update({
         where: { id: targetCollectionId },
         data: { update_at: t },
       });
+      if (sousCollectionId != null) {
+        await tx.quizz_collection.update({
+          where: { id: sousCollectionId },
+          data: { update_at: t },
+        });
+      }
     });
     return { createdQuestions };
   }

@@ -10,16 +10,12 @@ export function pendingDeleteLabels(pending: PendingDelete): { title: string; me
       title: `Supprimer la collection « ${c.nom} » ?`,
       message:
         `Cette action est definitive :\n` +
-        `· la collection et ses liens vers les supercollections seront supprimes ;\n` +
+        `· la collection et ses liens (etiquettes, sous-collections) seront supprimes ;\n` +
         `· les ${total} question${total > 1 ? "s" : ""} qui ne sont liees qu a cette collection seront supprimees (reponses et scores inclus) ;\n` +
         `· une question encore presente dans une autre collection sera seulement detachee de celle-ci.`,
     };
   }
-  const m = pending.data;
-  return {
-    title: `Supprimer la supercollection « ${m.nom} » ?`,
-    message: "Les liens avec les collections seront retires. Les collections elles-memes ne sont pas supprimees.",
-  };
+  return null;
 }
 
 export function filterCollections(list: CollectionUi[], filter: CollectionFilter, myUserId: number): CollectionUi[] {
@@ -32,7 +28,7 @@ export function filterCollections(list: CollectionUi[], filter: CollectionFilter
   return list;
 }
 
-export function applyModuleFilter(list: CollectionUi[], moduleFilter: number | "all"): CollectionUi[] {
-  if (moduleFilter === "all") return list;
-  return list.filter((c) => (c.modules ?? []).some((m) => m.id === moduleFilter));
+export function applyTagFilter(list: CollectionUi[], tagFilter: number | "all"): CollectionUi[] {
+  if (tagFilter === "all") return list;
+  return list.filter((c) => (c.collection_tags ?? []).some((m) => m.id === tagFilter));
 }

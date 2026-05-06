@@ -1,5 +1,14 @@
-import type { PlayOrder, PlayQtype } from "../../../lib/playOrder";
-import type { QuestionUi } from "../../../types/quizz";
+import type {
+  ChildCollectionsMix,
+  PlayOrder,
+  PlayQtype,
+} from "../../../lib/playOrder";
+import type { QuestionCategorieKey } from "../../../lib/questionCategories";
+import type {
+  QuestionUi,
+  RefCategorieHierarchyRow,
+  RefQuestionScaleRow,
+} from "../../../types/quizz";
 
 export type QuizSessionViewProps = {
   collectionId?: string;
@@ -17,11 +26,22 @@ export type SessionData = {
   /** Filtrage sous-collection pour les rechargements « infinite » (mode collection). */
   playSousCollectionId?: number;
   useServerPlayModes: boolean;
+  /** Hors bonne réponse : index suivant (sortie des suites réflexion après erreur). */
+  wrongAnswerNextIndex?: number[];
+  playIncludeReflexion?: boolean;
+  playReflexionSharePercent?: number;
+  playIncludeChildCollections?: boolean;
+  playChildCollectionsMix?: ChildCollectionsMix;
+  playFamilyQuotaPercent?: number;
+  playFamilyQuotaMax?: number;
+  playIncludePersonnaliteFiches?: boolean;
 };
 
 export type QuizSessionHeaderProps = {
   data: SessionData;
   backTarget: string;
+  /** Libellé court si la question affichée provient d’une sous-collection (mode parent + enfants). */
+  questionSourceNom?: string;
 };
 
 export type QuizSessionQuestionCardProps = {
@@ -36,6 +56,27 @@ export type QuizSessionQuestionCardProps = {
   draftVerifier: boolean;
   nextBusy: boolean;
   fetchingMore: boolean;
+  categorieSections: {
+    hierarchy: RefCategorieHierarchyRow[];
+    parentKeys: QuestionCategorieKey[];
+    draftParentKeyResolved: QuestionCategorieKey | null;
+    draftParentId: number | null;
+    draftEnfantId: number | null;
+    resumeLine: string;
+    /** Draft différent du dernier état serveur pour cette question. */
+    pendingSync: boolean;
+    onParentCategory: (key: QuestionCategorieKey) => void;
+    onChildCategory: (enfantId: number) => void;
+  };
+  scaleSections: {
+    difficulteRows: RefQuestionScaleRow[];
+    importanceRows: RefQuestionScaleRow[];
+    draftDifficulteId: number | null;
+    draftImportanceId: number | null;
+    pendingSync: boolean;
+    onDifficulte: (rowId: number) => void;
+    onImportance: (rowId: number) => void;
+  };
   onPick: (reponseId: number) => void;
   onOpenCreateLinkedQuestionModal: (q: QuestionUi) => void;
   onOpenEditQuestionModal: (q: QuestionUi) => void;

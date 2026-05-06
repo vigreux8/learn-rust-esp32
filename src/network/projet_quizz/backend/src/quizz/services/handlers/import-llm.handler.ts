@@ -42,14 +42,14 @@ export class ImportLlmHandler {
     return u.id;
   }
 
-  private async resolveImportCategorieId(kind: 'histoire' | 'pratique'): Promise<number> {
-    const row = await this.prisma.prisma.ref_categorie.findFirst({
+  private async resolveImportCategorieId(kind: 'histoire' | 'pratique' | 'connaissance'): Promise<number> {
+    const row = await this.prisma.prisma.ref_p_categorie.findFirst({
       where: { type: kind },
       orderBy: { id: 'asc' },
     });
     if (!row) {
       throw new BadRequestException(
-        `Catégorie "${kind}" introuvable dans ref_categorie — exécute le seed Prisma.`,
+        `Catégorie "${kind}" introuvable dans ref_p_categorie — exécute le seed Prisma.`,
       );
     }
     return row.id;
@@ -65,8 +65,8 @@ export class ImportLlmHandler {
     body: LlmImportBodyDto,
     opts?: {
       collectionId?: number;
-      moduleId?: number;
-      categorie?: 'histoire' | 'pratique';
+      tagCollectionId?: number;
+      categorie?: 'histoire' | 'pratique' | 'connaissance';
       sousCollectionId?: number;
     },
   ): Promise<{
@@ -76,12 +76,6 @@ export class ImportLlmHandler {
     const userId = await this.resolveImportUserId(body.user_id);
     const categorieKind = opts?.categorie ?? 'histoire';
     const categorieId = await this.resolveImportCategorieId(categorieKind);
-
-    if (opts?.sousCollectionId != null && opts.collectionId == null) {
-      throw new BadRequestException(
-        'Query sousCollectionId sans collectionId : indique collectionId pour rattacher l’import.',
-      );
-    }
 
     if (opts?.collectionId != null) {
       const col = await this.prisma.prisma.quizz_collection.findUnique({
@@ -95,24 +89,24 @@ export class ImportLlmHandler {
           `La collection ${opts.collectionId} n’appartient pas à l’utilisateur ${userId} (user_id du JSON).`,
         );
       }
-      if (opts.sousCollectionId != null) {
-        const sc = await this.prisma.prisma.sous_collections.findUnique({
-          where: { id: opts.sousCollectionId },
-        });
-        if (!sc) {
-          throw new NotFoundException(`Sous-collection ${opts.sousCollectionId} introuvable`);
-        }
-        if (sc.collection_id !== opts.collectionId) {
-          throw new BadRequestException(
-            `La sous-collection ${opts.sousCollectionId} n’appartient pas à la collection ${opts.collectionId}.`,
-          );
-        }
-      }
       const flat = this.flattenParsedQuestions(body);
       if (flat.length === 0) {
         throw new BadRequestException(
           'Aucune question à importer : fusionne tes blocs "collections" et/ou "questions_sans_collection".',
         );
+      }
+      if (opts.sousCollectionId != null) {
+        const link = await this.prisma.prisma.relation_collection.findFirst({
+          where: {
+            p_collection: opts.collectionId,
+            e_collection: opts.sousCollectionId,
+          },
+        });
+        if (!link) {
+          throw new BadRequestException(
+            `sousCollectionId ${opts.sousCollectionId} : cette collection enfant n’est pas liée au parent ${opts.collectionId}.`,
+          );
+        }
       }
       const result = await this.importService.importQuestionsFromLlmJson({
         userId,
@@ -122,8 +116,11 @@ export class ImportLlmHandler {
         collectionId: opts.collectionId,
         sousCollectionId: opts.sousCollectionId,
       });
-      if (opts.moduleId != null) {
-        await this.structure.assignCollectionToModule(opts.collectionId, opts.moduleId);
+      if (opts.tagCollectionId != null) {
+        await this.structure.assignCollectionTag(
+          opts.tagCollectionId,
+          opts.collectionId,
+        );
       }
       return result;
     }

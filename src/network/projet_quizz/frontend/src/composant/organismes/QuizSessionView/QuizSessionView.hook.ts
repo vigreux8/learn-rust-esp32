@@ -6,7 +6,12 @@ import {
   deleteQuestion,
   fetchRandomQuiz,
   fetchRefCategories,
+  fetchRefCategoriesHierarchy,
+  fetchRefQuestionDifficulte,
+  fetchRefQuestionImportance,
+  fetchReflexionChain,
   fetchSousCollections,
+  deleteImplicitQuestionRelation,
   patchQuestion,
   postAttachQuestionToSousCollection,
   postCreateQuestion,
@@ -18,13 +23,49 @@ import {
   playOrdersRequireUserId,
   shuffleQuestions,
 } from "../../../lib/playOrder";
+import { buildReflexionMixedPlaylist } from "../../../lib/playSessionReflexionMix";
 import { saveLastQuizResult } from "../../../lib/lastQuizResult";
 import { useRoutePath } from "../../../lib/routePathContext";
 import { useUserSession } from "../../../lib/userSession";
-import type { QuestionUi, QuizzQuestionDetail, RefCategorieRow } from "../../../types/quizz";
+import {
+  formatSessionDraftCategorieResume,
+  getSupportedQuestionCategories,
+  isQuestionCategorieKey,
+  type QuestionCategorieKey,
+} from "../../../lib/questionCategories";
+import type {
+  QuestionUi,
+  QuizzQuestionDetail,
+  RefCategorieHierarchyRow,
+  RefCategorieRow,
+  RefQuestionScaleRow,
+} from "../../../types/quizz";
 import type { QuestionCreateSavePayload } from "../QuestionEditModal/QuestionEditModal";
-import { buildQuestionCopyJson, isPickedCorrect, shuffleQuestionsAnswers } from "./QuizSessionView.metier";
+import {
+  buildQuestionCopyJson,
+  isPickedCorrect,
+  mergeQuizSessionQuestionFromRow,
+  shuffleQuestionsAnswers,
+  sortRefDifficulteForQuizSession,
+  sortRefImportanceForQuizSession,
+} from "./QuizSessionView.metier";
 import type { QuizSessionViewProps, SessionData } from "./QuizSessionView.types";
+
+function ensureQuestionQuizUiFields(q: QuestionUi): QuestionUi {
+  return {
+    ...q,
+    categorie_e_id: q.categorie_e_id ?? null,
+    categorie_e_type: q.categorie_e_type ?? null,
+    importance_id: q.importance_id ?? null,
+    importance_lvl: q.importance_lvl ?? null,
+    difficulter_id: q.difficulter_id ?? null,
+    difficulter_lvl: q.difficulter_lvl ?? null,
+  };
+}
+
+function mapQuestionsCategories(questions: QuestionUi[]): QuestionUi[] {
+  return questions.map(ensureQuestionQuizUiFields);
+}
 
 export function useQuizSessionView(props: QuizSessionViewProps) {
   const { collectionId } = props;
@@ -43,6 +84,15 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const [good, setGood] = useState(0);
 
   const [refCategories, setRefCategories] = useState<RefCategorieRow[]>([]);
+  const [refCategoriesHierarchy, setRefCategoriesHierarchy] = useState<RefCategorieHierarchyRow[]>(
+    [],
+  );
+  const [draftCategoriePid, setDraftCategoriePid] = useState<number | null>(null);
+  const [draftCategorieEid, setDraftCategorieEid] = useState<number | null>(null);
+  const [refImportanceQuestion, setRefImportanceQuestion] = useState<RefQuestionScaleRow[]>([]);
+  const [refDifficulteQuestion, setRefDifficulteQuestion] = useState<RefQuestionScaleRow[]>([]);
+  const [draftImportanceId, setDraftImportanceId] = useState<number | null>(null);
+  const [draftDifficulteId, setDraftDifficulteId] = useState<number | null>(null);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [questionModalVariant, setQuestionModalVariant] = useState<"edit" | "create">("edit");
   const [createParentQuestionId, setCreateParentQuestionId] = useState<number | null>(null);
@@ -60,11 +110,21 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<{ id: number; nom: string }[]>([]);
   const [draftSousCollectionId, setDraftSousCollectionId] = useState<number | null>(null);
+  const [draftCreateLinkImplicit, setDraftCreateLinkImplicit] = useState(true);
 
   useEffect(() => {
     void fetchRefCategories()
       .then(setRefCategories)
       .catch(() => setRefCategories([]));
+    void fetchRefCategoriesHierarchy()
+      .then(setRefCategoriesHierarchy)
+      .catch(() => setRefCategoriesHierarchy([]));
+    void fetchRefQuestionImportance()
+      .then((rows) => setRefImportanceQuestion(sortRefImportanceForQuizSession(rows)))
+      .catch(() => setRefImportanceQuestion([]));
+    void fetchRefQuestionDifficulte()
+      .then((rows) => setRefDifficulteQuestion(sortRefDifficulteForQuizSession(rows)))
+      .catch(() => setRefDifficulteQuestion([]));
   }, []);
 
   useEffect(() => {
@@ -94,7 +154,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 }
               : { qtype: pf.qtype },
           );
-          const questions = shuffleQuestionsAnswers(fetchedQuestions);
+          const questions = mapQuestionsCategories(shuffleQuestionsAnswers(fetchedQuestions));
           if (cancelled) return;
           if (questions.length === 0) {
             setLoadError("empty");
@@ -111,6 +171,11 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
             playInfinite: pf.infinite,
             playUserId,
             useServerPlayModes: pf.useServerPlayModes,
+            playIncludeReflexion: false,
+            playIncludeChildCollections: false,
+            playFamilyQuotaPercent: 100,
+            playFamilyQuotaMax: 0,
+            playIncludePersonnaliteFiches: false,
           });
           setIndex(0);
           setPickedId(null);
@@ -123,6 +188,19 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           setLoadError("bad");
           return;
         }
+        const childFetchOpts =
+          pf.includeChildCollections && pf.sousCollectionId == null
+            ? {
+                includeChildCollections: true as const,
+                childCollectionsMix: pf.childCollectionsMix,
+                familyQuotaPercent: pf.familyQuotaPercent,
+                ...(pf.familyQuotaMax > 0 ? { familyQuotaMax: pf.familyQuotaMax } : {}),
+              }
+            : {};
+        const persoFetchOpts =
+          pf.includePersonnaliteFiches && pf.sousCollectionId == null
+            ? { includePersonnaliteFiches: true as const }
+            : {};
         const col = await fetchCollection(
           cid,
           pf.useServerPlayModes
@@ -133,18 +211,49 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 infinite: pf.infinite,
                 excludeIds: pf.excludeIds,
                 sousCollectionId: pf.sousCollectionId,
+                ...childFetchOpts,
+                ...persoFetchOpts,
               }
-            : { qtype: pf.qtype, sousCollectionId: pf.sousCollectionId },
+            : { qtype: pf.qtype, sousCollectionId: pf.sousCollectionId, ...childFetchOpts, ...persoFetchOpts },
         );
         if (cancelled) return;
         if (col.questions.length === 0) {
           setLoadError("empty");
           return;
         }
-        let questions = shuffleQuestionsAnswers(col.questions);
+        let questions = mapQuestionsCategories(shuffleQuestionsAnswers(col.questions));
         if (!pf.useServerPlayModes && orders.length === 1 && orders[0] === "random") {
           questions = shuffleQuestions(questions);
         }
+
+        let wrongAnswerNextIndex: number[] | undefined;
+        const playIncludeReflexion = pf.includeReflexion;
+        const playReflexionSharePercent = pf.reflexionSharePercent;
+        if (
+          pf.includeReflexion &&
+          !pf.infinite &&
+          questions.length > 0
+        ) {
+          try {
+            const chainEditor = await fetchReflexionChain(cid);
+            const byId = new Map(questions.map((q) => [q.id, q]));
+            const chainQs = chainEditor.ordered_questions
+              .map((row) => byId.get(row.id))
+              .filter((x): x is QuestionUi => x != null);
+            if (chainQs.length > 0) {
+              const mixed = buildReflexionMixedPlaylist({
+                shuffledCollectionQuestions: questions,
+                chainOrderedQuestions: chainQs,
+                reflexionSharePercent: pf.reflexionSharePercent,
+              });
+              questions = mixed.questions;
+              wrongAnswerNextIndex = mixed.wrongAnswerNextIndex;
+            }
+          } catch {
+            /* chaîne indisponible : session sans suites réflexion */
+          }
+        }
+
         if (pf.infinite) allServedQuestionIdsRef.current = questions.map((q) => q.id);
 
         setData({
@@ -158,6 +267,14 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           playUserId,
           playSousCollectionId: pf.sousCollectionId,
           useServerPlayModes: pf.useServerPlayModes,
+          wrongAnswerNextIndex,
+          playIncludeReflexion,
+          playReflexionSharePercent,
+          playIncludeChildCollections: pf.includeChildCollections,
+          playChildCollectionsMix: pf.childCollectionsMix,
+          playFamilyQuotaPercent: pf.familyQuotaPercent,
+          playFamilyQuotaMax: pf.familyQuotaMax,
+          playIncludePersonnaliteFiches: pf.includePersonnaliteFiches,
         });
         setIndex(0);
         setPickedId(null);
@@ -191,7 +308,12 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   useEffect(() => {
     if (data == null) return;
     const cur = data.questions[index];
-    if (cur) setDraftVerifier(cur.verifier);
+    if (!cur) return;
+    setDraftVerifier(cur.verifier);
+    setDraftCategoriePid(cur.categorie_id);
+    setDraftCategorieEid(cur.categorie_e_id ?? null);
+    setDraftImportanceId(cur.importance_id ?? null);
+    setDraftDifficulteId(cur.difficulter_id ?? null);
   }, [data, index]);
 
   useEffect(() => {
@@ -208,6 +330,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     setCreateParentQuestionId(null);
     setSousCollectionsForCreateModal([]);
     setDraftSousCollectionId(null);
+    setDraftCreateLinkImplicit(true);
   };
 
   const openEditQuestionModal = (current: QuestionUi) => {
@@ -234,6 +357,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setActionMessage("Catégories indisponibles : impossible de créer une question pour l’instant.");
       return;
     }
+    setDraftCreateLinkImplicit(true);
     setSousCollectionsForCreateModal([]);
     setDraftSousCollectionId(null);
     setQuestionModalVariant("create");
@@ -269,6 +393,16 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     }
   };
 
+  const removeImplicitRelationFromQuestionModal = async (relationId: number) => {
+    try {
+      await deleteImplicitQuestionRelation(relationId);
+      await refreshQuestionModalDetail();
+      setActionMessage("Lien implicite retiré.");
+    } catch {
+      setActionMessage("Suppression du lien impossible.");
+    }
+  };
+
   const saveEditQuestionModal = async () => {
     if (questionModalDetail == null) return;
     setQuestionModalSaving(true);
@@ -291,14 +425,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         const questions = [...prev.questions];
         const cur = questions[qi];
         if (!cur) return prev;
-        questions[qi] = {
-          ...cur,
-          question: updated.question,
-          commentaire: updated.commentaire,
-          categorie_id: updated.categorie_id,
-          categorie_type: updated.categorie_type,
-          verifier: updated.verifier,
-        };
+        questions[qi] = mergeQuizSessionQuestionFromRow(cur, updated);
         return { ...prev, questions };
       });
       setActionMessage("Question mise à jour.");
@@ -314,13 +441,14 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     if (createParentQuestionId == null) return;
     setQuestionModalSaving(true);
     try {
+      const withImplicitParentLink = payload.link_implicit_relation !== false;
       const created = await postCreateQuestion({
         user_id: userId,
         categorie_id: payload.categorie_id,
         question: payload.question,
         commentaire: payload.commentaire,
         reponses: payload.reponses,
-        parent_question_id: createParentQuestionId,
+        ...(withImplicitParentLink ? { parent_question_id: createParentQuestionId } : {}),
         collection_id: data?.collectionId ?? undefined,
       });
       if (payload.sous_collection_id != null) {
@@ -329,11 +457,18 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           question_id: created.id,
         });
       }
-      setActionMessage(
-        payload.sous_collection_id != null
-          ? "Question créée, liée au parent et à la sous-collection choisie."
-          : "Question créée et liée à la question affichée (parent).",
-      );
+      const sousPart = payload.sous_collection_id != null;
+      let msg: string;
+      if (withImplicitParentLink) {
+        msg = sousPart
+          ? "Question créée, liée au parent (relation implicite) et à la sous-collection choisie."
+          : "Question créée et liée à la question affichée via la relation implicite.";
+      } else {
+        msg = sousPart
+          ? "Question créée sans lien implicite avec la parente ; rattachement à la sous-collection effectué."
+          : "Question créée sans ajout de lien implicite avec la question parente.";
+      }
+      setActionMessage(msg);
       closeQuestionModal();
     } catch {
       throw new Error("create failed");
@@ -368,6 +503,53 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     setPickedId(reponseId);
   };
 
+  const resolveDraftParentKey = (): QuestionCategorieKey | null => {
+    if (draftCategoriePid == null) return null;
+    const h = refCategoriesHierarchy.find((row) => row.id === draftCategoriePid);
+    if (h?.type && isQuestionCategorieKey(h.type)) return h.type;
+    const f = refCategories.find((row) => row.id === draftCategoriePid);
+    if (f?.type && isQuestionCategorieKey(f.type)) return f.type;
+    return null;
+  };
+
+  const handleParentCategory = (parentKey: QuestionCategorieKey) => {
+    if (data == null || nextBusy || fetchingMore || deleteBusy) return;
+
+    const fromHierarchy = refCategoriesHierarchy.find((row) => row.type === parentKey);
+    const fromFlat = refCategories.find((row) => row.type === parentKey);
+    const parentId = fromHierarchy?.id ?? fromFlat?.id;
+    if (parentId == null) return;
+
+    if (resolveDraftParentKey() === parentKey) {
+      setDraftCategoriePid(null);
+      setDraftCategorieEid(null);
+      return;
+    }
+    setDraftCategoriePid(parentId);
+    setDraftCategorieEid(null);
+  };
+
+  const handleChildCategory = (enfantId: number) => {
+    if (data == null || nextBusy || fetchingMore || deleteBusy) return;
+    if (draftCategoriePid == null) return;
+
+    if (draftCategorieEid === enfantId) {
+      setDraftCategorieEid(null);
+    } else {
+      setDraftCategorieEid(enfantId);
+    }
+  };
+
+  const handleDraftDifficulte = (id: number) => {
+    if (nextBusy || fetchingMore || deleteBusy) return;
+    setDraftDifficulteId((prev) => (prev === id ? null : id));
+  };
+
+  const handleDraftImportance = (id: number) => {
+    if (nextBusy || fetchingMore || deleteBusy) return;
+    setDraftImportanceId((prev) => (prev === id ? null : id));
+  };
+
   const syncVerifierIfNeeded = async (): Promise<boolean> => {
     if (data == null) return false;
     const curQ = data.questions[index];
@@ -379,12 +561,81 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         if (!prev) return prev;
         const qs = [...prev.questions];
         const i = qs.findIndex((x) => x.id === curQ.id);
-        if (i >= 0 && qs[i]) qs[i] = { ...qs[i]!, verifier: updated.verifier };
+        if (i >= 0 && qs[i]) qs[i] = mergeQuizSessionQuestionFromRow(qs[i]!, updated);
         return { ...prev, questions: qs };
       });
       return true;
     } catch {
       setActionMessage("Enregistrement du fake-checker impossible. Réessaie.");
+      return false;
+    }
+  };
+
+  const syncDraftCategoriesIfNeeded = async (): Promise<boolean> => {
+    if (data == null) return false;
+    const curQ = data.questions[index];
+    if (curQ == null) return false;
+
+    if (draftCategoriePid === null) {
+      setActionMessage(
+        "Choisis une catégorie parente avant « Suivant » ou la fin de session (aucune n’est pas enregistrable en base).",
+      );
+      return false;
+    }
+
+    const sameParent = draftCategoriePid === curQ.categorie_id;
+    const sameChild = (draftCategorieEid ?? null) === (curQ.categorie_e_id ?? null);
+    if (sameParent && sameChild) return true;
+
+    try {
+      const patchBody: { categorie_id?: number; categorie_e_id?: number | null } = {};
+      if (!sameParent) {
+        patchBody.categorie_id = draftCategoriePid;
+        patchBody.categorie_e_id = draftCategorieEid ?? null;
+      } else {
+        patchBody.categorie_e_id = draftCategorieEid ?? null;
+      }
+      const updated = await patchQuestion(curQ.id, patchBody);
+      setData((prev) => {
+        if (!prev) return prev;
+        const qs = [...prev.questions];
+        const qi = qs.findIndex((x) => x.id === curQ.id);
+        if (qi < 0 || !qs[qi]) return prev;
+        qs[qi] = mergeQuizSessionQuestionFromRow(qs[qi]!, updated);
+        return { ...prev, questions: qs };
+      });
+      return true;
+    } catch {
+      setActionMessage("Enregistrement des catégories impossible. Réessaie.");
+      return false;
+    }
+  };
+
+  const syncDraftScalesIfNeeded = async (): Promise<boolean> => {
+    if (data == null) return false;
+    const curQ = data.questions[index];
+    if (curQ == null) return false;
+
+    const sameImp = (draftImportanceId ?? null) === (curQ.importance_id ?? null);
+    const sameDif = (draftDifficulteId ?? null) === (curQ.difficulter_id ?? null);
+    if (sameImp && sameDif) return true;
+
+    try {
+      const patchBody: { importance_id?: number | null; difficulter_id?: number | null } = {};
+      if (!sameImp) patchBody.importance_id = draftImportanceId ?? null;
+      if (!sameDif) patchBody.difficulter_id = draftDifficulteId ?? null;
+      const updated = await patchQuestion(curQ.id, patchBody);
+      setData((prev) => {
+        if (!prev) return prev;
+        const qs = [...prev.questions];
+        const qi = qs.findIndex((x) => x.id === curQ.id);
+        if (qi < 0 || !qs[qi]) return prev;
+        qs[qi] = mergeQuizSessionQuestionFromRow(qs[qi]!, updated);
+        return { ...prev, questions: qs };
+      });
+      return true;
+    } catch {
+      setActionMessage("Enregistrement de la difficulté ou de l’importance impossible. Réessaie.");
       return false;
     }
   };
@@ -396,15 +647,36 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setNextBusy(true);
       try {
         if (!(await syncVerifierIfNeeded())) return;
+        if (!(await syncDraftCategoriesIfNeeded())) return;
+        if (!(await syncDraftScalesIfNeeded())) return;
 
-        const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
+        const correct = pickedId != null && isPickedCorrect(data.questions, index, pickedId);
+        const delta = correct ? 1 : 0;
         const nextGood = good + delta;
+        const nextIdx = correct
+          ? index + 1
+          : (data.wrongAnswerNextIndex?.[index] ?? index + 1);
 
-        if (index + 1 >= total) {
+        if (nextIdx >= total) {
           if (data.playInfinite) {
             setFetchingMore(true);
             try {
               const excludeIds = allServedQuestionIdsRef.current;
+              const childInf =
+                data.playIncludeChildCollections === true && data.playSousCollectionId == null
+                  ? {
+                      includeChildCollections: true as const,
+                      childCollectionsMix: data.playChildCollectionsMix ?? "melange",
+                      familyQuotaPercent: data.playFamilyQuotaPercent ?? 100,
+                      ...(data.playFamilyQuotaMax != null && data.playFamilyQuotaMax > 0
+                        ? { familyQuotaMax: data.playFamilyQuotaMax }
+                        : {}),
+                    }
+                  : {};
+              const persoInf =
+                data.playIncludePersonnaliteFiches === true && data.playSousCollectionId == null
+                  ? { includePersonnaliteFiches: true as const }
+                  : {};
               const nextQuestionsRaw =
                 collectionId === "random"
                   ? await fetchRandomQuiz({
@@ -422,9 +694,11 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                         infinite: true,
                         excludeIds,
                         sousCollectionId: data.playSousCollectionId,
+                        ...childInf,
+                        ...persoInf,
                       })
                     ).questions;
-              const nextQuestions = shuffleQuestionsAnswers(nextQuestionsRaw);
+              const nextQuestions = mapQuestionsCategories(shuffleQuestionsAnswers(nextQuestionsRaw));
 
               playedTowardResultsRef.current += 1;
               if (nextQuestions.length === 0) {
@@ -437,6 +711,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                   playOrders: data.playOrders,
                   playQtype: data.playQtype,
                   playInfinite: true,
+                  playIncludeReflexion: data.playIncludeReflexion,
+                  playReflexionSharePercent: data.playReflexionSharePercent,
+                  playIncludeChildCollections: data.playIncludeChildCollections,
+                  playChildCollectionsMix: data.playChildCollectionsMix,
+                  playFamilyQuotaPercent: data.playFamilyQuotaPercent,
+                  playFamilyQuotaMax: data.playFamilyQuotaMax,
+                  playIncludePersonnaliteFiches: data.playIncludePersonnaliteFiches,
                 });
                 route("/results");
                 return;
@@ -447,7 +728,16 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 ...nextQuestions.map((nq) => nq.id),
               ];
               setGood(nextGood);
-              setData((prev) => (prev != null ? { ...prev, questions: nextQuestions } : prev));
+              setData((prev) =>
+                prev != null
+                  ? {
+                      ...prev,
+                      questions: nextQuestions,
+                      wrongAnswerNextIndex: undefined,
+                      playIncludeReflexion: false,
+                    }
+                  : prev,
+              );
               setIndex(0);
               setPickedId(null);
               return;
@@ -469,6 +759,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
             playOrders: data.playOrders,
             playQtype: data.playQtype,
             playInfinite: false,
+            playIncludeReflexion: data.playIncludeReflexion,
+            playReflexionSharePercent: data.playReflexionSharePercent,
+            playIncludeChildCollections: data.playIncludeChildCollections,
+            playChildCollectionsMix: data.playChildCollectionsMix,
+            playFamilyQuotaPercent: data.playFamilyQuotaPercent,
+            playFamilyQuotaMax: data.playFamilyQuotaMax,
+            playIncludePersonnaliteFiches: data.playIncludePersonnaliteFiches,
           });
           route("/results");
           return;
@@ -476,7 +773,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
 
         playedTowardResultsRef.current += 1;
         setGood(nextGood);
-        setIndex((i) => i + 1);
+        setIndex(nextIdx);
         setPickedId(null);
       } finally {
         setNextBusy(false);
@@ -490,6 +787,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       setNextBusy(true);
       try {
         if (!(await syncVerifierIfNeeded())) return;
+        if (!(await syncDraftCategoriesIfNeeded())) return;
+        if (!(await syncDraftScalesIfNeeded())) return;
         const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
         const nextGood = good + delta;
         playedTowardResultsRef.current += 1;
@@ -502,6 +801,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           playOrders: data.playOrders,
           playQtype: data.playQtype,
           playInfinite: true,
+          playIncludeReflexion: data.playIncludeReflexion,
+          playReflexionSharePercent: data.playReflexionSharePercent,
+          playIncludeChildCollections: data.playIncludeChildCollections,
+          playChildCollectionsMix: data.playChildCollectionsMix,
+          playFamilyQuotaPercent: data.playFamilyQuotaPercent,
+          playFamilyQuotaMax: data.playFamilyQuotaMax,
+          playIncludePersonnaliteFiches: data.playIncludePersonnaliteFiches,
         });
         route("/results");
       } finally {
@@ -538,7 +844,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       if (idx >= filtered.length) {
         newIndex = filtered.length - 1;
       }
-      setData({ ...snapshot, questions: filtered });
+      setData({ ...snapshot, questions: filtered, wrongAnswerNextIndex: undefined });
       setIndex(newIndex);
       setPickedId(null);
       setActionMessage("Question supprimée.");
@@ -563,11 +869,28 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const correct = revealed && pickedId != null && isPickedCorrect(data.questions, index, pickedId);
   const anecdote = (q.commentaire ?? "").trim();
   const backTarget = data.mode === "random" ? "/" : "/collections";
+  const categoryPendingSync =
+    draftCategoriePid !== q.categorie_id ||
+    (draftCategorieEid ?? null) !== (q.categorie_e_id ?? null);
+  const scalesPendingSync =
+    (draftImportanceId ?? null) !== (q.importance_id ?? null) ||
+    (draftDifficulteId ?? null) !== (q.difficulter_id ?? null);
+  const categoryResumeLine = formatSessionDraftCategorieResume(
+    draftCategoriePid,
+    draftCategorieEid,
+    refCategoriesHierarchy,
+  );
+  const draftResolvedParentKey = resolveDraftParentKey();
 
+  const trimmedSourceNom = (q.source_collection_nom ?? "").trim();
   const session = {
     data,
     backTarget,
     actionMessage,
+    questionSourceNom:
+      data.playIncludeChildCollections === true && trimmedSourceNom.length > 0
+        ? trimmedSourceNom
+        : undefined,
   };
 
   const progress = {
@@ -598,6 +921,26 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     onDraftVerifier: setDraftVerifier,
     onNext: handleNext,
     onEndInfiniteSession: handleEndInfiniteSession,
+    categorieSections: {
+      hierarchy: refCategoriesHierarchy,
+      parentKeys: getSupportedQuestionCategories(refCategories),
+      draftParentKeyResolved: draftResolvedParentKey,
+      draftParentId: draftCategoriePid,
+      draftEnfantId: draftCategorieEid,
+      resumeLine: categoryResumeLine,
+      pendingSync: categoryPendingSync,
+      onParentCategory: handleParentCategory,
+      onChildCategory: handleChildCategory,
+    },
+    scaleSections: {
+      difficulteRows: refDifficulteQuestion,
+      importanceRows: refImportanceQuestion,
+      draftDifficulteId,
+      draftImportanceId,
+      pendingSync: scalesPendingSync,
+      onDifficulte: handleDraftDifficulte,
+      onImportance: handleDraftImportance,
+    },
   };
 
   const editModal = {
@@ -613,8 +956,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       onDraftCommentaire: setDraftCommentaire,
       onDraftCategorieId: setDraftCategorieId,
       onDraftSousCollectionId: setDraftSousCollectionId,
+      onDraftCreateLinkImplicit: setDraftCreateLinkImplicit,
       onReponseUpdated: () => void refreshQuestionModalDetail(),
       onCreateSave: (payload: QuestionCreateSavePayload) => saveCreateQuestionModal(payload),
+      onRemoveImplicitRelation: (relationId: number) => removeImplicitRelationFromQuestionModal(relationId),
     },
     status: {
       loading: questionModalLoading,
@@ -631,6 +976,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       commentaire: draftCommentaire,
       categorieId: draftCategorieId,
       sousCollectionId: draftSousCollectionId,
+      createLinkImplicit:
+        questionModalVariant === "create" && createParentQuestionId != null
+          ? draftCreateLinkImplicit
+          : undefined,
     },
   };
 

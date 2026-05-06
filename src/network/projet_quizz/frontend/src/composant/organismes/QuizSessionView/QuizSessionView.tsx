@@ -24,7 +24,11 @@ export function QuizSessionView(props: QuizSessionViewProps) {
     <div class={QUIZ_SESSION_STYLES.pageShell}>
       <AppHeader />
       <main class={QUIZ_SESSION_STYLES.contentMain}>
-        <QuizSessionHeader data={session.data} backTarget={session.backTarget} />
+        <QuizSessionHeader
+          data={session.data}
+          backTarget={session.backTarget}
+          questionSourceNom={session.questionSourceNom}
+        />
         {session.actionMessage ? (
           <p class={QUIZ_SESSION_STYLES.actionMessage}>{session.actionMessage}</p>
         ) : null}

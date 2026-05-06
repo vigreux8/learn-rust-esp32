@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   CollectionUi,
+  GroupeQuestionsUi,
+  PersonalitePickerRowDto,
   QuestionUi,
-  QuizzModuleRow,
   QuizzQuestionDetail,
   QuizzQuestionRow,
+  RefCategorieHierarchyRow,
   RefCategorieRow,
+  RefImportancePersonaliteDto,
+  ReflexionChainEditorDto,
+  RefQuestionScaleRow,
   SousCollectionUi,
 } from '../quizz.type';
 import { AppCollectionImportBodyDto } from '../dto/import-collection.dto';
@@ -29,7 +34,7 @@ export class QuizzService {
   // Delegation: QuizzReadService
   buildCollectionUi(
     collectionId: number,
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger' = 'melanger',
   ): Promise<CollectionUi | null> {
     return this.read.buildCollectionUi(collectionId, qtype);
   }
@@ -40,10 +45,47 @@ export class QuizzService {
 
   getCollection(
     collectionId: number,
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger' = 'melanger',
     play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
     return this.read.getCollection(collectionId, qtype, play);
+  }
+
+  listSousCollectionsForParent(parentId: number): Promise<SousCollectionUi[]> {
+    return this.read.listSousCollectionsForParent(parentId);
+  }
+
+  createChildSousCollection(
+    parentId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    return this.write.createChildSousCollection(parentId, body);
+  }
+
+  updateChildSousCollection(
+    childId: number,
+    body: { user_id: number; nom: string; description: string },
+  ): Promise<SousCollectionUi> {
+    return this.write.updateChildSousCollection(childId, body);
+  }
+
+  deleteChildSousCollection(childId: number, userId: number): Promise<void> {
+    return this.write.deleteChildSousCollection(childId, userId);
+  }
+
+  attachQuestionToChildCollection(
+    childId: number,
+    body: { user_id: number; question_id: number },
+  ): Promise<void> {
+    return this.write.attachQuestionToChildCollection(childId, body);
+  }
+
+  detachQuestionFromChildCollection(
+    childId: number,
+    questionId: number,
+    userId: number,
+  ): Promise<void> {
+    return this.write.detachQuestionFromChildCollection(childId, questionId, userId);
   }
 
   randomQuizQuestions(opts: QuizPlaySessionOpts): Promise<QuestionUi[]> {
@@ -64,8 +106,69 @@ export class QuizzService {
     return this.read.listRefCategories();
   }
 
+  listRefCategoriesHierarchy(): Promise<RefCategorieHierarchyRow[]> {
+    return this.read.listRefCategoriesHierarchy();
+  }
+
+  listRefImportanceQuestions(): Promise<RefQuestionScaleRow[]> {
+    return this.read.listRefImportanceQuestions();
+  }
+
+  listRefDifficulteQuestions(): Promise<RefQuestionScaleRow[]> {
+    return this.read.listRefDifficulteQuestions();
+  }
+
+  listRefImportancePersonalite(): Promise<RefImportancePersonaliteDto[]> {
+    return this.read.listRefImportancePersonalite();
+  }
+
+  listPersonalitesPicker(): Promise<PersonalitePickerRowDto[]> {
+    return this.read.listPersonalitesPicker();
+  }
+
   getQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
     return this.read.getQuestionDetail(id);
+  }
+
+  listGroupeQuestionsForCollection(collectionId: number): Promise<GroupeQuestionsUi[]> {
+    return this.read.listGroupeQuestionsForCollection(collectionId);
+  }
+
+  getReflexionChainEditor(
+    collectionId: number,
+    groupeQuestionsId?: number,
+  ): Promise<ReflexionChainEditorDto> {
+    return this.read.getReflexionChainEditor(collectionId, groupeQuestionsId);
+  }
+
+  setReflexionChainOrder(
+    collectionId: number,
+    body: {
+      user_id: number;
+      ordered_question_ids: number[];
+      groupe_questions_id?: number;
+      chain_color_levels?: Record<string, number>;
+    },
+  ): Promise<void> {
+    return this.write.setReflexionChainOrder(collectionId, body);
+  }
+
+  createGroupeQuestions(
+    collectionId: number,
+    body: { user_id: number; nom: string; description?: string },
+  ): Promise<GroupeQuestionsUi> {
+    return this.write.createGroupeQuestions(collectionId, body);
+  }
+
+  updateGroupeQuestions(
+    groupeId: number,
+    body: { user_id: number; nom: string; description?: string },
+  ): Promise<GroupeQuestionsUi> {
+    return this.write.updateGroupeQuestions(groupeId, body);
+  }
+
+  deleteGroupeQuestions(groupeId: number, userId: number): Promise<void> {
+    return this.write.deleteGroupeQuestions(groupeId, userId);
   }
 
   // Delegation: QuizzWriteService
@@ -75,7 +178,10 @@ export class QuizzService {
       question?: string;
       commentaire?: string;
       categorie_id?: number;
+      categorie_e_id?: number | null;
       verifier?: boolean;
+      importance_id?: number | null;
+      difficulter_id?: number | null;
     },
   ): Promise<QuizzQuestionRow> {
     return this.write.updateQuestion(id, data);
@@ -90,6 +196,10 @@ export class QuizzService {
 
   deleteQuestion(id: number): Promise<void> {
     return this.write.deleteQuestion(id);
+  }
+
+  deleteImplicitQuestionRelation(relationId: number): Promise<void> {
+    return this.write.deleteImplicitQuestionRelation(relationId);
   }
 
   createQuestion(body: {
@@ -108,40 +218,28 @@ export class QuizzService {
     return this.write.deleteCollection(collectionId, userId);
   }
 
-  listModules(): Promise<QuizzModuleRow[]> {
-    return this.structure.listModules();
-  }
-
-  createModule(nom: string): Promise<QuizzModuleRow> {
-    return this.structure.createModule(nom);
-  }
-
-  deleteModule(moduleId: number): Promise<void> {
-    return this.structure.deleteModule(moduleId);
-  }
-
-  createCollectionInModule(
-    moduleId: number,
+  createCollectionInTag(
+    tagCollectionId: number,
     body: { userId: number; nom: string },
   ): Promise<{
     collectionId: number;
-    moduleId: number;
+    tagCollectionId: number;
     nom: string;
     create_at: string;
     update_at: string;
   }> {
-    return this.structure.createCollectionInModule({
-      moduleId,
+    return this.structure.createCollectionWithTag({
+      tagCollectionId,
       userId: body.userId,
       nom: body.nom,
     });
   }
 
-  async assignCollectionToModule(
+  async assignCollectionTag(
     collectionId: number,
-    moduleId: number,
+    tagCollectionId: number,
   ): Promise<CollectionUi> {
-    await this.structure.assignCollectionToModule(collectionId, moduleId);
+    await this.structure.assignCollectionTag(tagCollectionId, collectionId);
     const ui = await this.read.buildCollectionUi(collectionId);
     if (!ui) {
       throw new NotFoundException(`Collection ${collectionId} introuvable après assignation`);
@@ -149,11 +247,11 @@ export class QuizzService {
     return ui;
   }
 
-  async unassignCollectionFromModule(
+  async unassignCollectionTag(
     collectionId: number,
-    moduleId: number,
+    tagCollectionId: number,
   ): Promise<CollectionUi> {
-    await this.structure.unassignCollectionFromModule(collectionId, moduleId);
+    await this.structure.unassignCollectionTag(tagCollectionId, collectionId);
     const ui = await this.read.buildCollectionUi(collectionId);
     if (!ui) {
       throw new NotFoundException(
@@ -166,7 +264,7 @@ export class QuizzService {
   async createStandaloneCollection(body: {
     userId: number;
     nom: string;
-    moduleId?: number;
+    tagCollectionId?: number;
   }): Promise<CollectionUi> {
     const { collectionId } =
       await this.structure.createStandaloneCollection(body);
@@ -177,12 +275,65 @@ export class QuizzService {
     return ui;
   }
 
+  async createPersonaliteCollection(body: {
+    userId: number;
+    nom: string;
+    prenom: string;
+    naissance: number;
+    mort?: number | null;
+    resumer: string;
+    tagCollectionId?: number;
+  }): Promise<CollectionUi> {
+    const { collectionId } =
+      await this.write.createPersonaliteCollection(body);
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(
+        `Collection ${collectionId} introuvable après création personnalité`,
+      );
+    }
+    return ui;
+  }
+
+  async assignPersonaliteToCollection(
+    collectionId: number,
+    body: {
+      userId: number;
+      personaliteId: number;
+      importanceType?: string | null;
+    },
+  ): Promise<CollectionUi> {
+    await this.write.assignPersonaliteToCollection(collectionId, body);
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    return ui;
+  }
+
+  async unassignPersonaliteFromCollection(
+    collectionId: number,
+    personaliteId: number,
+    userId: number,
+  ): Promise<CollectionUi> {
+    await this.write.unassignPersonaliteFromCollection(
+      collectionId,
+      personaliteId,
+      userId,
+    );
+    const ui = await this.read.buildCollectionUi(collectionId);
+    if (!ui) {
+      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    }
+    return ui;
+  }
+
   importQuestionsFromLlmJson(
     body: LlmImportBodyDto,
     opts?: {
       collectionId?: number;
-      moduleId?: number;
-      categorie?: 'histoire' | 'pratique';
+      tagCollectionId?: number;
+      categorie?: 'histoire' | 'pratique' | 'connaissance';
       sousCollectionId?: number;
     },
   ): Promise<{
@@ -197,48 +348,5 @@ export class QuizzService {
     opts?: { collectionId?: number },
   ): Promise<{ createdQuestions: number }> {
     return this.importCollection.importAppCollectionQuestionsJson(body, opts);
-  }
-
-  listSousCollectionsByCollection(
-    collectionId: number,
-  ): Promise<SousCollectionUi[]> {
-    return this.read.listSousCollectionsByCollection(collectionId);
-  }
-
-  createSousCollection(
-    collectionId: number,
-    body: { user_id: number; nom: string; description: string },
-  ): Promise<SousCollectionUi> {
-    return this.write.createSousCollection(collectionId, body);
-  }
-
-  updateSousCollection(
-    sousCollectionId: number,
-    body: { user_id: number; nom: string; description: string },
-  ): Promise<SousCollectionUi> {
-    return this.write.updateSousCollection(sousCollectionId, body);
-  }
-
-  deleteSousCollection(sousCollectionId: number, userId: number): Promise<void> {
-    return this.write.deleteSousCollection(sousCollectionId, userId);
-  }
-
-  attachQuestionToSousCollection(
-    sousCollectionId: number,
-    body: { user_id: number; question_id: number },
-  ): Promise<void> {
-    return this.write.attachQuestionToSousCollection(sousCollectionId, body);
-  }
-
-  detachQuestionFromSousCollection(
-    sousCollectionId: number,
-    userId: number,
-    questionId: number,
-  ): Promise<void> {
-    return this.write.detachQuestionFromSousCollection(
-      sousCollectionId,
-      userId,
-      questionId,
-    );
   }
 }

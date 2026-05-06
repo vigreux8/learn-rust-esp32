@@ -84,13 +84,15 @@ export class ImportCollectionHandler {
     }
 
     for (const qin of body.questions) {
-      const ref = await this.prisma.prisma.ref_categorie.findUnique({ where: { id: qin.categorie_id } });
+      const ref = await this.prisma.prisma.ref_p_categorie.findUnique({
+        where: { id: qin.categorie_id },
+      });
       if (!ref) {
-        throw new BadRequestException(`ref_categorie introuvable : id ${qin.categorie_id}`);
+        throw new BadRequestException(`ref_p_categorie introuvable : id ${qin.categorie_id}`);
       }
       if (ref.type !== qin.categorie_type) {
         throw new BadRequestException(
-          `ref_categorie ${qin.categorie_id} : type attendu « ${ref.type} », reçu « ${qin.categorie_type} ».`,
+          `ref_p_categorie ${qin.categorie_id} : type attendu « ${ref.type} », reçu « ${qin.categorie_type} ».`,
         );
       }
     }

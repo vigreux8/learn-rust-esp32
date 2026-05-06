@@ -5,11 +5,18 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  CollectionPersonnaliteRef,
   CollectionUi,
+  GroupeQuestionsUi,
+  PersonalitePickerRowDto,
   QuestionUi,
   QuizzQuestionDetail,
   QuizzQuestionRow,
+  RefCategorieHierarchyRow,
   RefCategorieRow,
+  RefImportancePersonaliteDto,
+  ReflexionChainEditorDto,
+  RefQuestionScaleRow,
   SousCollectionUi,
 } from '../quizz.type';
 
@@ -26,12 +33,37 @@ export type QuizPlaySessionOpts = {
   /** Modes appliqués dans l’ordre (ex. `ancien` puis `mal_repondu`). */
   orders: QuizPlayOrder[];
   /** Présent pour le tirage « toutes collections » (`GET /quizz/random`). */
-  qtype?: 'histoire' | 'pratique' | 'melanger';
+  qtype?: 'histoire' | 'pratique' | 'connaissance' | 'melanger';
   userId?: number;
   limit?: number;
   excludeIds: number[];
-  /** Limite les questions à celles liées à cette sous-collection (doit appartenir à la collection). */
+  /** Collection enfant : ne retourne que les questions aussi liées à cette enfant (`question_collection`). */
   sousCollectionId?: number;
+  /**
+   * Fusionner les questions des collections enfants (`relation-collection`).
+   * Ignoré si `sousCollectionId` est défini (jeu déjà restreint à une sous-collection).
+   */
+  includeChildCollections?: boolean;
+  /**
+   * `famille` : filtres / tri / KPI appliqués **par bloc** (parent puis chaque enfant, ordre des liens).
+   * `melange` : une seule liste (ordre parent puis enfants pour dédoublonner), puis modes sur l’ensemble.
+   */
+  childCollectionsMix?: 'famille' | 'melange';
+  /**
+   * Part du paquet à tirer **par famille** (0–100). 100 = toute la famille.
+   * Ignoré si `includeChildCollections` est faux / absent.
+   */
+  familyQuotaPercent?: number;
+  /**
+   * Plafond optionnel de questions **par famille** après application du pourcentage.
+   * Ex. 80 % + max 15 ⇒ au plus 15 questions par bloc même si 80 % dépasse 15.
+   */
+  familyQuotaMax?: number;
+  /**
+   * Ajouter les questions des collections-fiches des personnalités liées à la carte
+   * (`personnalité_collection`, niveaux pionnier / important / secondaire). Ignoré si `sousCollectionId` est défini.
+   */
+  includePersonnaliteFiches?: boolean;
 };
 
 function shuffle<T>(items: T[]): T[] {
@@ -47,6 +79,81 @@ function shuffle<T>(items: T[]): T[] {
 export class QuizzReadService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private async buildCollectionHierarchyExtras(
+    collectionId: number,
+  ): Promise<{
+    parent_collection_id: number | null;
+    personnalites: CollectionPersonnaliteRef[];
+  }> {
+    const [parentLink, directPersos, pcRows] = await Promise.all([
+      this.prisma.prisma.relation_collection.findFirst({
+        where: { e_collection: collectionId },
+        select: { p_collection: true },
+      }),
+      this.prisma.prisma.personalite.findMany({
+        where: { collection_id: collectionId },
+        select: { id: true, nom: true, prenom: true },
+      }),
+      this.prisma.prisma.personnalite_collection.findMany({
+        where: { collection_id: collectionId },
+        include: {
+          personalite: { select: { id: true, nom: true, prenom: true, collection_id: true } },
+          ref_importance_personalite: { select: { type: true } },
+        },
+      }),
+    ]);
+    const byPersoId = new Map<number, CollectionPersonnaliteRef>();
+    for (const p of directPersos) {
+      byPersoId.set(p.id, {
+        id: p.id,
+        nom: p.nom,
+        prenom: p.prenom,
+        importance_type: null,
+        detachable: false,
+        fiche_collection_id: collectionId,
+      });
+    }
+    for (const row of pcRows) {
+      const imp = row.ref_importance_personalite?.type ?? null;
+      const prev = byPersoId.get(row.personalite.id);
+      const ficheId = row.personalite.collection_id;
+      if (prev) {
+        prev.importance_type = prev.importance_type ?? imp;
+        prev.detachable = true;
+      } else {
+        byPersoId.set(row.personalite.id, {
+          id: row.personalite.id,
+          nom: row.personalite.nom,
+          prenom: row.personalite.prenom,
+          importance_type: imp,
+          detachable: true,
+          fiche_collection_id: ficheId,
+        });
+      }
+    }
+    return {
+      parent_collection_id: parentLink?.p_collection ?? null,
+      personnalites: [...byPersoId.values()].sort((a, b) => a.id - b.id),
+    };
+  }
+
+  private scaleFieldsFromQuestion(q: {
+    importance_id: number | null;
+    difficulter_id: number | null;
+    ref_importance: { lvl: string } | null;
+    ref_difficulter: { lvl: string } | null;
+  }): Pick<
+    QuestionUi,
+    'importance_id' | 'importance_lvl' | 'difficulter_id' | 'difficulter_lvl'
+  > {
+    return {
+      importance_id: q.importance_id,
+      importance_lvl: q.importance_id != null && q.ref_importance ? q.ref_importance.lvl : null,
+      difficulter_id: q.difficulter_id,
+      difficulter_lvl: q.difficulter_id != null && q.ref_difficulter ? q.ref_difficulter.lvl : null,
+    };
+  }
+
   private mapQuestionToUi(q: {
     id: number;
     user_id: number;
@@ -54,14 +161,21 @@ export class QuizzReadService {
     question: string;
     commentaire: string;
     verifier: boolean;
-    categorie_id: number;
-    ref_categorie: { type: string };
+    categorie_p_id: number;
+    categorie_e_id: number | null;
+    importance_id: number | null;
+    difficulter_id: number | null;
+    ref_p_categorie: { type: string };
+    ref_e_categorie: { type: string } | null;
+    ref_importance: { lvl: string } | null;
+    ref_difficulter: { lvl: string } | null;
     quizz_question_reponse: {
       id: number;
       quizz_reponse: { id: number; reponse: string; bonne_reponse: number };
     }[];
   }): QuestionUi {
     const ordered = [...q.quizz_question_reponse].sort((a, b) => a.id - b.id);
+    const eid = q.categorie_e_id;
     return {
       id: q.id,
       user_id: q.user_id,
@@ -69,8 +183,11 @@ export class QuizzReadService {
       question: q.question,
       commentaire: q.commentaire ?? '',
       verifier: q.verifier,
-      categorie_id: q.categorie_id,
-      categorie_type: q.ref_categorie.type,
+      categorie_id: q.categorie_p_id,
+      categorie_type: q.ref_p_categorie.type,
+      categorie_e_id: eid,
+      categorie_e_type: eid != null && q.ref_e_categorie ? q.ref_e_categorie.type : null,
+      ...this.scaleFieldsFromQuestion(q),
       reponses: ordered.map((j) => ({
         id: j.quizz_reponse.id,
         reponse: j.quizz_reponse.reponse,
@@ -81,19 +198,21 @@ export class QuizzReadService {
 
   async buildCollectionUi(
     collectionId: number,
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger' = 'melanger',
   ): Promise<CollectionUi | null> {
     const col = await this.prisma.prisma.quizz_collection.findUnique({
       where: { id: collectionId },
       include: {
         user: true,
-        quizz_module_collection: {
-          orderBy: { id: 'asc' },
-          include: { quizz_module: true },
-        },
       },
     });
     if (!col) return null;
+
+    const tagLiens = await this.prisma.prisma.collection_tag_lien.findMany({
+      where: { tagged_collection_id: collectionId },
+      orderBy: { id: 'asc' },
+      include: { tag_collection: { select: { id: true, nom: true } } },
+    });
 
     const qcs = await this.prisma.prisma.question_collection.findMany({
       where: { collection_id: collectionId },
@@ -101,7 +220,10 @@ export class QuizzReadService {
       include: {
         quizz_question: {
           include: {
-            ref_categorie: true,
+            ref_p_categorie: true,
+            ref_e_categorie: true,
+            ref_importance: true,
+            ref_difficulter: true,
             quizz_question_reponse: {
               include: { quizz_reponse: true },
             },
@@ -110,31 +232,38 @@ export class QuizzReadService {
       },
     });
 
-    const question_counts_by_type = { histoire: 0, pratique: 0 };
+    const question_counts_by_type = { histoire: 0, pratique: 0, connaissance: 0 };
     for (const qc of qcs) {
-      const t = qc.quizz_question.ref_categorie.type;
+      const t = qc.quizz_question.ref_p_categorie.type;
       if (t === 'histoire') question_counts_by_type.histoire += 1;
       else if (t === 'pratique') question_counts_by_type.pratique += 1;
+      else if (t === 'connaissance') question_counts_by_type.connaissance += 1;
     }
 
     const filtered =
       qtype === 'melanger'
         ? qcs
-        : qcs.filter((qc) => qc.quizz_question.ref_categorie.type === qtype);
+        : qcs.filter((qc) => qc.quizz_question.ref_p_categorie.type === qtype);
 
     const questions = filtered.map((qc) => this.mapQuestionToUi(qc.quizz_question));
 
-    const modules = col.quizz_module_collection.map((mc) => ({
-      id: mc.quizz_module.id,
-      nom: mc.quizz_module.nom,
+    const collection_tags = tagLiens.map((row) => ({
+      id: row.tag_collection.id,
+      nom: row.tag_collection.nom,
     }));
 
-    const sousRows = await this.prisma.prisma.sous_collections.findMany({
-      where: { collection_id: collectionId },
+    const childLinks = await this.prisma.prisma.relation_collection.findMany({
+      where: { p_collection: collectionId },
       orderBy: { id: 'asc' },
-      select: { id: true, nom: true },
+      include: { child_quizz: { select: { id: true, nom: true } } },
     });
-    const sous_collections = sousRows.map((s) => ({ id: s.id, nom: s.nom }));
+    const sous_collections = childLinks.map((r) => ({
+      id: r.e_collection,
+      nom: r.child_quizz.nom,
+    }));
+
+    const { parent_collection_id, personnalites } =
+      await this.buildCollectionHierarchyExtras(collectionId);
 
     return {
       id: col.id,
@@ -145,17 +274,28 @@ export class QuizzReadService {
       questions,
       question_counts_by_type,
       createur_pseudot: col.user.pseudot,
-      modules,
+      collection_tags,
       sous_collections,
+      parent_collection_id,
+      personnalites,
     };
   }
 
   async listCollections(): Promise<CollectionUi[]> {
-    const cols = await this.prisma.prisma.quizz_collection.findMany({
-      orderBy: { id: 'asc' },
-    });
+    const [cols, fichesPerso] = await Promise.all([
+      this.prisma.prisma.quizz_collection.findMany({
+        orderBy: { id: 'asc' },
+      }),
+      this.prisma.prisma.personalite.findMany({
+        select: { collection_id: true },
+      }),
+    ]);
+    /** Collections « hébergeant » une fiche personnalité : pas de carte dans la grille (elles restent joignables par URL et picker). */
+    const sansCarteListe = new Set(fichesPerso.map((p) => p.collection_id));
+
     const out: CollectionUi[] = [];
     for (const c of cols) {
+      if (sansCarteListe.has(c.id)) continue;
       const ui = await this.buildCollectionUi(c.id);
       if (ui) out.push(ui);
     }
@@ -164,7 +304,7 @@ export class QuizzReadService {
 
   async getCollection(
     collectionId: number,
-    qtype: 'histoire' | 'pratique' | 'melanger' = 'melanger',
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger' = 'melanger',
     play?: QuizPlaySessionOpts,
   ): Promise<CollectionUi> {
     let ui = await this.buildCollectionUi(collectionId, qtype);
@@ -172,35 +312,131 @@ export class QuizzReadService {
       throw new NotFoundException(`Collection ${collectionId} introuvable`);
     }
     if (play?.sousCollectionId != null) {
-      const scId = play.sousCollectionId;
-      const sc = await this.prisma.prisma.sous_collections.findFirst({
-        where: { id: scId, collection_id: collectionId },
+      const link = await this.prisma.prisma.relation_collection.findFirst({
+        where: {
+          p_collection: collectionId,
+          e_collection: play.sousCollectionId,
+        },
       });
-      if (!sc) {
-        throw new BadRequestException(
-          `Sous-collection ${scId} introuvable pour la collection ${collectionId}.`,
+      if (!link) {
+        throw new NotFoundException(
+          `La collection enfant ${play.sousCollectionId} n’est pas liée au parent ${collectionId}.`,
         );
       }
-      const rels = await this.prisma.prisma.relation_sous_collections.findMany({
-        where: { sous_collection_id: scId },
+      const childQcs = await this.prisma.prisma.question_collection.findMany({
+        where: { collection_id: play.sousCollectionId },
         select: { question_id: true },
       });
-      const allowed = new Set(rels.map((r) => r.question_id));
-      ui = { ...ui, questions: ui.questions.filter((q) => allowed.has(q.id)) };
+      const inChild = new Set(childQcs.map((r) => r.question_id));
+      ui = { ...ui, questions: ui.questions.filter((q) => inChild.has(q.id)) };
     }
-    if (ui.questions.length === 0) {
+    /** Hors session de jeu : l’UI (sous-collections, édition) doit pouvoir charger une collection vide. */
+    if (play == null) {
+      return ui;
+    }
+
+    const mergeChildren =
+      play.includeChildCollections === true && play.sousCollectionId == null;
+
+    const injectPerso =
+      play.includePersonnaliteFiches === true && play.sousCollectionId == null;
+
+    if (!mergeChildren && ui.questions.length === 0 && !injectPerso) {
       throw new NotFoundException(
         qtype !== 'melanger'
           ? `Aucune question de type « ${qtype} » dans la collection ${collectionId}.`
           : `Collection ${collectionId} introuvable ou vide`,
       );
     }
-    if (play == null) {
-      return ui;
-    }
+
     const exclude = new Set(play.excludeIds);
-    let questions = ui.questions.filter((q) => !exclude.has(q.id));
-    questions = await this.applyPlayOrders(questions, play.orders, play.userId);
+
+    let questions: QuestionUi[];
+
+    if (mergeChildren) {
+      const links = await this.prisma.prisma.relation_collection.findMany({
+        where: { p_collection: collectionId },
+        orderBy: { id: 'asc' },
+      });
+      const tagSource = (qs: QuestionUi[], cid: number, nom: string): QuestionUi[] =>
+        qs.map((q) => ({ ...q, source_collection_id: cid, source_collection_nom: nom }));
+
+      const segments: QuestionUi[][] = [
+        tagSource(
+          ui.questions.filter((q) => !exclude.has(q.id)),
+          ui.id,
+          ui.nom,
+        ),
+      ];
+      for (const link of links) {
+        const childUi = await this.buildCollectionUi(link.e_collection, qtype);
+        if (childUi != null && childUi.questions.length > 0) {
+          segments.push(
+            tagSource(
+              childUi.questions.filter((q) => !exclude.has(q.id)),
+              childUi.id,
+              childUi.nom,
+            ),
+          );
+        }
+      }
+      if (injectPerso) {
+        const persoSegs = await this.buildPersonnaliteFicheSegments(
+          collectionId,
+          qtype,
+          exclude,
+        );
+        segments.push(...persoSegs);
+      }
+      const deduped = this.dedupeQuestionSegmentsAcrossFamilies(segments);
+      const quotaPct = Math.min(100, Math.max(0, play.familyQuotaPercent ?? 100));
+      const quotaMaxRaw = play.familyQuotaMax;
+      const quotaMax =
+        quotaMaxRaw != null && quotaMaxRaw >= 1 ? Math.floor(quotaMaxRaw) : undefined;
+      const afterQuota = deduped.map((seg) =>
+        this.sampleFamilySegment(seg, quotaPct, quotaMax),
+      );
+      const hasAny = afterQuota.some((s) => s.length > 0);
+      if (!hasAny) {
+        throw new NotFoundException(
+          qtype !== 'melanger'
+            ? `Aucune question de type « ${qtype} » dans la collection ${collectionId} et ses sous-collections.`
+            : `Collection ${collectionId} introuvable ou vide (avec sous-collections).`,
+        );
+      }
+      const mix = play.childCollectionsMix ?? 'melange';
+      if (mix === 'famille') {
+        questions = [];
+        for (const seg of afterQuota) {
+          if (seg.length === 0) continue;
+          questions.push(
+            ...(await this.applyPlayOrders(seg, play.orders, play.userId)),
+          );
+        }
+      } else {
+        const flat = afterQuota.flat();
+        questions = await this.applyPlayOrders(flat, play.orders, play.userId);
+      }
+    } else {
+      let pool = ui.questions.filter((q) => !exclude.has(q.id));
+      if (injectPerso) {
+        const persoSegs = await this.buildPersonnaliteFicheSegments(
+          collectionId,
+          qtype,
+          exclude,
+        );
+        pool = this.dedupeQuestionsPreferFirst([...pool, ...persoSegs.flat()]);
+      }
+      if (pool.length === 0) {
+        throw new NotFoundException(
+          qtype !== 'melanger'
+            ? `Aucune question de type « ${qtype} » dans la collection ${collectionId}.`
+            : `Collection ${collectionId} introuvable ou vide`,
+        );
+      }
+      questions = await this.applyPlayOrders(pool, play.orders, play.userId);
+    }
+
     if (play.limit != null && questions.length > play.limit) {
       questions = questions.slice(0, play.limit);
     }
@@ -212,6 +448,113 @@ export class QuizzReadService {
       );
     }
     return { ...ui, questions };
+  }
+
+  /**
+   * Tirage aléatoire sans remise dans une famille : borne par pourcentage du paquet et optionnellement par un plafond.
+   */
+  private sampleFamilySegment(
+    segment: QuestionUi[],
+    pct: number,
+    maxPerFamily?: number,
+  ): QuestionUi[] {
+    if (segment.length === 0) return [];
+    const p = Math.min(100, Math.max(0, pct));
+    let target: number;
+    if (p >= 100) {
+      target = segment.length;
+    } else if (p <= 0) {
+      target = 0;
+    } else {
+      target = Math.ceil(segment.length * (p / 100));
+    }
+    if (maxPerFamily != null && maxPerFamily > 0) {
+      target = Math.min(target, maxPerFamily);
+    }
+    if (target <= 0) return [];
+    if (target >= segment.length) return [...segment];
+    const shuffled = shuffle([...segment]);
+    return shuffled.slice(0, target);
+  }
+
+  /** Garde la première occurrence de chaque id (ordre du tableau). */
+  private dedupeQuestionsPreferFirst(pool: QuestionUi[]): QuestionUi[] {
+    const seen = new Set<number>();
+    const out: QuestionUi[] = [];
+    for (const q of pool) {
+      if (!seen.has(q.id)) {
+        seen.add(q.id);
+        out.push(q);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Segments de questions issus des fiches (`personalite.collection_id`) pour chaque lien
+   * `personnalité_collection` sur la collection jouée. Tri : pionnier → important → secondaire → sans niveau.
+   */
+  private async buildPersonnaliteFicheSegments(
+    rootCollectionId: number,
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger',
+    exclude: Set<number>,
+  ): Promise<QuestionUi[][]> {
+    const rows = await this.prisma.prisma.personnalite_collection.findMany({
+      where: { collection_id: rootCollectionId },
+      include: {
+        personalite: { select: { collection_id: true } },
+        ref_importance_personalite: { select: { type: true } },
+      },
+      orderBy: { id: 'asc' },
+    });
+    const importanceRank = (t: string | null | undefined): number => {
+      if (t === 'pionnier') return 0;
+      if (t === 'important') return 1;
+      if (t === 'secondaire') return 2;
+      return 3;
+    };
+    rows.sort((a, b) => {
+      const ra = importanceRank(a.ref_importance_personalite?.type);
+      const rb = importanceRank(b.ref_importance_personalite?.type);
+      if (ra !== rb) return ra - rb;
+      return a.id - b.id;
+    });
+
+    const tagSource = (qs: QuestionUi[], cid: number, nom: string): QuestionUi[] =>
+      qs.map((q) => ({ ...q, source_collection_id: cid, source_collection_nom: nom }));
+
+    const out: QuestionUi[][] = [];
+    for (const row of rows) {
+      const ficheId = row.personalite.collection_id;
+      const ficheUi = await this.buildCollectionUi(ficheId, qtype);
+      if (ficheUi == null || ficheUi.questions.length === 0) continue;
+      const filtered = ficheUi.questions.filter((q) => !exclude.has(q.id));
+      if (filtered.length === 0) continue;
+      const imp = row.ref_importance_personalite?.type;
+      const nomTag =
+        imp === 'pionnier' || imp === 'important' || imp === 'secondaire'
+          ? `${ficheUi.nom} (${imp})`
+          : ficheUi.nom;
+      out.push(tagSource(filtered, ficheUi.id, nomTag));
+    }
+    return out;
+  }
+
+  /** Dédouble les ids entre segments : le premier segment (parent) garde la priorité. */
+  private dedupeQuestionSegmentsAcrossFamilies(segments: QuestionUi[][]): QuestionUi[][] {
+    const seen = new Set<number>();
+    const out: QuestionUi[][] = [];
+    for (const seg of segments) {
+      const part: QuestionUi[] = [];
+      for (const q of seg) {
+        if (!seen.has(q.id)) {
+          seen.add(q.id);
+          part.push(q);
+        }
+      }
+      out.push(part);
+    }
+    return out;
   }
 
   private compareCreateAtIso(a: string, b: string): number {
@@ -328,7 +671,7 @@ export class QuizzReadService {
     const where =
       qtype === 'melanger'
         ? {}
-        : { ref_categorie: { type: qtype } };
+        : { ref_p_categorie: { type: qtype } };
     const rows = await this.prisma.prisma.quizz_question.findMany({
       where: {
         ...where,
@@ -336,7 +679,10 @@ export class QuizzReadService {
       },
       orderBy: { id: 'asc' },
       include: {
-        ref_categorie: true,
+        ref_p_categorie: true,
+        ref_e_categorie: true,
+        ref_importance: true,
+        ref_difficulter: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
         },
@@ -352,17 +698,54 @@ export class QuizzReadService {
   }
 
   async listRefCategories(): Promise<RefCategorieRow[]> {
-    return this.prisma.prisma.ref_categorie.findMany({
+    return this.prisma.prisma.ref_p_categorie.findMany({
       orderBy: { id: 'asc' },
       select: { id: true, type: true },
     });
+  }
+
+  async listRefImportanceQuestions(): Promise<RefQuestionScaleRow[]> {
+    return this.prisma.prisma.ref_importance.findMany({
+      orderBy: { id: 'asc' },
+      select: { id: true, lvl: true },
+    });
+  }
+
+  async listRefDifficulteQuestions(): Promise<RefQuestionScaleRow[]> {
+    return this.prisma.prisma.ref_difficulter.findMany({
+      orderBy: { id: 'asc' },
+      select: { id: true, lvl: true },
+    });
+  }
+
+  async listRefCategoriesHierarchy(): Promise<RefCategorieHierarchyRow[]> {
+    const parents = await this.prisma.prisma.ref_p_categorie.findMany({
+      orderBy: { id: 'asc' },
+      include: {
+        relation_categorie_parent: {
+          include: { enfant: true },
+          orderBy: { e_categorie: 'asc' },
+        },
+      },
+    });
+    return parents.map((p) => ({
+      id: p.id,
+      type: p.type,
+      enfants: p.relation_categorie_parent.map((rel) => ({
+        id: rel.enfant.id,
+        type: rel.enfant.type,
+      })),
+    }));
   }
 
   async getQuestionDetail(id: number): Promise<QuizzQuestionDetail> {
     const r = await this.prisma.prisma.quizz_question.findUnique({
       where: { id },
       include: {
-        ref_categorie: true,
+        ref_p_categorie: true,
+        ref_e_categorie: true,
+        ref_importance: true,
+        ref_difficulter: true,
         quizz_question_reponse: {
           include: { quizz_reponse: true },
           orderBy: { id: 'asc' },
@@ -370,6 +753,16 @@ export class QuizzReadService {
         question_collection: {
           include: { quizz_collection: true },
           orderBy: { id: 'asc' },
+        },
+        relation_implicite_as_q1: {
+          include: {
+            quizz_question_2: { select: { id: true, question: true } },
+          },
+        },
+        relation_implicite_as_q2: {
+          include: {
+            quizz_question_1: { select: { id: true, question: true } },
+          },
         },
       },
     });
@@ -382,6 +775,23 @@ export class QuizzReadService {
       reponse: j.quizz_reponse.reponse,
       bonne_reponse: j.quizz_reponse.bonne_reponse === 1,
     }));
+    const eid = r.categorie_e_id;
+    const preview = (txt: string, max = 120): string => {
+      const t = txt.replace(/\s+/g, ' ').trim();
+      return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+    };
+    const implicit_relations = [
+      ...r.relation_implicite_as_q1.map((row) => ({
+        relation_id: row.id,
+        linked_question_id: row.quizz_question_2.id,
+        linked_question_preview: preview(row.quizz_question_2.question),
+      })),
+      ...r.relation_implicite_as_q2.map((row) => ({
+        relation_id: row.id,
+        linked_question_id: row.quizz_question_1.id,
+        linked_question_preview: preview(row.quizz_question_1.question),
+      })),
+    ];
     return {
       id: r.id,
       user_id: r.user_id,
@@ -389,13 +799,17 @@ export class QuizzReadService {
       question: r.question,
       commentaire: r.commentaire ?? '',
       verifier: r.verifier,
-      categorie_id: r.categorie_id,
-      categorie_type: r.ref_categorie.type,
+      categorie_id: r.categorie_p_id,
+      categorie_type: r.ref_p_categorie.type,
+      categorie_e_id: eid,
+      categorie_e_type: eid != null && r.ref_e_categorie ? r.ref_e_categorie.type : null,
+      ...this.scaleFieldsFromQuestion(r),
       collections: r.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,
       })),
       reponses,
+      implicit_relations,
     };
   }
 
@@ -417,7 +831,10 @@ export class QuizzReadService {
       where,
       orderBy: { id: 'asc' },
       include: {
-        ref_categorie: true,
+        ref_p_categorie: true,
+        ref_e_categorie: true,
+        ref_importance: true,
+        ref_difficulter: true,
         question_collection: {
           include: { quizz_collection: true },
           orderBy: { id: 'asc' },
@@ -425,20 +842,26 @@ export class QuizzReadService {
       },
     });
 
-    return rows.map((r) => ({
+    return rows.map((r) => {
+      const eid = r.categorie_e_id;
+      return {
       id: r.id,
       user_id: r.user_id,
       create_at: r.create_at,
       question: r.question,
       commentaire: r.commentaire ?? '',
       verifier: r.verifier,
-      categorie_id: r.categorie_id,
-      categorie_type: r.ref_categorie.type,
+      categorie_id: r.categorie_p_id,
+      categorie_type: r.ref_p_categorie.type,
+      categorie_e_id: eid,
+      categorie_e_type: eid != null && r.ref_e_categorie ? r.ref_e_categorie.type : null,
+      ...this.scaleFieldsFromQuestion(r),
       collections: r.question_collection.map((qc) => ({
         id: qc.quizz_collection.id,
         nom: qc.quizz_collection.nom,
       })),
-    }));
+      };
+    });
   }
 
   listQuestionsFromQuery(collectionId?: string): Promise<QuizzQuestionRow[]> {
@@ -457,42 +880,159 @@ export class QuizzReadService {
     return this.listQuestions(n);
   }
 
-  async listSousCollectionsByCollection(
-    collectionId: number,
-  ): Promise<SousCollectionUi[]> {
-    const col = await this.prisma.prisma.quizz_collection.findUnique({
-      where: { id: collectionId },
+  /** Détail des collections enfants (schéma v4) pour l’UI « sous-collections ». */
+  async listSousCollectionsForParent(parentId: number): Promise<SousCollectionUi[]> {
+    const rels = await this.prisma.prisma.relation_collection.findMany({
+      where: { p_collection: parentId },
+      orderBy: { id: 'asc' },
+      include: { child_quizz: true },
     });
-    if (!col) {
-      throw new NotFoundException(`Collection ${collectionId} introuvable`);
+    const out: SousCollectionUi[] = [];
+    for (const rel of rels) {
+      const childId = rel.e_collection;
+      const qcs = await this.prisma.prisma.question_collection.findMany({
+        where: { collection_id: childId },
+        orderBy: { id: 'asc' },
+        include: {
+          quizz_question: { include: { ref_p_categorie: true } },
+        },
+      });
+      out.push({
+        id: childId,
+        collection_id: parentId,
+        nom: rel.child_quizz.nom,
+        description: rel.child_quizz.description ?? '',
+        questions: qcs.map((qc) => ({
+          relation_id: qc.id,
+          question_id: qc.question_id,
+          question: qc.quizz_question.question,
+          categorie_type: qc.quizz_question.ref_p_categorie.type,
+        })),
+      });
     }
+    return out;
+  }
 
-    const rows = await this.prisma.prisma.sous_collections.findMany({
+  async listRefImportancePersonalite(): Promise<RefImportancePersonaliteDto[]> {
+    const rows = await this.prisma.prisma.ref_importance_personalite.findMany({
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => ({ id: r.id, type: r.type }));
+  }
+
+  async listPersonalitesPicker(): Promise<PersonalitePickerRowDto[]> {
+    const rows = await this.prisma.prisma.personalite.findMany({
+      orderBy: { id: 'asc' },
+      select: { id: true, nom: true, prenom: true, collection_id: true },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      nom: r.nom,
+      prenom: r.prenom,
+      collection_id: r.collection_id,
+    }));
+  }
+
+  /**
+   * Liste des `groupe_questions` rattachés à une collection.
+   */
+  async listGroupeQuestionsForCollection(collectionId: number): Promise<GroupeQuestionsUi[]> {
+    const rows = await this.prisma.prisma.groupe_questions.findMany({
       where: { collection_id: collectionId },
       orderBy: { id: 'asc' },
-      include: {
-        relation_sous_collections: {
-          orderBy: { id: 'asc' },
-          include: {
-            quizz_question: {
-              include: { ref_categorie: true },
-            },
-          },
-        },
-      },
     });
-
     return rows.map((r) => ({
       id: r.id,
       collection_id: r.collection_id,
       nom: r.nom,
-      description: r.description ?? '',
-      questions: r.relation_sous_collections.map((rel) => ({
-        relation_id: rel.id,
-        question_id: rel.quizz_question.id,
-        question: rel.quizz_question.question,
-        categorie_type: rel.quizz_question.ref_categorie.type,
-      })),
+      description: r.description,
     }));
   }
+
+  /**
+   * Pour l’instant l’API expose le **premier** `groupe_questions` de la collection (`id` croissant).
+   * Une collection peut en avoir plusieurs ; la sélection explicite pourra suivre (query ou body).
+   */
+  async getReflexionChainEditor(
+    collectionId: number,
+    groupeQuestionsId?: number,
+  ): Promise<ReflexionChainEditorDto> {
+    const allInCollection = await this.listQuestions(collectionId);
+    const byId = new Map(allInCollection.map((q) => [q.id, q]));
+    let groupe =
+      groupeQuestionsId != null
+        ? await this.prisma.prisma.groupe_questions.findFirst({
+            where: {
+              id: groupeQuestionsId,
+              collection_id: collectionId,
+            },
+          })
+        : await this.prisma.prisma.groupe_questions.findFirst({
+            where: { collection_id: collectionId },
+            orderBy: { id: 'asc' },
+          });
+    if (groupe == null) {
+      return {
+        groupe_id: null,
+        ordered_questions: [],
+        pool_questions: allInCollection,
+        chain_color_levels: {},
+      };
+    }
+    const reflexions = await this.prisma.prisma.question_reflexion.findMany({
+      where: { collection_questions_id: groupe.id },
+    });
+    const nextFrom = new Map<number, number>();
+    const prevOf = new Map<number, number>();
+    for (const r of reflexions) {
+      nextFrom.set(r.question_p_id, r.question_a_id);
+      prevOf.set(r.question_a_id, r.question_p_id);
+    }
+    let head = groupe.head_question_id;
+    if (head != null && prevOf.has(head)) {
+      const candidates = [...nextFrom.keys()].filter((p) => !prevOf.has(p));
+      head = candidates.length === 1 ? candidates[0]! : head;
+    }
+    if (head == null && reflexions.length > 0) {
+      const candidates = [...nextFrom.keys()].filter((p) => !prevOf.has(p));
+      head = candidates.length === 1 ? candidates[0]! : null;
+    }
+    const orderedIds: number[] = [];
+    if (head != null) {
+      const seen = new Set<number>();
+      let cur: number | null = head;
+      while (cur != null && !seen.has(cur)) {
+        seen.add(cur);
+        orderedIds.push(cur);
+        cur = nextFrom.get(cur) ?? null;
+      }
+    }
+    const orderedSet = new Set(orderedIds);
+    const ordered_questions = orderedIds
+      .map((id) => byId.get(id))
+      .filter((q): q is QuizzQuestionRow => q != null);
+    const pool_questions = allInCollection.filter((q) => !orderedSet.has(q.id));
+    return {
+      groupe_id: groupe.id,
+      ordered_questions,
+      pool_questions,
+      chain_color_levels: parseChainColorLevelsJson(groupe.chain_color_levels),
+    };
+  }
+}
+
+function parseChainColorLevelsJson(raw: unknown): Record<string, number> {
+  if (raw == null) {
+    return {};
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return {};
+  }
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 3) {
+      out[k] = v;
+    }
+  }
+  return out;
 }

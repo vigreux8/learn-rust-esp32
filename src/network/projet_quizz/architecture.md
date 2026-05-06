@@ -20,6 +20,10 @@ Voir le détail : [`backend/architecture.md`](./backend/architecture.md).
 
 Voir le détail : [`frontend/architecture.md`](./frontend/architecture.md).
 
+## Hiérarchie collections (jeu)
+
+Les collections **parent / enfant** sont reliées en base par le modèle Prisma **`relation_collection`** (`p_collection` → `e_collection`), voir `backend/prisma/schema.prisma`. En session de jeu, l’API peut fusionner les questions du parent et des enfants directs (`GET /quizz/collections/:id?includeChildren=1&childrenMix=famille|melange`). Détail UI : `frontend/architecture.md` (mode de jeu, `PlayModePicker`).
+
 ## Lien avec le dépôt parent
 
 Le dépôt `servomoteur` décrit la vue globale (firmware ESP32, autres frontends Vite) dans [`architecture.md`](../../../architecture.md) à la racine. Le quizz **n’est pas** embarqué dans le binaire Rust par défaut ; il vit ici pour le développement et des scénarios réseau séparés.
