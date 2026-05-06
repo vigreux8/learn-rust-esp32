@@ -145,10 +145,10 @@ ${brouillon}
 ---
 
 Dans le JSON de sortie :
-- "question" : la version reformulée et soignée du brouillon (énoncé final du QCM, une phrase ou deux au plus si nécessaire).
-- "commentaire" : une courte anecdote ou explication pédagogique affichée après la révélation de la bonne réponse ; ne recopie pas mot pour mot la bonne proposition ; reste utile et factuel.
+- "question" : la version reformulée et soignée du brouillon (énoncé final du QCM, une phrase ou deux au plus si nécessaire). IMPORTANT : N'hésite pas à utiliser du texte riche quand c'est pertinent (Markdown, blocs de code comme \`\`\`ts ou \`\`\`python, et LaTeX pour les maths entouré de $ ou $$).
+- "commentaire" : une courte anecdote ou explication pédagogique affichée après la révélation de la bonne réponse ; ne recopie pas mot pour mot la bonne proposition ; reste utile et factuel. Tu peux aussi y inclure du Markdown, du LaTeX ou des blocs de code.
 
-Réponds UNIQUEMENT avec un objet JSON valide, sans markdown (pas de \`\`\`), sans texte avant ni après.
+Réponds UNIQUEMENT avec un objet JSON valide, sans bloc markdown englobant le JSON (pas de \`\`\`json au début), sans texte avant ni après. L'utilisation du markdown et code (ex: \`\`\`ts) doit se faire uniquement DANS les chaînes de caractères ("question", "commentaire", "texte").
 
 Format exact attendu :
 {
@@ -156,7 +156,7 @@ Format exact attendu :
   "commentaire": "string — anecdote / complément après le quiz (peut être une phrase courte)",
   "categorie_type": "string — une seule valeur parmi : ${types}",
   "reponses": [
-    { "texte": "proposition 1", "correcte": false },
+    { "texte": "proposition 1 (peut contenir Markdown, code ou LaTeX)", "correcte": false },
     { "texte": "proposition 2", "correcte": true },
     { "texte": "proposition 3", "correcte": false },
     { "texte": "proposition 4", "correcte": false }

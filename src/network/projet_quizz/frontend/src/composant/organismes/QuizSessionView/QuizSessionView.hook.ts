@@ -388,6 +388,17 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     try {
       const d = await fetchQuestionDetail(questionModalDetail.id);
       setQuestionModalDetail(d);
+      // Ensure responses are updated in the main view
+      setData((prev) => {
+        if (!prev) return prev;
+        const qi = prev.questions.findIndex((x) => x.id === d.id);
+        if (qi < 0) return prev;
+        const questions = [...prev.questions];
+        const cur = questions[qi];
+        if (!cur) return prev;
+        questions[qi] = { ...cur, reponses: d.reponses };
+        return { ...prev, questions };
+      });
     } catch {
       /* garder l’affichage actuel */
     }

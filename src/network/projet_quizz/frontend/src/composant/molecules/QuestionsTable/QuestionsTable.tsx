@@ -2,10 +2,11 @@ import { Pencil, Trash2 } from "lucide-preact";
 import { Badge } from "../../atomes/Badge/Badge";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
+import { MarkdownViewer } from "../../atomes/MarkdownViewer";
 import { QUESTIONS_TABLE_STYLES } from "./QuestionsTable.styles";
 import type { QuestionsTableProps } from "./QuestionsTable.types";
 
-export function QuestionsTable(props: QuestionsTableProps) {
+export function QuestionsTable( props: QuestionsTableProps) {
   const { data, actions, status } = props;
   const { questions } = data;
   const { onEdit, onRemove } = actions;
@@ -35,9 +36,13 @@ export function QuestionsTable(props: QuestionsTableProps) {
                   )}
                 </div>
                 {q.commentaire.trim() ? (
-                  <p class="mb-2 text-xs leading-relaxed text-base-content/55 line-clamp-3">{q.commentaire}</p>
+                  <div class="mb-2 text-xs leading-relaxed text-base-content/55 line-clamp-3">
+                    <MarkdownViewer data={{ content: q.commentaire }} />
+                  </div>
                 ) : null}
-                <p class="text-sm font-medium leading-relaxed text-base-content">{q.question}</p>
+                <div class="text-sm font-medium leading-relaxed text-base-content">
+                  <MarkdownViewer data={{ content: q.question }} />
+                </div>
               </div>
               <div class="flex shrink-0 flex-wrap gap-2">
                 <Button variant="outline" class="btn-sm gap-1" onClick={() => onEdit(q)} disabled={saving}>

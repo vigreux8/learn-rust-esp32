@@ -11,6 +11,7 @@ import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { ProgressBar } from "../../atomes/ProgressBar/ProgressBar";
 import { AnswerOption } from "../../atomes/AnswerOption/AnswerOption";
+import { MarkdownViewer } from "../../atomes/MarkdownViewer";
 import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import type {
@@ -98,7 +99,7 @@ export function QuizSessionHeader({
   );
 }
 
-export function QuizSessionQuestionCard({
+export function QuizSessionQuestionCard( {
   data,
   index,
   total,
@@ -286,7 +287,9 @@ export function QuizSessionQuestionCard({
         <p class={QUIZ_SESSION_STYLES.questionMeta}>
           Question {index + 1} / {total}
         </p>
-        <h2 class={QUIZ_SESSION_STYLES.questionTitle}>{q.question}</h2>
+        <div class={QUIZ_SESSION_STYLES.questionTitle}>
+          <MarkdownViewer data={{ content: q.question }} />
+        </div>
         <div class={QUIZ_SESSION_STYLES.answers}>
           {q.reponses.map((r) => (
             <AnswerOption
@@ -306,7 +309,7 @@ export function QuizSessionQuestionCard({
           <div class={QUIZ_SESSION_STYLES.revealBox}>
             <p class={QUIZ_SESSION_STYLES.revealText}>
               {anecdote ? (
-                <span class="block">{anecdote}</span>
+                <span class="block"><MarkdownViewer data={{ content: anecdote }} /></span>
               ) : correct ? (
                 <>
                   Bien vu — <span class="font-semibold text-flow">c’est la bonne réponse</span>.
