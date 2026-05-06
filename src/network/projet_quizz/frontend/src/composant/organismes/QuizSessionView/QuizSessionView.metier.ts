@@ -1,4 +1,5 @@
 import { cn } from "../../../lib/cn";
+import { shuffleQuestionAnswers } from "../../../lib/playOrder";
 import type { QuestionUi, QuizzQuestionRow, RefQuestionScaleRow } from "../../../types/quizz";
 
 export function isPickedCorrect(
@@ -30,15 +31,6 @@ export function buildQuestionCopyJson(q: QuestionUi): string {
     null,
     2,
   );
-}
-
-function shuffleQuestionAnswers(reponses: QuestionUi["reponses"]): QuestionUi["reponses"] {
-  const out = [...reponses];
-  for (let i = out.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j]!, out[i]!];
-  }
-  return out;
 }
 
 const DIFFICULTE_ORDER: Record<string, number> = {

@@ -23,6 +23,13 @@ export function HomeView() {
     sortBase: "none",
     errorPriority: false,
     shuffleExtra: false,
+    includeReflexion: false,
+    reflexionSharePercent: 25,
+    includeChildCollections: false,
+    childCollectionsMix: "famille",
+    familyQuotaPercent: 100,
+    familyQuotaMax: 0,
+    includePersonnaliteFiches: false,
   });
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
   const [playInfinite, setPlayInfinite] = useState(false);
@@ -57,6 +64,7 @@ export function HomeView() {
               idPrefix="home"
               settings={playMode}
               onChange={(patch) => setPlayMode((prev) => ({ ...prev, ...patch }))}
+              showReflexionOptions={false}
             />
             <div>
               <label class="mb-1 block text-center text-xs font-semibold uppercase tracking-wide text-base-content/45" for="home-play-qtype">

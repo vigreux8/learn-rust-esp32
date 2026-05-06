@@ -1,4 +1,10 @@
-import { isPlayOrder, parsePlayOrdersFromString, type PlayOrder, type PlayQtype } from "./playOrder";
+import {
+  isPlayOrder,
+  parsePlayOrdersFromString,
+  type ChildCollectionsMix,
+  type PlayOrder,
+  type PlayQtype,
+} from "./playOrder";
 
 export type LastQuizResult = {
   mode: "collection" | "random";
@@ -12,6 +18,14 @@ export type LastQuizResult = {
   playOrder?: PlayOrder;
   playQtype?: PlayQtype;
   playInfinite?: boolean;
+  /** Rejouer : suites logiques (session collection). */
+  playIncludeReflexion?: boolean;
+  playReflexionSharePercent?: number;
+  playIncludeChildCollections?: boolean;
+  playChildCollectionsMix?: ChildCollectionsMix;
+  playFamilyQuotaPercent?: number;
+  playFamilyQuotaMax?: number;
+  playIncludePersonnaliteFiches?: boolean;
 };
 
 const KEY = "flowlearn_last_result";

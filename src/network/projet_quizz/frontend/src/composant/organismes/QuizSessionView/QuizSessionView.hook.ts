@@ -9,6 +9,7 @@ import {
   fetchRefCategoriesHierarchy,
   fetchRefQuestionDifficulte,
   fetchRefQuestionImportance,
+  fetchReflexionChain,
   fetchSousCollections,
   deleteImplicitQuestionRelation,
   patchQuestion,
@@ -22,6 +23,7 @@ import {
   playOrdersRequireUserId,
   shuffleQuestions,
 } from "../../../lib/playOrder";
+import { buildReflexionMixedPlaylist } from "../../../lib/playSessionReflexionMix";
 import { saveLastQuizResult } from "../../../lib/lastQuizResult";
 import { useRoutePath } from "../../../lib/routePathContext";
 import { useUserSession } from "../../../lib/userSession";
@@ -169,6 +171,11 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
             playInfinite: pf.infinite,
             playUserId,
             useServerPlayModes: pf.useServerPlayModes,
+            playIncludeReflexion: false,
+            playIncludeChildCollections: false,
+            playFamilyQuotaPercent: 100,
+            playFamilyQuotaMax: 0,
+            playIncludePersonnaliteFiches: false,
           });
           setIndex(0);
           setPickedId(null);
@@ -181,6 +188,19 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           setLoadError("bad");
           return;
         }
+        const childFetchOpts =
+          pf.includeChildCollections && pf.sousCollectionId == null
+            ? {
+                includeChildCollections: true as const,
+                childCollectionsMix: pf.childCollectionsMix,
+                familyQuotaPercent: pf.familyQuotaPercent,
+                ...(pf.familyQuotaMax > 0 ? { familyQuotaMax: pf.familyQuotaMax } : {}),
+              }
+            : {};
+        const persoFetchOpts =
+          pf.includePersonnaliteFiches && pf.sousCollectionId == null
+            ? { includePersonnaliteFiches: true as const }
+            : {};
         const col = await fetchCollection(
           cid,
           pf.useServerPlayModes
@@ -191,8 +211,10 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 infinite: pf.infinite,
                 excludeIds: pf.excludeIds,
                 sousCollectionId: pf.sousCollectionId,
+                ...childFetchOpts,
+                ...persoFetchOpts,
               }
-            : { qtype: pf.qtype, sousCollectionId: pf.sousCollectionId },
+            : { qtype: pf.qtype, sousCollectionId: pf.sousCollectionId, ...childFetchOpts, ...persoFetchOpts },
         );
         if (cancelled) return;
         if (col.questions.length === 0) {
@@ -203,6 +225,35 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         if (!pf.useServerPlayModes && orders.length === 1 && orders[0] === "random") {
           questions = shuffleQuestions(questions);
         }
+
+        let wrongAnswerNextIndex: number[] | undefined;
+        const playIncludeReflexion = pf.includeReflexion;
+        const playReflexionSharePercent = pf.reflexionSharePercent;
+        if (
+          pf.includeReflexion &&
+          !pf.infinite &&
+          questions.length > 0
+        ) {
+          try {
+            const chainEditor = await fetchReflexionChain(cid);
+            const byId = new Map(questions.map((q) => [q.id, q]));
+            const chainQs = chainEditor.ordered_questions
+              .map((row) => byId.get(row.id))
+              .filter((x): x is QuestionUi => x != null);
+            if (chainQs.length > 0) {
+              const mixed = buildReflexionMixedPlaylist({
+                shuffledCollectionQuestions: questions,
+                chainOrderedQuestions: chainQs,
+                reflexionSharePercent: pf.reflexionSharePercent,
+              });
+              questions = mixed.questions;
+              wrongAnswerNextIndex = mixed.wrongAnswerNextIndex;
+            }
+          } catch {
+            /* chaîne indisponible : session sans suites réflexion */
+          }
+        }
+
         if (pf.infinite) allServedQuestionIdsRef.current = questions.map((q) => q.id);
 
         setData({
@@ -216,6 +267,14 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           playUserId,
           playSousCollectionId: pf.sousCollectionId,
           useServerPlayModes: pf.useServerPlayModes,
+          wrongAnswerNextIndex,
+          playIncludeReflexion,
+          playReflexionSharePercent,
+          playIncludeChildCollections: pf.includeChildCollections,
+          playChildCollectionsMix: pf.childCollectionsMix,
+          playFamilyQuotaPercent: pf.familyQuotaPercent,
+          playFamilyQuotaMax: pf.familyQuotaMax,
+          playIncludePersonnaliteFiches: pf.includePersonnaliteFiches,
         });
         setIndex(0);
         setPickedId(null);
@@ -591,14 +650,33 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
         if (!(await syncDraftCategoriesIfNeeded())) return;
         if (!(await syncDraftScalesIfNeeded())) return;
 
-        const delta = pickedId != null && isPickedCorrect(data.questions, index, pickedId) ? 1 : 0;
+        const correct = pickedId != null && isPickedCorrect(data.questions, index, pickedId);
+        const delta = correct ? 1 : 0;
         const nextGood = good + delta;
+        const nextIdx = correct
+          ? index + 1
+          : (data.wrongAnswerNextIndex?.[index] ?? index + 1);
 
-        if (index + 1 >= total) {
+        if (nextIdx >= total) {
           if (data.playInfinite) {
             setFetchingMore(true);
             try {
               const excludeIds = allServedQuestionIdsRef.current;
+              const childInf =
+                data.playIncludeChildCollections === true && data.playSousCollectionId == null
+                  ? {
+                      includeChildCollections: true as const,
+                      childCollectionsMix: data.playChildCollectionsMix ?? "melange",
+                      familyQuotaPercent: data.playFamilyQuotaPercent ?? 100,
+                      ...(data.playFamilyQuotaMax != null && data.playFamilyQuotaMax > 0
+                        ? { familyQuotaMax: data.playFamilyQuotaMax }
+                        : {}),
+                    }
+                  : {};
+              const persoInf =
+                data.playIncludePersonnaliteFiches === true && data.playSousCollectionId == null
+                  ? { includePersonnaliteFiches: true as const }
+                  : {};
               const nextQuestionsRaw =
                 collectionId === "random"
                   ? await fetchRandomQuiz({
@@ -616,6 +694,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                         infinite: true,
                         excludeIds,
                         sousCollectionId: data.playSousCollectionId,
+                        ...childInf,
+                        ...persoInf,
                       })
                     ).questions;
               const nextQuestions = mapQuestionsCategories(shuffleQuestionsAnswers(nextQuestionsRaw));
@@ -631,6 +711,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                   playOrders: data.playOrders,
                   playQtype: data.playQtype,
                   playInfinite: true,
+                  playIncludeReflexion: data.playIncludeReflexion,
+                  playReflexionSharePercent: data.playReflexionSharePercent,
+                  playIncludeChildCollections: data.playIncludeChildCollections,
+                  playChildCollectionsMix: data.playChildCollectionsMix,
+                  playFamilyQuotaPercent: data.playFamilyQuotaPercent,
+                  playFamilyQuotaMax: data.playFamilyQuotaMax,
+                  playIncludePersonnaliteFiches: data.playIncludePersonnaliteFiches,
                 });
                 route("/results");
                 return;
@@ -641,7 +728,16 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
                 ...nextQuestions.map((nq) => nq.id),
               ];
               setGood(nextGood);
-              setData((prev) => (prev != null ? { ...prev, questions: nextQuestions } : prev));
+              setData((prev) =>
+                prev != null
+                  ? {
+                      ...prev,
+                      questions: nextQuestions,
+                      wrongAnswerNextIndex: undefined,
+                      playIncludeReflexion: false,
+                    }
+                  : prev,
+              );
               setIndex(0);
               setPickedId(null);
               return;
@@ -663,6 +759,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
             playOrders: data.playOrders,
             playQtype: data.playQtype,
             playInfinite: false,
+            playIncludeReflexion: data.playIncludeReflexion,
+            playReflexionSharePercent: data.playReflexionSharePercent,
+            playIncludeChildCollections: data.playIncludeChildCollections,
+            playChildCollectionsMix: data.playChildCollectionsMix,
+            playFamilyQuotaPercent: data.playFamilyQuotaPercent,
+            playFamilyQuotaMax: data.playFamilyQuotaMax,
+            playIncludePersonnaliteFiches: data.playIncludePersonnaliteFiches,
           });
           route("/results");
           return;
@@ -670,7 +773,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
 
         playedTowardResultsRef.current += 1;
         setGood(nextGood);
-        setIndex((i) => i + 1);
+        setIndex(nextIdx);
         setPickedId(null);
       } finally {
         setNextBusy(false);
@@ -698,6 +801,13 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
           playOrders: data.playOrders,
           playQtype: data.playQtype,
           playInfinite: true,
+          playIncludeReflexion: data.playIncludeReflexion,
+          playReflexionSharePercent: data.playReflexionSharePercent,
+          playIncludeChildCollections: data.playIncludeChildCollections,
+          playChildCollectionsMix: data.playChildCollectionsMix,
+          playFamilyQuotaPercent: data.playFamilyQuotaPercent,
+          playFamilyQuotaMax: data.playFamilyQuotaMax,
+          playIncludePersonnaliteFiches: data.playIncludePersonnaliteFiches,
         });
         route("/results");
       } finally {
@@ -734,7 +844,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
       if (idx >= filtered.length) {
         newIndex = filtered.length - 1;
       }
-      setData({ ...snapshot, questions: filtered });
+      setData({ ...snapshot, questions: filtered, wrongAnswerNextIndex: undefined });
       setIndex(newIndex);
       setPickedId(null);
       setActionMessage("Question supprimée.");
@@ -772,10 +882,15 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   );
   const draftResolvedParentKey = resolveDraftParentKey();
 
+  const trimmedSourceNom = (q.source_collection_nom ?? "").trim();
   const session = {
     data,
     backTarget,
     actionMessage,
+    questionSourceNom:
+      data.playIncludeChildCollections === true && trimmedSourceNom.length > 0
+        ? trimmedSourceNom
+        : undefined,
   };
 
   const progress = {

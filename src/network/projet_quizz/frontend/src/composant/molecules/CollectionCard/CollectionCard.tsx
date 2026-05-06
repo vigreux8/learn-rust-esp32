@@ -97,6 +97,33 @@ export function CollectionCard({
       infinite: playInfinite,
       userId: playOrdersRequireUserId(orders) ? myUserId : undefined,
       sousCollectionId: sousQ,
+      includeReflexion: playMode.includeReflexion === true ? true : undefined,
+      reflexionSharePercent:
+        playMode.includeReflexion && playMode.reflexionSharePercent !== 25
+          ? playMode.reflexionSharePercent
+          : undefined,
+      includeChildCollections:
+        sousQ == null && playMode.includeChildCollections === true ? true : undefined,
+      childCollectionsMix:
+        sousQ == null &&
+        playMode.includeChildCollections &&
+        playMode.childCollectionsMix !== "melange"
+          ? playMode.childCollectionsMix
+          : undefined,
+      familyQuotaPercent:
+        sousQ == null &&
+        playMode.includeChildCollections &&
+        playMode.familyQuotaPercent !== 100
+          ? playMode.familyQuotaPercent
+          : undefined,
+      familyQuotaMax:
+        sousQ == null &&
+        playMode.includeChildCollections &&
+        playMode.familyQuotaMax > 0
+          ? playMode.familyQuotaMax
+          : undefined,
+      includePersonnaliteFiches:
+        sousQ == null && playMode.includePersonnaliteFiches === true ? true : undefined,
     })}`);
   };
 

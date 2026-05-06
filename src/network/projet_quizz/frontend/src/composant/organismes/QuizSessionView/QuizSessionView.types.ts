@@ -1,4 +1,8 @@
-import type { PlayOrder, PlayQtype } from "../../../lib/playOrder";
+import type {
+  ChildCollectionsMix,
+  PlayOrder,
+  PlayQtype,
+} from "../../../lib/playOrder";
 import type { QuestionCategorieKey } from "../../../lib/questionCategories";
 import type {
   QuestionUi,
@@ -22,11 +26,22 @@ export type SessionData = {
   /** Filtrage sous-collection pour les rechargements « infinite » (mode collection). */
   playSousCollectionId?: number;
   useServerPlayModes: boolean;
+  /** Hors bonne réponse : index suivant (sortie des suites réflexion après erreur). */
+  wrongAnswerNextIndex?: number[];
+  playIncludeReflexion?: boolean;
+  playReflexionSharePercent?: number;
+  playIncludeChildCollections?: boolean;
+  playChildCollectionsMix?: ChildCollectionsMix;
+  playFamilyQuotaPercent?: number;
+  playFamilyQuotaMax?: number;
+  playIncludePersonnaliteFiches?: boolean;
 };
 
 export type QuizSessionHeaderProps = {
   data: SessionData;
   backTarget: string;
+  /** Libellé court si la question affichée provient d’une sous-collection (mode parent + enfants). */
+  questionSourceNom?: string;
 };
 
 export type QuizSessionQuestionCardProps = {

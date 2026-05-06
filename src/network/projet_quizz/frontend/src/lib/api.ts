@@ -19,7 +19,7 @@ import type {
 } from "../types/quizz";
 import type { LlmImportPayload } from "../composant/molecules/QuestionsLlmImportPanel";
 import type { AppCollectionImportPayload } from "./appCollectionImportNormalize";
-import type { PlayOrder } from "./playOrder";
+import type { ChildCollectionsMix, PlayOrder } from "./playOrder";
 
 async function readError(res: Response): Promise<string> {
   const text = await res.text();
@@ -80,6 +80,11 @@ export async function fetchCollection(
     infinite?: boolean;
     excludeIds?: number[];
     sousCollectionId?: number;
+    includeChildCollections?: boolean;
+    childCollectionsMix?: ChildCollectionsMix;
+    familyQuotaPercent?: number;
+    familyQuotaMax?: number;
+    includePersonnaliteFiches?: boolean;
   },
 ): Promise<CollectionUi> {
   const p = new URLSearchParams();
@@ -100,6 +105,23 @@ export async function fetchCollection(
   }
   if (opts?.sousCollectionId != null) {
     p.set("sousCollectionId", String(opts.sousCollectionId));
+  }
+  if (opts?.includeChildCollections === true) {
+    p.set("includeChildren", "1");
+  }
+  if (opts?.childCollectionsMix != null && opts.childCollectionsMix !== "melange") {
+    p.set("childrenMix", opts.childCollectionsMix);
+  }
+  if (opts?.includeChildCollections === true) {
+    if (opts.familyQuotaPercent != null && opts.familyQuotaPercent !== 100) {
+      p.set("familyQuota", String(opts.familyQuotaPercent));
+    }
+    if (opts.familyQuotaMax != null && opts.familyQuotaMax > 0) {
+      p.set("familyMax", String(opts.familyQuotaMax));
+    }
+  }
+  if (opts?.includePersonnaliteFiches === true) {
+    p.set("persoFiches", "1");
   }
   const q = p.size > 0 ? `?${p.toString()}` : "";
   const res = await fetch(apiUrl(`/quizz/collections/${id}${q}`));

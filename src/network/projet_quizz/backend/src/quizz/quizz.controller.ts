@@ -90,6 +90,33 @@ function parsePlayOrdersQuery(orderRaw?: string): QuizPlayOrderQuery[] {
   return out;
 }
 
+function parseFamilyQuotaQuery(raw?: string): number {
+  if (raw === undefined || raw.trim() === '') return 100;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    throw new BadRequestException('Query familyQuota : nombre entre 0 et 100');
+  }
+  const q = Math.round(n);
+  if (q < 0 || q > 100) {
+    throw new BadRequestException('Query familyQuota : nombre entre 0 et 100');
+  }
+  return q;
+}
+
+/** 0 ou absent : pas de plafond ; ≥ 1 : max questions par famille (après pourcentage). */
+function parseFamilyMaxQuery(raw?: string): number | undefined {
+  if (raw === undefined || raw.trim() === '') return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n)) {
+    throw new BadRequestException('Query familyMax : entier ≥ 0 attendu');
+  }
+  if (n < 0) {
+    throw new BadRequestException('Query familyMax : entier ≥ 0 attendu');
+  }
+  if (n === 0) return undefined;
+  return n;
+}
+
 function parseUserIdQueryOptional(raw?: string): number | undefined {
   if (raw === undefined || raw === '') return undefined;
   const n = Number(raw);
@@ -103,6 +130,11 @@ function parseInfiniteQuery(raw?: string): boolean {
   if (raw === undefined || raw === '') return false;
   const v = raw.trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'yes';
+}
+
+/** Questions des fiches personnalités liées à la carte (`persoFiches=1`). */
+function parsePersoFichesQuery(raw?: string): boolean {
+  return parseInfiniteQuery(raw);
 }
 
 function parseExcludeIdsQuery(raw?: string): number[] {
@@ -217,6 +249,11 @@ export class QuizzController {
     @Query('infinite') infiniteRaw?: string,
     @Query('exclude') excludeRaw?: string,
     @Query('sousCollectionId') sousCollectionIdRaw?: string,
+    @Query('includeChildren') includeChildrenRaw?: string,
+    @Query('childrenMix') childrenMixRaw?: string,
+    @Query('familyQuota') familyQuotaRaw?: string,
+    @Query('familyMax') familyMaxRaw?: string,
+    @Query('persoFiches') persoFichesRaw?: string,
   ) {
     const qtype = parsePlayQtypeQuery(qtypeRaw);
     const parseOptSousId = (): number | undefined => {
@@ -232,12 +269,25 @@ export class QuizzController {
       return n;
     };
     const sousCollectionId = parseOptSousId();
+    const includeChildCollections =
+      includeChildrenRaw === '1' ||
+      includeChildrenRaw === 'true' ||
+      includeChildrenRaw === 'yes';
+    const childCollectionsMix =
+      childrenMixRaw != null && childrenMixRaw.trim().toLowerCase() === 'famille'
+        ? 'famille'
+        : 'melange';
     const hasPlay =
       (orderRaw != null && orderRaw !== '') ||
       (userIdRaw != null && userIdRaw !== '') ||
       (infiniteRaw != null && infiniteRaw !== '') ||
       (excludeRaw != null && excludeRaw !== '') ||
-      sousCollectionId !== undefined;
+      sousCollectionId !== undefined ||
+      (includeChildrenRaw != null && includeChildrenRaw !== '') ||
+      (childrenMixRaw != null && childrenMixRaw !== '') ||
+      (familyQuotaRaw != null && familyQuotaRaw !== '') ||
+      (familyMaxRaw != null && familyMaxRaw !== '') ||
+      (persoFichesRaw != null && persoFichesRaw !== '');
     if (!hasPlay) {
       return this.quizz.getCollection(id, qtype);
     }
@@ -252,6 +302,22 @@ export class QuizzController {
       limit: infinite ? 15 : undefined,
       excludeIds,
       sousCollectionId,
+      includeChildCollections:
+        includeChildCollections && sousCollectionId === undefined ? true : undefined,
+      childCollectionsMix:
+        includeChildCollections && sousCollectionId === undefined
+          ? childCollectionsMix
+          : undefined,
+      familyQuotaPercent:
+        includeChildCollections && sousCollectionId === undefined
+          ? parseFamilyQuotaQuery(familyQuotaRaw)
+          : undefined,
+      familyQuotaMax:
+        includeChildCollections && sousCollectionId === undefined
+          ? parseFamilyMaxQuery(familyMaxRaw)
+          : undefined,
+      includePersonnaliteFiches:
+        sousCollectionId === undefined ? parsePersoFichesQuery(persoFichesRaw) : undefined,
     });
   }
 

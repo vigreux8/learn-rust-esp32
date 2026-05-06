@@ -51,6 +51,13 @@ export function useCollectionsView() {
     sortBase: "none",
     errorPriority: false,
     shuffleExtra: false,
+    includeReflexion: false,
+    reflexionSharePercent: 25,
+    includeChildCollections: false,
+    childCollectionsMix: "famille",
+    familyQuotaPercent: 100,
+    familyQuotaMax: 0,
+    includePersonnaliteFiches: false,
   });
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
   const [playInfinite, setPlayInfinite] = useState(false);

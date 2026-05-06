@@ -33,6 +33,9 @@ export interface QuestionUi {
   difficulter_id: number | null;
   difficulter_lvl: string | null;
   reponses: ReponseUi[];
+  /** Jeu parent + enfants : collection d’origine de la question pour la session en cours. */
+  source_collection_id?: number;
+  source_collection_nom?: string;
 }
 
 /** Comptage des questions de la collection par type de catégorie parent (toute la collection). */

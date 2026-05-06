@@ -109,7 +109,7 @@ Composants UI **sans import** d’un autre dossier `atomes/*` (feuilles de l’a
 | `ProgressBar/`                   | Barre de progression (quiz, chargements).                           |
 | `AppHeader/` / `AppFooter/`      | En-tête et pied de page communs.                                    |
 | `PageMain/`                      | Mise en page centrale des pages.                                    |
-| `PlayModePicker/`                | Choix du mode de lecture (ordre des questions).                     |
+| `PlayModePicker/`                | Choix du mode de lecture (filtres, tri, KPI, suites réflexion, inclusion des **collections enfant** `relation_collection` via query `includeChildren`). |
 | `AnswerOption/`                  | Affichage / sélection d’une réponse pendant le jeu.                 |
 | `QuestionsCollectionContextBar/` | Barre de contexte collection / import LLM sur l’écran questions.  |
 | `QuestionsLlmImportOptionsPanel/` | Options de l’import LLM (sans atome projet dans ce dossier).     |

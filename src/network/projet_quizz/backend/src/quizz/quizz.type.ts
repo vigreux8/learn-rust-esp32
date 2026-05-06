@@ -26,6 +26,12 @@ export type QuestionUi = {
   difficulter_id: number | null;
   difficulter_lvl: string | null;
   reponses: ReponseUi[];
+  /**
+   * Jeu avec collections enfants fusionnées : collection dont la question est issue pour cette session
+   * (parent ou enfant ; dédoublonnage : priorité au segment parent).
+   */
+  source_collection_id?: number;
+  source_collection_nom?: string;
 };
 
 export type CollectionModuleRef = {

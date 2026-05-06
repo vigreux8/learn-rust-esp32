@@ -60,7 +60,11 @@ export function QuizSessionError({ loadError }: { loadError: string | null }) {
   );
 }
 
-export function QuizSessionHeader({ data, backTarget }: QuizSessionHeaderProps) {
+export function QuizSessionHeader({
+  data,
+  backTarget,
+  questionSourceNom,
+}: QuizSessionHeaderProps) {
   return (
     <div class={QUIZ_SESSION_STYLES.topRow}>
       <Button variant="ghost" class="btn-sm gap-1 px-3" onClick={() => route(backTarget)}>
@@ -69,6 +73,13 @@ export function QuizSessionHeader({ data, backTarget }: QuizSessionHeaderProps) 
       </Button>
       <div class={QUIZ_SESSION_STYLES.badgesRow}>
         <Badge tone={data.mode === "random" ? "flow" : "learn"}>{data.nom}</Badge>
+        {questionSourceNom != null && questionSourceNom !== "" ? (
+          <span class="min-w-0" title={`Question issue de la collection « ${questionSourceNom} »`}>
+            <Badge tone="neutral" class="max-w-[min(280px,55vw)] truncate font-normal opacity-90">
+              Origine : {questionSourceNom}
+            </Badge>
+          </span>
+        ) : null}
         <span class={QUIZ_SESSION_STYLES.orderBadgeWrap} title={playOrdersLabel(data.playOrders)}>
           <Badge tone="learn" class="font-normal opacity-90">
             {playOrdersLabel(data.playOrders)}

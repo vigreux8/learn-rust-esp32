@@ -39,6 +39,31 @@ export type QuizPlaySessionOpts = {
   excludeIds: number[];
   /** Collection enfant : ne retourne que les questions aussi liées à cette enfant (`question_collection`). */
   sousCollectionId?: number;
+  /**
+   * Fusionner les questions des collections enfants (`relation-collection`).
+   * Ignoré si `sousCollectionId` est défini (jeu déjà restreint à une sous-collection).
+   */
+  includeChildCollections?: boolean;
+  /**
+   * `famille` : filtres / tri / KPI appliqués **par bloc** (parent puis chaque enfant, ordre des liens).
+   * `melange` : une seule liste (ordre parent puis enfants pour dédoublonner), puis modes sur l’ensemble.
+   */
+  childCollectionsMix?: 'famille' | 'melange';
+  /**
+   * Part du paquet à tirer **par famille** (0–100). 100 = toute la famille.
+   * Ignoré si `includeChildCollections` est faux / absent.
+   */
+  familyQuotaPercent?: number;
+  /**
+   * Plafond optionnel de questions **par famille** après application du pourcentage.
+   * Ex. 80 % + max 15 ⇒ au plus 15 questions par bloc même si 80 % dépasse 15.
+   */
+  familyQuotaMax?: number;
+  /**
+   * Ajouter les questions des collections-fiches des personnalités liées à la carte
+   * (`personnalité_collection`, niveaux pionnier / important / secondaire). Ignoré si `sousCollectionId` est défini.
+   */
+  includePersonnaliteFiches?: boolean;
 };
 
 function shuffle<T>(items: T[]): T[] {
@@ -309,16 +334,109 @@ export class QuizzReadService {
     if (play == null) {
       return ui;
     }
-    if (ui.questions.length === 0) {
+
+    const mergeChildren =
+      play.includeChildCollections === true && play.sousCollectionId == null;
+
+    const injectPerso =
+      play.includePersonnaliteFiches === true && play.sousCollectionId == null;
+
+    if (!mergeChildren && ui.questions.length === 0 && !injectPerso) {
       throw new NotFoundException(
         qtype !== 'melanger'
           ? `Aucune question de type « ${qtype} » dans la collection ${collectionId}.`
           : `Collection ${collectionId} introuvable ou vide`,
       );
     }
+
     const exclude = new Set(play.excludeIds);
-    let questions = ui.questions.filter((q) => !exclude.has(q.id));
-    questions = await this.applyPlayOrders(questions, play.orders, play.userId);
+
+    let questions: QuestionUi[];
+
+    if (mergeChildren) {
+      const links = await this.prisma.prisma.relation_collection.findMany({
+        where: { p_collection: collectionId },
+        orderBy: { id: 'asc' },
+      });
+      const tagSource = (qs: QuestionUi[], cid: number, nom: string): QuestionUi[] =>
+        qs.map((q) => ({ ...q, source_collection_id: cid, source_collection_nom: nom }));
+
+      const segments: QuestionUi[][] = [
+        tagSource(
+          ui.questions.filter((q) => !exclude.has(q.id)),
+          ui.id,
+          ui.nom,
+        ),
+      ];
+      for (const link of links) {
+        const childUi = await this.buildCollectionUi(link.e_collection, qtype);
+        if (childUi != null && childUi.questions.length > 0) {
+          segments.push(
+            tagSource(
+              childUi.questions.filter((q) => !exclude.has(q.id)),
+              childUi.id,
+              childUi.nom,
+            ),
+          );
+        }
+      }
+      if (injectPerso) {
+        const persoSegs = await this.buildPersonnaliteFicheSegments(
+          collectionId,
+          qtype,
+          exclude,
+        );
+        segments.push(...persoSegs);
+      }
+      const deduped = this.dedupeQuestionSegmentsAcrossFamilies(segments);
+      const quotaPct = Math.min(100, Math.max(0, play.familyQuotaPercent ?? 100));
+      const quotaMaxRaw = play.familyQuotaMax;
+      const quotaMax =
+        quotaMaxRaw != null && quotaMaxRaw >= 1 ? Math.floor(quotaMaxRaw) : undefined;
+      const afterQuota = deduped.map((seg) =>
+        this.sampleFamilySegment(seg, quotaPct, quotaMax),
+      );
+      const hasAny = afterQuota.some((s) => s.length > 0);
+      if (!hasAny) {
+        throw new NotFoundException(
+          qtype !== 'melanger'
+            ? `Aucune question de type « ${qtype} » dans la collection ${collectionId} et ses sous-collections.`
+            : `Collection ${collectionId} introuvable ou vide (avec sous-collections).`,
+        );
+      }
+      const mix = play.childCollectionsMix ?? 'melange';
+      if (mix === 'famille') {
+        questions = [];
+        for (const seg of afterQuota) {
+          if (seg.length === 0) continue;
+          questions.push(
+            ...(await this.applyPlayOrders(seg, play.orders, play.userId)),
+          );
+        }
+      } else {
+        const flat = afterQuota.flat();
+        questions = await this.applyPlayOrders(flat, play.orders, play.userId);
+      }
+    } else {
+      let pool = ui.questions.filter((q) => !exclude.has(q.id));
+      if (injectPerso) {
+        const persoSegs = await this.buildPersonnaliteFicheSegments(
+          collectionId,
+          qtype,
+          exclude,
+        );
+        pool = this.dedupeQuestionsPreferFirst([...pool, ...persoSegs.flat()]);
+      }
+      if (pool.length === 0) {
+        throw new NotFoundException(
+          qtype !== 'melanger'
+            ? `Aucune question de type « ${qtype} » dans la collection ${collectionId}.`
+            : `Collection ${collectionId} introuvable ou vide`,
+        );
+      }
+      questions = await this.applyPlayOrders(pool, play.orders, play.userId);
+    }
+
     if (play.limit != null && questions.length > play.limit) {
       questions = questions.slice(0, play.limit);
     }
@@ -330,6 +448,113 @@ export class QuizzReadService {
       );
     }
     return { ...ui, questions };
+  }
+
+  /**
+   * Tirage aléatoire sans remise dans une famille : borne par pourcentage du paquet et optionnellement par un plafond.
+   */
+  private sampleFamilySegment(
+    segment: QuestionUi[],
+    pct: number,
+    maxPerFamily?: number,
+  ): QuestionUi[] {
+    if (segment.length === 0) return [];
+    const p = Math.min(100, Math.max(0, pct));
+    let target: number;
+    if (p >= 100) {
+      target = segment.length;
+    } else if (p <= 0) {
+      target = 0;
+    } else {
+      target = Math.ceil(segment.length * (p / 100));
+    }
+    if (maxPerFamily != null && maxPerFamily > 0) {
+      target = Math.min(target, maxPerFamily);
+    }
+    if (target <= 0) return [];
+    if (target >= segment.length) return [...segment];
+    const shuffled = shuffle([...segment]);
+    return shuffled.slice(0, target);
+  }
+
+  /** Garde la première occurrence de chaque id (ordre du tableau). */
+  private dedupeQuestionsPreferFirst(pool: QuestionUi[]): QuestionUi[] {
+    const seen = new Set<number>();
+    const out: QuestionUi[] = [];
+    for (const q of pool) {
+      if (!seen.has(q.id)) {
+        seen.add(q.id);
+        out.push(q);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Segments de questions issus des fiches (`personalite.collection_id`) pour chaque lien
+   * `personnalité_collection` sur la collection jouée. Tri : pionnier → important → secondaire → sans niveau.
+   */
+  private async buildPersonnaliteFicheSegments(
+    rootCollectionId: number,
+    qtype: 'histoire' | 'pratique' | 'connaissance' | 'melanger',
+    exclude: Set<number>,
+  ): Promise<QuestionUi[][]> {
+    const rows = await this.prisma.prisma.personnalite_collection.findMany({
+      where: { collection_id: rootCollectionId },
+      include: {
+        personalite: { select: { collection_id: true } },
+        ref_importance_personalite: { select: { type: true } },
+      },
+      orderBy: { id: 'asc' },
+    });
+    const importanceRank = (t: string | null | undefined): number => {
+      if (t === 'pionnier') return 0;
+      if (t === 'important') return 1;
+      if (t === 'secondaire') return 2;
+      return 3;
+    };
+    rows.sort((a, b) => {
+      const ra = importanceRank(a.ref_importance_personalite?.type);
+      const rb = importanceRank(b.ref_importance_personalite?.type);
+      if (ra !== rb) return ra - rb;
+      return a.id - b.id;
+    });
+
+    const tagSource = (qs: QuestionUi[], cid: number, nom: string): QuestionUi[] =>
+      qs.map((q) => ({ ...q, source_collection_id: cid, source_collection_nom: nom }));
+
+    const out: QuestionUi[][] = [];
+    for (const row of rows) {
+      const ficheId = row.personalite.collection_id;
+      const ficheUi = await this.buildCollectionUi(ficheId, qtype);
+      if (ficheUi == null || ficheUi.questions.length === 0) continue;
+      const filtered = ficheUi.questions.filter((q) => !exclude.has(q.id));
+      if (filtered.length === 0) continue;
+      const imp = row.ref_importance_personalite?.type;
+      const nomTag =
+        imp === 'pionnier' || imp === 'important' || imp === 'secondaire'
+          ? `${ficheUi.nom} (${imp})`
+          : ficheUi.nom;
+      out.push(tagSource(filtered, ficheUi.id, nomTag));
+    }
+    return out;
+  }
+
+  /** Dédouble les ids entre segments : le premier segment (parent) garde la priorité. */
+  private dedupeQuestionSegmentsAcrossFamilies(segments: QuestionUi[][]): QuestionUi[][] {
+    const seen = new Set<number>();
+    const out: QuestionUi[][] = [];
+    for (const seg of segments) {
+      const part: QuestionUi[] = [];
+      for (const q of seg) {
+        if (!seen.has(q.id)) {
+          seen.add(q.id);
+          part.push(q);
+        }
+      }
+      out.push(part);
+    }
+    return out;
   }
 
   private compareCreateAtIso(a: string, b: string): number {
