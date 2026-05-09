@@ -1,49 +1,14 @@
-import { useState } from "preact/hooks";
 import { Sparkles } from "lucide-preact";
-import { route } from "preact-router";
-import {
-  buildPlayOrdersFromPicker,
-  buildPlaySessionQuery,
-  playOrdersRequireUserId,
-  type PlayQtype,
-} from "../../../lib/playOrder";
-import { useUserSession } from "../../../lib/userSession";
+import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
 import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { Button } from "../../atomes/Button/Button";
-import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
-import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
+import { useHomeView } from "./HomeView.hook";
+import type { HomeViewProps } from "./HomeView.types";
 import { HOME_VIEW_STYLES } from "./HomeView.styles";
 
-export function HomeView() {
-  const { userId } = useUserSession();
-  const [playMode, setPlayMode] = useState<PlayModeSettings>({
-    neverAnswered: false,
-    wrongAnswered: false,
-    sortBase: "none",
-    errorPriority: false,
-    shuffleExtra: false,
-    includeReflexion: false,
-    reflexionSharePercent: 25,
-    includeChildCollections: false,
-    childCollectionsMix: "famille",
-    familyQuotaPercent: 100,
-    familyQuotaMax: 0,
-    includePersonnaliteFiches: false,
-  });
-  const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
-  const [playInfinite, setPlayInfinite] = useState(false);
-
-  const goPlay = () => {
-    const orders = buildPlayOrdersFromPicker(playMode);
-    const q = buildPlaySessionQuery({
-      orders,
-      qtype: playQtype,
-      infinite: playInfinite,
-      userId: playOrdersRequireUserId(orders) ? userId : undefined,
-    });
-    route(`/play/random${q}`);
-  };
+export function HomeView(props: HomeViewProps = {}) {
+  const { play } = useHomeView(props);
 
   return (
     <div class={HOME_VIEW_STYLES.root}>
@@ -56,14 +21,14 @@ export function HomeView() {
           </p>
           <h1 class="mb-3 text-3xl font-bold tracking-tight text-base-content sm:text-4xl">Pret a apprendre ?</h1>
           <p class="mb-6 text-base leading-relaxed text-base-content/65">
-            Les questions viennent de toutes les collections. Combine plusieurs modes (ex. anciennes d abord + priorite
-            aux erreurs), choisis le type de questions, et eventuellement une session infinie par paquets de 15.
+            Les questions viennent de toutes les collections. Combine plusieurs modes (ex. anciennes d abord + priorite aux
+            erreurs), choisis le type de questions, et eventuellement une session infinie par paquets de 15.
           </p>
           <div class="mx-auto mb-8 w-full max-w-xs space-y-5 text-left">
             <PlayModePicker
               idPrefix="home"
-              settings={playMode}
-              onChange={(patch) => setPlayMode((prev) => ({ ...prev, ...patch }))}
+              settings={play.playMode}
+              onChange={play.onPatchPlayMode}
               showReflexionOptions={false}
             />
             <div>
@@ -73,11 +38,8 @@ export function HomeView() {
               <select
                 id="home-play-qtype"
                 class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 text-sm"
-                value={playQtype}
-                onChange={(e) => {
-                  const v = (e.target as HTMLSelectElement).value;
-                  if (v === "histoire" || v === "pratique" || v === "connaissance" || v === "melanger") setPlayQtype(v);
-                }}
+                value={play.playQtype}
+                onChange={play.onPickQtypeFromDomEvent}
               >
                 <option value="melanger">Melanger (tout)</option>
                 <option value="histoire">Histoire</option>
@@ -89,8 +51,8 @@ export function HomeView() {
               <input
                 type="checkbox"
                 class="checkbox checkbox-sm checkbox-primary"
-                checked={playInfinite}
-                onChange={(e) => setPlayInfinite((e.target as HTMLInputElement).checked)}
+                checked={play.playInfinite}
+                onChange={play.onPickInfiniteFromDomEvent}
               />
               Session infinie (paquets de 15 questions)
             </label>
@@ -98,7 +60,7 @@ export function HomeView() {
           <Button
             variant="flow"
             class="btn-lg min-h-14 min-w-[220px] px-10 text-base shadow-xl shadow-flow/25 transition duration-300 hover:scale-[1.03]"
-            onClick={() => goPlay()}
+            onClick={play.goPlay}
           >
             Commencer les quiz
           </Button>

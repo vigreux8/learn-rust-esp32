@@ -1,5 +1,5 @@
 import type { UserKpiRow } from "../../../types/quizz";
-import type { DayBar, KpisAgg } from "./StatsDashboard.types";
+import type { DayBar, KpisAgg, WeekBarChartRow } from "./StatsDashboard.types";
 
 function avg(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -19,6 +19,14 @@ function pad2(n: number): string {
 
 function localYmd(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+export function presentWeekBars(weekBars: DayBar[]): WeekBarChartRow[] {
+  const hasAny = weekBars.some((x) => x.count > 0);
+  return weekBars.map((b) => ({
+    ...b,
+    barHeightPct: !hasAny ? 8 : Math.max(b.h, b.count > 0 ? 14 : 10),
+  }));
 }
 
 export function dailyActivityLast7Days(kpis: UserKpiRow[], now = new Date()): DayBar[] {

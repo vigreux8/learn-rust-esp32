@@ -1,6 +1,5 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { ArrowLeft } from "lucide-preact";
-import { route } from "preact-router";
 import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import { Button } from "../../atomes/Button/Button";
@@ -8,9 +7,10 @@ import { PageMain } from "../../atomes/PageMain/PageMain";
 import { useSousCollectionsViewState } from "./SousCollectionsView.hook";
 import { SousCollectionsDndWorkspace } from "./SousCollectionsView.sections";
 import { SOUS_COLLECTIONS_VIEW_STYLES } from "./SousCollectionsView.styles";
-import type { SousCollectionsViewProps } from "./SousCollectionsView.types";
+import type { SousCollectionsRouterInject, SousCollectionsViewProps } from "./SousCollectionsView.types";
 
-export function SousCollectionsView(props: SousCollectionsViewProps) {
+export function SousCollectionsView(router: SousCollectionsRouterInject) {
+  const props: SousCollectionsViewProps = { route: { collectionId: router.collectionId } };
   const collect = useSousCollectionsViewState(props);
   const routing = collect.routing;
   const status = collect.status;
@@ -18,6 +18,7 @@ export function SousCollectionsView(props: SousCollectionsViewProps) {
   const filtres = collect.filtres;
   const data = collect.data;
   const dragEnd = collect.dragDrop.onDragEnd;
+  const navigate = collect.navigation;
 
   if (routing.collectionIdNum == null) {
     return (
@@ -25,7 +26,7 @@ export function SousCollectionsView(props: SousCollectionsViewProps) {
         <AppHeader />
         <PageMain>
           <p class="text-base-content/70">Identifiant de collection invalide.</p>
-          <Button variant="outline" class="mt-4 gap-2" onClick={() => route("/collections")}>
+          <Button variant="outline" class="mt-4 gap-2" onClick={navigate.toCollections}>
             <ArrowLeft class="h-4 w-4" aria-hidden />
             Retour aux collections
           </Button>
@@ -42,7 +43,7 @@ export function SousCollectionsView(props: SousCollectionsViewProps) {
         <PageMain>
           <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 class={SOUS_COLLECTIONS_VIEW_STYLES.pageTitle}>Sous-collections</h1>
-            <Button variant="outline" class="gap-2 self-start" onClick={() => route("/collections")}>
+            <Button variant="outline" class="gap-2 self-start" onClick={navigate.toCollections}>
               <ArrowLeft class="h-4 w-4" aria-hidden />
               Collections
             </Button>
@@ -63,7 +64,7 @@ export function SousCollectionsView(props: SousCollectionsViewProps) {
         <PageMain>
           <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 class={SOUS_COLLECTIONS_VIEW_STYLES.pageTitle}>Sous-collections</h1>
-            <Button variant="outline" class="gap-2 self-start" onClick={() => route("/collections")}>
+            <Button variant="outline" class="gap-2 self-start" onClick={navigate.toCollections}>
               <ArrowLeft class="h-4 w-4" aria-hidden />
               Collections
             </Button>
@@ -71,7 +72,7 @@ export function SousCollectionsView(props: SousCollectionsViewProps) {
           <div class="rounded-2xl border border-error/30 bg-error/10 p-6 text-sm text-error">
             <p>{status.loadError === "invalid" ? "Paramètre d’URL invalide." : "Impossible de charger les données."}</p>
             {status.loadError !== "invalid" ? (
-              <Button variant="outline" class="mt-4" onClick={collect.reload}>
+              <Button variant="outline" class="mt-4" onClick={() => collect.reload()}>
                 Réessayer
               </Button>
             ) : null}
@@ -96,7 +97,7 @@ export function SousCollectionsView(props: SousCollectionsViewProps) {
             <h1 class={SOUS_COLLECTIONS_VIEW_STYLES.pageTitle}>Sous-collections</h1>
             <p class="mt-1 text-sm text-base-content/60">Répartis les questions de la collection en sections thématiques.</p>
           </div>
-          <Button variant="outline" class="gap-2 self-start" onClick={() => route("/collections")}>
+          <Button variant="outline" class="gap-2 self-start" onClick={navigate.toCollections}>
             <ArrowLeft class="h-4 w-4" aria-hidden />
             Collections
           </Button>

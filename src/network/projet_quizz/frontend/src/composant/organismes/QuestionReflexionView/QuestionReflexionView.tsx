@@ -9,9 +9,10 @@ import { QuestionEditModal } from "../QuestionEditModal/QuestionEditModal";
 import { useQuestionReflexionViewState } from "./QuestionReflexionView.hook";
 import { ReflexionDndWorkspace } from "./QuestionReflexionView.sections";
 import { QUESTION_REFLEXION_VIEW_STYLES } from "./QuestionReflexionView.styles";
-import type { QuestionReflexionViewProps } from "./QuestionReflexionView.types";
+import type { QuestionReflexionRouterInject, QuestionReflexionViewProps } from "./QuestionReflexionView.types";
 
-export function QuestionReflexionView(props: QuestionReflexionViewProps) {
+export function QuestionReflexionView(router: QuestionReflexionRouterInject) {
+  const props: QuestionReflexionViewProps = { route: { collectionId: router.collectionId } };
   const collect = useQuestionReflexionViewState(props);
   const routing = collect.routing;
   const status = collect.status;

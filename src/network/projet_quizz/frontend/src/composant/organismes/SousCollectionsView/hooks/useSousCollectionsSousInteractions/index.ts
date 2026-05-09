@@ -1,0 +1,1 @@
+export { useSousCollectionsSousInteractions } from "./useSousCollectionsSousInteractions";

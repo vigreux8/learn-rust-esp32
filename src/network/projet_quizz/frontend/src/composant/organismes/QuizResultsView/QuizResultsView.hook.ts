@@ -3,8 +3,10 @@ import { route } from "preact-router";
 import { readLastQuizResult } from "../../../lib/lastQuizResult";
 import { useUserSession } from "../../../lib/userSession";
 import { buildReplayTarget, computeScorePercent } from "./QuizResultsView.metier";
+import type { QuizResultsViewProps } from "./QuizResultsView.types";
 
-export function useQuizResultsView() {
+export function useQuizResultsView(props: QuizResultsViewProps = {}) {
+  void props;
   const { userId } = useUserSession();
   const result = useMemo(() => readLastQuizResult(), []);
 

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "preact/hooks";
-import { route } from "preact-router";
+import { route as routeNavigate } from "preact-router";
 import { fetchSessionDetail } from "../../../lib/api";
 import { useUserSession } from "../../../lib/userSession";
 import type { SessionDetail } from "../../../types/quizz";
 import type { SessionDetailsViewProps } from "./SessionDetailsView.types";
 
 export function useSessionDetailsView(props: SessionDetailsViewProps) {
-  const { sessionId } = props;
+  const { route } = props;
+  const { sessionId } = route;
   const { userId } = useUserSession();
 
   const [session, setSession] = useState<SessionDetail | null>(null);
@@ -45,7 +46,7 @@ export function useSessionDetailsView(props: SessionDetailsViewProps) {
   };
 
   const navigation = {
-    toDashboard: () => route("/dashboard"),
+    toDashboard: () => routeNavigate("/dashboard"),
   };
 
   return {

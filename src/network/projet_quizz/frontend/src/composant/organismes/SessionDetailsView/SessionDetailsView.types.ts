@@ -1,7 +1,14 @@
 import type { SessionDetail } from "../../../types/quizz";
 
-export type SessionDetailsViewProps = {
+/** Entrées injectées par `preact-router` (`/dashboard/session/:sessionId`). */
+export type SessionDetailsRouterInject = {
   sessionId?: string;
+};
+
+export type SessionDetailsViewProps = {
+  route: {
+    sessionId?: string;
+  };
 };
 
 export type SessionDetailsState = {
