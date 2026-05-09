@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { X } from "lucide-preact";
-import { Button } from "../../atomes/Button/Button";
+import { Button } from "../../../../atomes/Button/Button";
 import type { CreatePersonnaliteModalProps } from "./CreatePersonnaliteModal.types";
 import { describePersonnaliteAge, parseBirthDeathYear } from "./CreatePersonnaliteModal.metier";
 

@@ -1,0 +1,1 @@
+export { useCollectionsBootstrap } from "./useCollectionsBootstrap";

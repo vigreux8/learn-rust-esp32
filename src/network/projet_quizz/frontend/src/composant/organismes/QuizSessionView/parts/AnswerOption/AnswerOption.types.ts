@@ -14,4 +14,3 @@ export type AnswerOptionProps = {
   disabled: boolean;
   onPick: () => void;
 };
-

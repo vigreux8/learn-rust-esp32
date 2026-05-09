@@ -10,7 +10,15 @@ import type {
   RefQuestionScaleRow,
 } from "../../../types/quizz";
 
+/** Entrées regroupées (contrat organisme ↔ routeur ou parent). */
 export type QuizSessionViewProps = {
+  route: {
+    collectionId?: string;
+  };
+};
+
+/** Props injectées par `preact-router` sur `/play/:collectionId`. */
+export type QuizSessionRouterInject = {
   collectionId?: string;
 };
 

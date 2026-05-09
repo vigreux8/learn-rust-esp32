@@ -6,7 +6,7 @@ import { Card } from "../../atomes/Card/Card";
 import { PlayModePicker } from "../../atomes/PlayModePicker/PlayModePicker";
 import type { PlayModeSettings } from "../../atomes/PlayModePicker/PlayModePicker.types";
 import { CollectionCard } from "../../molecules/CollectionCard/CollectionCard";
-import { CreatePersonnaliteModal } from "../../molecules/CreatePersonnaliteModal/CreatePersonnaliteModal";
+import { CreatePersonnaliteModal } from "./parts/CreatePersonnaliteModal";
 import type { CollectionFilter, PendingDelete } from "./CollectionsView.types";
 
 export function CollectionsHeader({

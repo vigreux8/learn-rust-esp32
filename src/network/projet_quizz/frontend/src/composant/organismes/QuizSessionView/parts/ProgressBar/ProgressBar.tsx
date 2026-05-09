@@ -1,4 +1,4 @@
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../../../lib/cn";
 import { getProgressPercent } from "./ProgressBar.metier";
 import { PROGRESS_BAR_STYLES } from "./ProgressBar.styles";
 import type { ProgressBarProps } from "./ProgressBar.types";

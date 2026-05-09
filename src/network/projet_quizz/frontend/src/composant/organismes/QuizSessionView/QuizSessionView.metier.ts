@@ -127,3 +127,20 @@ export function formatRefLvlLabel(lvl: string): string {
   if (t.length === 0) return t;
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
+
+function ensureQuestionQuizUiFields(q: QuestionUi): QuestionUi {
+  return {
+    ...q,
+    categorie_e_id: q.categorie_e_id ?? null,
+    categorie_e_type: q.categorie_e_type ?? null,
+    importance_id: q.importance_id ?? null,
+    importance_lvl: q.importance_lvl ?? null,
+    difficulter_id: q.difficulter_id ?? null,
+    difficulter_lvl: q.difficulter_lvl ?? null,
+  };
+}
+
+/** Normalise les champs facultatifs côté UI pour la session quiz. */
+export function mapQuestionsQuizUiCategories(questions: QuestionUi[]): QuestionUi[] {
+  return questions.map(ensureQuestionQuizUiFields);
+}

@@ -1,10 +1,10 @@
-import { cn } from "../../../lib/cn";
-import { MarkdownViewer } from "../MarkdownViewer";
+import { cn } from "../../../../../lib/cn";
+import { MarkdownViewer } from "../../../../atomes/MarkdownViewer";
 import { getAnswerOptionState } from "./AnswerOption.hook";
 import { ANSWER_OPTION_STYLES } from "./AnswerOption.styles";
 import type { AnswerOptionProps } from "./AnswerOption.types";
 
-export function AnswerOption( {
+export function AnswerOption({
   label,
   reponseId,
   pickedId,
