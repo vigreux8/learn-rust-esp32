@@ -6,6 +6,7 @@ import { cn } from "../../../lib/cn";
 import { reflexionColorTargetId } from "../../../lib/reflexionChainColors";
 import { Button } from "../../atomes/Button/Button";
 import { QUIZZ_DND_PANEL_STYLES } from "../QuizzDndQuestionPanels/QuizzDndQuestionPanels.styles";
+import { MarkdownViewer } from "../../atomes/MarkdownViewer";
 import type { QuizzQuestionDndRowProps } from "./QuizzQuestionDndRow.types";
 
 function RowFooter(props: NonNullable<QuizzQuestionDndRowProps["actions"]>) {
@@ -77,7 +78,9 @@ function QuestionCardBody(props: {
           </span>
         ) : null}
       </div>
-      <p class="mt-1 line-clamp-3 text-base-content/90">{props.question}</p>
+      <div class="mt-1 line-clamp-3 text-base-content/90">
+        <MarkdownViewer data={{ content: props.question }} />
+      </div>
     </div>
   );
 }
@@ -208,7 +211,7 @@ function QuizzQuestionDndRowDraggable(props: QuizzQuestionDndRowProps) {
   );
 }
 
-export function QuizzQuestionDndRow(props: QuizzQuestionDndRowProps) {
+export function QuizzQuestionDndRow( props: QuizzQuestionDndRowProps) {
   if (props.settings.sortable != null) {
     return <QuizzQuestionDndRowSortable {...props} />;
   }

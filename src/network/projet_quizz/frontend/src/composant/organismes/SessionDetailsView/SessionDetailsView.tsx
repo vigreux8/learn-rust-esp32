@@ -4,11 +4,12 @@ import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
 import { Badge } from "../../atomes/Badge/Badge";
+import { MarkdownViewer } from "../../atomes/MarkdownViewer";
 import { useSessionDetailsView } from "./SessionDetailsView.hook";
 import { SESSION_DETAILS_VIEW_STYLES } from "./SessionDetailsView.styles";
 import type { SessionDetailsViewProps } from "./SessionDetailsView.types";
 
-export function SessionDetailsView(props: SessionDetailsViewProps) {
+export function SessionDetailsView( props: SessionDetailsViewProps) {
   const { status, navigation, session } = useSessionDetailsView(props);
 
   if (status.loading) {
@@ -64,8 +65,9 @@ export function SessionDetailsView(props: SessionDetailsViewProps) {
           <p class="mb-3 text-sm font-medium text-base-content">Questions concernees</p>
           <ul class="space-y-2 text-sm text-base-content/75">
             {session.questionsPreview.map((q) => (
-              <li key={q.id} class="rounded-lg bg-base-200/40 px-3 py-2">
-                <span class="text-xs text-base-content/45">#{q.id}</span> {q.question}
+              <li key={q.id} class="rounded-lg bg-base-200/40 px-3 py-2 flex flex-col gap-1">
+                <span class="text-xs text-base-content/45">#{q.id}</span>
+                <MarkdownViewer data={{ content: q.question }} />
               </li>
             ))}
           </ul>

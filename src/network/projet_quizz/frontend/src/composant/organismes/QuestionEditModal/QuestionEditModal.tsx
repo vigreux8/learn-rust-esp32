@@ -1,5 +1,6 @@
 import { X } from "lucide-preact";
 import { Button } from "../../atomes/Button";
+import { MarkdownViewer } from "../../atomes/MarkdownViewer";
 import { QuestionsLlmImportPromptPanel } from "../../molecules/QuestionsLlmImportPromptPanel";
 import { useQuestionEditModal } from "./QuestionEditModal.hook";
 import { QUESTION_EDIT_MODAL_STYLES } from "./QuestionEditModal.styles";
@@ -66,7 +67,11 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
               </label>
             ) : null}
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qm-question">Énoncé</label>
-            <textarea id="qm-question" class="textarea textarea-bordered mb-4 w-full rounded-xl border-base-content/15 text-sm" rows={4} value={drafts.question} onInput={(e) => actions.onDraftQuestion((e.target as HTMLTextAreaElement).value)} />
+            <textarea id="qm-question" class="textarea textarea-bordered mb-2 w-full rounded-xl border-base-content/15 text-sm" rows={4} value={drafts.question} onInput={(e) => actions.onDraftQuestion((e.target as HTMLTextAreaElement).value)} />
+            <div class="mb-4 rounded-xl border border-base-content/10 bg-base-200/30 p-3">
+              <p class="mb-1 text-xs text-base-content/40">Prévisualisation de l'énoncé :</p>
+              <MarkdownViewer data={{ content: drafts.question || "*(Vide)*" }} />
+            </div>
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qm-commentaire">Commentaire</label>
             <textarea id="qm-commentaire" class="textarea textarea-bordered mb-4 w-full rounded-xl border-base-content/15 text-sm" rows={3} value={drafts.commentaire} onInput={(e) => actions.onDraftCommentaire((e.target as HTMLTextAreaElement).value)} />
             <div class="mb-4 rounded-xl border border-learn/20 bg-learn/6 p-3">
@@ -97,7 +102,11 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
         ) : (
           <>
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qe-question">Énoncé</label>
-            <textarea id="qe-question" class="textarea textarea-bordered mb-4 w-full rounded-xl border-base-content/15 text-sm" rows={4} value={drafts.question} onInput={(e) => actions.onDraftQuestion((e.target as HTMLTextAreaElement).value)} />
+            <textarea id="qe-question" class="textarea textarea-bordered mb-2 w-full rounded-xl border-base-content/15 text-sm" rows={4} value={drafts.question} onInput={(e) => actions.onDraftQuestion((e.target as HTMLTextAreaElement).value)} />
+            <div class="mb-4 rounded-xl border border-base-content/10 bg-base-200/30 p-3">
+              <p class="mb-1 text-xs text-base-content/40">Prévisualisation de l'énoncé :</p>
+              <MarkdownViewer data={{ content: drafts.question || "*(Vide)*" }} />
+            </div>
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qe-commentaire">Commentaire</label>
             <textarea id="qe-commentaire" class="textarea textarea-bordered mb-4 w-full rounded-xl border-base-content/15 text-sm" rows={3} value={drafts.commentaire} onInput={(e) => actions.onDraftCommentaire((e.target as HTMLTextAreaElement).value)} />
             {editionReponses.reponseError ? <p class="mb-2 text-xs text-error">{editionReponses.reponseError}</p> : null}
@@ -111,8 +120,13 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
                     </div>
                   ) : (
                     <div class="flex items-start justify-between gap-2">
-                      <span>{r.bonne_reponse ? "✓ " : "○ "}{r.reponse}</span>
-                      <Button variant="outline" class="btn-xs" onClick={() => editionReponses.beginEditReponse(r.id, r.reponse)}>Modifier</Button>
+                      <div class="flex flex-1 items-start gap-2">
+                        <span class="mt-1 shrink-0">{r.bonne_reponse ? "✓ " : "○ "}</span>
+                        <div class="min-w-0 flex-1">
+                          <MarkdownViewer data={{ content: r.reponse }} />
+                        </div>
+                      </div>
+                      <Button variant="outline" class="btn-xs shrink-0" onClick={() => editionReponses.beginEditReponse(r.id, r.reponse)}>Modifier</Button>
                     </div>
                   )}
                 </li>

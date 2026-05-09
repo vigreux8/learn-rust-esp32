@@ -1,9 +1,10 @@
 import { cn } from "../../../lib/cn";
+import { MarkdownViewer } from "../MarkdownViewer";
 import { getAnswerOptionState } from "./AnswerOption.hook";
 import { ANSWER_OPTION_STYLES } from "./AnswerOption.styles";
 import type { AnswerOptionProps } from "./AnswerOption.types";
 
-export function AnswerOption({
+export function AnswerOption( {
   label,
   reponseId,
   pickedId,
@@ -32,7 +33,7 @@ export function AnswerOption({
         showWrongPick && ANSWER_OPTION_STYLES.wrong,
       )}
     >
-      {label}
+      <MarkdownViewer data={{ content: label }} />
     </button>
   );
 }

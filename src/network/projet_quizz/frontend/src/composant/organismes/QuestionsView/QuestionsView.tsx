@@ -13,7 +13,7 @@ import {
 import { QUESTIONS_VIEW_STYLES } from "./QuestionsView.styles";
 import type { QuestionsViewProps } from "./QuestionsView.types";
 
-export function QuestionsView(props: QuestionsViewProps) {
+export function QuestionsView( props: QuestionsViewProps) {
   const { questionsActionBoutons, operationError, contextBar, filtres, liste, editModal } = useQuestionsView(props);
 
   return (

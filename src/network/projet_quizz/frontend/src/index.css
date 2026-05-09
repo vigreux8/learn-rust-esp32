@@ -1,5 +1,8 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
+@import "highlight.js/styles/atom-one-dark.css";
 
+@plugin "@tailwindcss/typography";
 @plugin "daisyui" {
   themes: light --default;
 }
