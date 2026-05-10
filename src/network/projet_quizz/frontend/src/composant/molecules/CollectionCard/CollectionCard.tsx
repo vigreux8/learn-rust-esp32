@@ -18,7 +18,7 @@ import {
 import { Card } from "../../atomes/Card";
 import { Badge } from "../../atomes/Badge";
 import { Button } from "../../atomes/Button";
-import { SearchAssociateBlock } from "../SearchAssociateBlock";
+import { SearchAssociateBlock } from "./parts/SearchAssociateBlock";
 
 import { buildQuestionsRoutePath, buildReflexionRoutePath, buildSousCollectionsRoutePath } from "./CollectionCard.metier";
 import { COLLECTION_CARD_STYLES } from "./CollectionCard.styles";

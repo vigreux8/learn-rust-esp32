@@ -1,4 +1,4 @@
-import type { SousCollectionLlmImportWidgetProps } from "../../molecules/SousCollectionLlmImportWidget";
+import type { SousCollectionLlmImportWidgetProps } from "./parts/SousCollectionLlmImportWidget";
 import type { QuizzQuestionRow, SousCollectionUi } from "../../../types/quizz";
 
 /** Entrées injectées par `preact-router` (`/collections/:collectionId/sous-collections`). */

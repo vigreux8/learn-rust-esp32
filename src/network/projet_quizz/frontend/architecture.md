@@ -53,20 +53,14 @@ frontend/
         │   ├── Card/
         │   ├── PageMain/
         │   ├── PlayModePicker/
-        │   ├── QuestionsCollectionContextBar/
         │   └── QuestionsLlmImportOptionsPanel/
         ├── molecules/           # blocs composés important au moins un atome local (dossier par composant)
-        │   ├── ActionExportCollectionJson/
         │   ├── ActionImportLlm/
-        │   ├── CollectionCard/
+        │   ├── CollectionCard/   # contient `parts/SearchAssociateBlock/` (usage exclusif à la carte)
         │   ├── DeviceAuthGate/
-        │   ├── KpiCard/
-        │   ├── PopUpInformation/
         │   ├── QuestionsLlmImportPanel/
         │   ├── QuestionsLlmImportPromptPanel/
-        │   ├── QuestionsTable/
-        │   ├── CollectionReflexionLlmImportWidget/
-        │   └── UnsavedChainLeaveModal/
+        │   └── …                 # plusieurs molécules « globales » ; celles à un seul parent sont sous `organismes/…/parts/`
         └── organismes/          # pages / écrans complets (dossier par composant)
             ├── CollectionsView/
             ├── DatabaseTransferView/
@@ -108,7 +102,7 @@ Composants UI **sans import** d’un autre dossier `atomes/*` (feuilles de l’a
 | `AppHeader/` / `AppFooter/`       | En-tête et pied de page communs.                                                                                                                        |
 | `PageMain/`                       | Mise en page centrale des pages.                                                                                                                        |
 | `PlayModePicker/`                 | Choix du mode de lecture (filtres, tri, KPI, suites réflexion, inclusion des **collections enfant** `relation_collection` via query `includeChildren`). |
-| `QuestionsCollectionContextBar/`  | Barre de contexte collection / import LLM sur l’écran questions.                                                                                        |
+| *(déplacé)* `QuestionsCollectionContextBar` | Vivant sous `QuestionsView/parts/` — utilisé uniquement par l’écran questions.                                                                      |
 | `QuestionsLlmImportOptionsPanel/` | Options de l’import LLM (sans atome projet dans ce dossier).                                                                                            |
 
 ### `composant/molecules/`
@@ -117,17 +111,17 @@ Blocs composés qui **importent au moins un** composant sous `atomes/`.
 
 | Dossier                               | Rôle                                                              |
 | ------------------------------------- | ----------------------------------------------------------------- |
-| `ActionExportCollectionJson/`         | Bouton d’export JSON d’une collection (état chargement / erreur). |
-| `ActionImportLlm/`                    | Bouton pour ouvrir ou refermer le panneau d’import LLM.           |
-| `CollectionCard/`                     | Carte d’une collection (aperçu, actions).                         |
-| `KpiCard/`                            | Carte indicateur pour le tableau de bord stats.                   |
-| `PopUpInformation/`                   | Boîte d’information / alerte légère.                              |
+| `ActionImportLlm/`                    | Bouton pour ouvrir ou refermer le panneau d’import LLM (partagé par plusieurs écrans / widgets LLM). |
+| `CollectionCard/`                     | Carte d’une collection (aperçu, actions) ; `parts/SearchAssociateBlock/` pour le couple recherche + tag réservé à cette carte. |
 | `QuestionsLlmImportPanel/`            | Panneau regroupant options + prompt import LLM.                   |
-| `QuestionsLlmImportPromptPanel/`      | Zone prompt / JSON pour l’import LLM.                             |
+| `QuestionsLlmImportPromptPanel/`      | Zone prompt / JSON pour l’import LLM (partagée : panel import, modale question, widgets réflexion / sous-collections). |
 | `DeviceAuthGate/`                     | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`).    |
-| `QuestionsTable/`                     | Table détaillée des questions (tri, actions).                     |
-| `CollectionReflexionLlmImportWidget/` | Import LLM ciblée sur la vue suite logique (brouillon pool).      |
-| `UnsavedChainLeaveModal/`             | Modale « quitter sans enregistrer » pour la chaîne réflexion.     |
+| *(déplacé)* `ActionExportCollectionJson` | `QuestionsActionBoutons/parts/` — export JSON d’une collection. |
+| *(déplacé)* `KpiCard`                 | `StatsDashboard/parts/`.                                          |
+| *(déplacé)* `PopUpInformation`        | `CollectionsView/parts/`.                                         |
+| *(déplacé)* `QuestionsTable`          | `QuestionsView/parts/`.                                           |
+| *(déplacé)* `CollectionReflexionLlmImportWidget`, `UnsavedChainLeaveModal` | `QuestionReflexionView/parts/`. |
+| *(déplacé)* `SousCollectionLlmImportWidget` | `SousCollectionsView/parts/`. |
 
 ### `composant/organismes/`
 

@@ -4,7 +4,7 @@ import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import { Button } from "../../atomes/Button/Button";
 import { PageMain } from "../../atomes/PageMain/PageMain";
-import { UnsavedChainLeaveModal } from "../../molecules/UnsavedChainLeaveModal";
+import { UnsavedChainLeaveModal } from "./parts/UnsavedChainLeaveModal";
 import { QuestionEditModal } from "../QuestionEditModal/QuestionEditModal";
 import { useQuestionReflexionViewState } from "./QuestionReflexionView.hook";
 import { ReflexionDndWorkspace } from "./QuestionReflexionView.sections";

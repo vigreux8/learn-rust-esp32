@@ -2,7 +2,7 @@ import { BarChart3, Clock, Target } from "lucide-preact";
 import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { PageMain } from "../../atomes/PageMain/PageMain";
-import { KpiCard } from "../../molecules/KpiCard/KpiCard";
+import { KpiCard } from "./parts/KpiCard";
 import { Card } from "../../atomes/Card/Card";
 import { Badge } from "../../atomes/Badge/Badge";
 import { Button } from "../../atomes/Button/Button";
