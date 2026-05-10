@@ -41,42 +41,6 @@ function PaletteDot(props: {
   );
 }
 
-export type ReflexionPaletteStripProps = {
-  disabled: boolean;
-};
-
-/** Pastilles couleur (palette arbre collections) — glisser sur une vignette ordonnée. */
-export function ReflexionPaletteStrip(props: ReflexionPaletteStripProps) {
-  return (
-    <div class="mb-3 flex flex-col gap-2 rounded-xl border border-base-content/10 bg-base-200/35 px-3 py-2 sm:flex-row sm:items-center">
-      <p class="text-xs leading-snug text-base-content/65">
-        Couleurs (comme les cartes collection par niveau) : glisse un rond sur une vignette pour marquer un groupe
-        logique (ex. énoncé / donnée / formule / application).
-      </p>
-      <div class="flex flex-shrink-0 flex-wrap items-center gap-2">
-        <span class="text-[10px] font-medium uppercase tracking-wide text-base-content/45">Palette</span>
-        <div class="flex flex-wrap items-center gap-1.5">
-          {COLLECTION_TREE_LEVEL_BORDER_HEX.map((hex, level) => (
-            <PaletteDot
-              key={level}
-              level={level}
-              hex={hex}
-              disabled={props.disabled}
-              title={`Couleur ${level + 1} sur ${COLLECTION_TREE_LEVEL_BORDER_HEX.length}`}
-            />
-          ))}
-          <PaletteDot
-            level={null}
-            hex="#cbd5e1"
-            disabled={props.disabled}
-            title="Effacer la couleur sur la vignette cible"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export type ReflexionPaletteRailProps = {
   disabled: boolean;
 };

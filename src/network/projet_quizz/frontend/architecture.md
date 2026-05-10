@@ -51,15 +51,19 @@ frontend/
         │   ├── Badge/
         │   ├── Button/
         │   ├── Card/
+        │   ├── MarkdownViewer/
         │   ├── PageMain/
         │   ├── PlayModePicker/
         │   └── QuestionsLlmImportOptionsPanel/
         ├── molecules/           # blocs composés important au moins un atome local (dossier par composant)
         │   ├── ActionImportLlm/
         │   ├── CollectionCard/   # contient `parts/SearchAssociateBlock/` (usage exclusif à la carte)
+        │   ├── CollectionGroupEditModal/   # titre / édition d’un groupe_questions (sous-collections + réflexion)
         │   ├── DeviceAuthGate/
         │   ├── QuestionsLlmImportPanel/
         │   ├── QuestionsLlmImportPromptPanel/
+        │   ├── QuizzDndQuestionPanels/     # uniquement `QuizzDndQuestionPanels.styles.ts` (styles DnD partagés)
+        │   ├── QuizzQuestionDndRow/       # ligne DnD question (réflexion + sous-collections)
         │   └── …                 # plusieurs molécules « globales » ; celles à un seul parent sont sous `organismes/…/parts/`
         └── organismes/          # pages / écrans complets (dossier par composant)
             ├── CollectionsView/
@@ -102,6 +106,7 @@ Composants UI **sans import** d’un autre dossier `atomes/*` (feuilles de l’a
 | `AppHeader/` / `AppFooter/`       | En-tête et pied de page communs.                                                                                                                        |
 | `PageMain/`                       | Mise en page centrale des pages.                                                                                                                        |
 | `PlayModePicker/`                 | Choix du mode de lecture (filtres, tri, KPI, suites réflexion, inclusion des **collections enfant** `relation_collection` via query `includeChildren`). |
+| `MarkdownViewer/`                 | Rendu Markdown léger pour intitulés de questions, réponses, sessions (tables, quiz, modales).                                                            |
 | *(déplacé)* `QuestionsCollectionContextBar` | Vivant sous `QuestionsView/parts/` — utilisé uniquement par l’écran questions.                                                                      |
 | `QuestionsLlmImportOptionsPanel/` | Options de l’import LLM (sans atome projet dans ce dossier).                                                                                            |
 
@@ -115,6 +120,9 @@ Blocs composés qui **importent au moins un** composant sous `atomes/`.
 | `CollectionCard/`                     | Carte d’une collection (aperçu, actions) ; `parts/SearchAssociateBlock/` pour le couple recherche + tag réservé à cette carte. |
 | `QuestionsLlmImportPanel/`            | Panneau regroupant options + prompt import LLM.                   |
 | `QuestionsLlmImportPromptPanel/`      | Zone prompt / JSON pour l’import LLM (partagée : panel import, modale question, widgets réflexion / sous-collections). |
+| `CollectionGroupEditModal/`          | Formulaire titre / métadonnées d’un groupe de questions (liste groupes sous-collections, liste groupes réflexion). |
+| `QuizzQuestionDndRow/`                | Ligne sortable ou draggable (`dnd-kit`) pour une question affichée en liste DnD. |
+| `QuizzDndQuestionPanels/`             | Pas de JSX public : fichier `QuizzDndQuestionPanels.styles.ts` commun aux zones DnD (réflexion, sous-collections). |
 | `DeviceAuthGate/`                     | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`).    |
 | *(déplacé)* `ActionExportCollectionJson` | `QuestionsActionBoutons/parts/` — export JSON d’une collection. |
 | *(déplacé)* `KpiCard`                 | `StatsDashboard/parts/`.                                          |
@@ -155,6 +163,7 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 | `userSession.tsx`                                                            | État et helpers de session utilisateur / appareil côté client.                                                                                                       |
 | `lastQuizResult.ts`                                                          | Persistance locale du dernier résultat de quiz.                                                                                                                      |
 | `playOrder.ts`                                                               | Ordre de lecture (aléatoire, séquentiel, etc.).                                                                                                                      |
+| `playSessionReflexionMix.ts`                                                 | Mélange playlist session quand réflexion + questions classiques (`buildReflexionMixedPlaylist`).                                                                     |
 | `collectionAppJson.ts`                                                       | Format JSON applicatif des collections (import/export côté client).                                                                                                  |
 | `appCollectionImportNormalize.ts`                                            | Normalisation des données importées au format app.                                                                                                                   |
 | `llmImportPrompts.ts` / `llmImportNormalize.ts` / `questionCreateLlmJson.ts` | Chaîne d’import « LLM » : prompts, normalisation, construction JSON.                                                                                                 |
@@ -166,7 +175,7 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 
 ### `assets/`
 
-Ressources statiques servies par Vite (illustrations, logos).
+Ressources statiques **importées** depuis le code sous `src/` (illustrations, logos). Le dossier peut rester vide (fichier `.gitkeep`) jusqu’à ajout d’assets réels.
 
 ## Règles à respecter Strictement
 

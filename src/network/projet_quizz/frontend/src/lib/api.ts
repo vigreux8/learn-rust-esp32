@@ -9,7 +9,6 @@ import type {
   QuizzQuestionRow,
   RefCategorieHierarchyRow,
   RefCategorieRow,
-  RefImportancePersonaliteUi,
   RefQuestionScaleRow,
   ReflexionChainEditorUi,
   SessionDetail,
@@ -152,12 +151,6 @@ export async function unassignCollectionTag(
   );
   await assertResponseOk(res);
   return res.json() as Promise<CollectionUi>;
-}
-
-export async function fetchRefImportancePersonalite(): Promise<RefImportancePersonaliteUi[]> {
-  const res = await fetch(apiUrl("/quizz/ref-importance-personnalite"));
-  await assertResponseOk(res);
-  return res.json() as Promise<RefImportancePersonaliteUi[]>;
 }
 
 export async function fetchPersonalitesPicker(): Promise<PersonalitePickerRowUi[]> {
