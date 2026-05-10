@@ -11,6 +11,10 @@ import type {
   UseQuizSessionQuestionAnnotationsResult,
 } from "./useQuizSessionQuestionAnnotations.types";
 
+/**
+ * Annotations rapides sur la question courante (véracité, catégories pid/eid) : brouillon local, patch API,
+ * verrou interaction et enregistrement pour resync avec le hook d’édition.
+ */
 export function useQuizSessionQuestionAnnotations(
   options: UseQuizSessionQuestionAnnotationsOptions,
 ): UseQuizSessionQuestionAnnotationsResult {

@@ -17,6 +17,10 @@ import {
 } from "../../QuizSessionView.metier";
 import type { UseQuizSessionSessionLoadOptions, UseQuizSessionSessionLoadResult } from "./useQuizSessionSessionLoad.types";
 
+/**
+ * Hydratation de la session de quiz : collection, tirage des questions (dont mix réflexion si paramétré),
+ * enrichissement UI et état chargement / erreur ; expose aussi la fonction de relance.
+ */
 export function useQuizSessionSessionLoad({
   route,
   deps,

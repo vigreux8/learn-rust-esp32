@@ -17,6 +17,10 @@ import type {
   UseCollectionsMutationsResult,
 } from "./useCollectionsMutations.types";
 
+/**
+ * Mutations collections (création, suppression, tags, personnalités) : appels API, navigation après création,
+ * états de suppression en attente et rafraîchissement des listes locales.
+ */
 export function useCollectionsMutations(opts: UseCollectionsMutationsOptions): UseCollectionsMutationsResult {
   const {
     identity: { userId },

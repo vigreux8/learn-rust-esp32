@@ -5,6 +5,9 @@ import { useUserSession } from "../../../lib/userSession";
 import { buildReplayTarget, computeScorePercent } from "./QuizResultsView.metier";
 import type { QuizResultsViewProps } from "./QuizResultsView.types";
 
+/**
+ * Écran résultat de session : lecture du dernier score stocké localement et raccourcis navigation / replay.
+ */
 export function useQuizResultsView(props: QuizResultsViewProps = {}) {
   void props;
   const { userId } = useUserSession();

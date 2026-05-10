@@ -8,6 +8,10 @@ import type { QuestionsLlmImportPromptPanelProps } from "../../molecules/Questio
 import { defaultCreateReponses } from "./QuestionEditModal.metier";
 import type { QuestionCreateSavePayload, QuestionEditModalProps } from "./QuestionEditModal.types";
 
+/**
+ * Comportement UI de la modale création / édition de question : brouillons de réponses, aide LLM ponctuelle,
+ * validation et sérialisation du payload de sauvegarde.
+ */
 export function useQuestionEditModal(props: QuestionEditModalProps) {
   const { settings, actions, status, data, drafts } = props;
 

@@ -9,6 +9,9 @@ import {
 import type { StatsDashboardProps } from "./StatsDashboard.types";
 import { useStatsDashboardBootstrap } from "./hooks/useStatsDashboardBootstrap";
 
+/**
+ * Orchestrateur stats : agrège les KPI et l’activité sur 7 jours à partir du bootstrap API.
+ */
 export function useStatsDashboard(_props: StatsDashboardProps) {
   void _props;
   const { userId } = useUserSession();

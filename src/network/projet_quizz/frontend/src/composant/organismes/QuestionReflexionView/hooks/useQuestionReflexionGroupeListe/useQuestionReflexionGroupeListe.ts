@@ -9,6 +9,10 @@ import type { UseQuestionReflexionGroupeListeProps } from "./useQuestionReflexio
 
 type GroupeFormMode = "create" | "edit";
 
+/**
+ * Gestion des suites logiques (`groupe_questions`) : modale création / édition, suppression avec confirm,
+ * état du formulaire et actions API ; ne gère pas le changement de suite sélectionnée (délégué au hook chaîne).
+ */
 export function useQuestionReflexionGroupeListe({
   bootstrap,
   status,

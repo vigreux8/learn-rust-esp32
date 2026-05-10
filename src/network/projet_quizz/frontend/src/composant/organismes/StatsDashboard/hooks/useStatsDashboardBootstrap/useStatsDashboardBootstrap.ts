@@ -3,6 +3,9 @@ import { fetchKpis, fetchSessionSummaries } from "../../../../../lib/api";
 import type { SessionSummary, UserKpiRow } from "../../../../../types/quizz";
 import type { UseStatsDashboardBootstrapProps } from "./useStatsDashboardBootstrap.types";
 
+/**
+ * Données du tableau de bord stats : KPI utilisateur, résumés de sessions, chargement et erreurs.
+ */
 export function useStatsDashboardBootstrap({ identity }: UseStatsDashboardBootstrapProps) {
   const { userId } = identity;
 

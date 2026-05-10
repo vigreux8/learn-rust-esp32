@@ -2,6 +2,9 @@ import { useState } from "preact/hooks";
 import { downloadDatabaseJsonExport, downloadDatabaseSqlExport } from "../../../../../lib/api";
 import { triggerFileDownload } from "../../DatabaseTransferView.utils";
 
+/**
+ * Export base : téléchargement SQL ou JSON, indicateurs de chargement et nom du dernier fichier généré.
+ */
 export function useDatabaseTransferExport() {
   const [sqlBusy, setSqlBusy] = useState(false);
   const [jsonBusy, setJsonBusy] = useState(false);

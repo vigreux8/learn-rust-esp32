@@ -5,6 +5,10 @@ import { useSousCollectionsSousInteractions } from "./hooks/useSousCollectionsSo
 import { normalizeCollectionIdParam } from "./SousCollectionsView.metier";
 import type { SousCollectionsViewProps } from "./SousCollectionsView.types";
 
+/**
+ * Orchestrateur sous-collections : couple le slice données (`useSousCollectionsData`) et les interactions
+ * drag-and-drop / CRUD (`useSousCollectionsSousInteractions`).
+ */
 export function useSousCollectionsViewState(props: SousCollectionsViewProps) {
   const { route } = props;
   const collectionIdNum = useMemo(() => normalizeCollectionIdParam(route.collectionId), [route.collectionId]);

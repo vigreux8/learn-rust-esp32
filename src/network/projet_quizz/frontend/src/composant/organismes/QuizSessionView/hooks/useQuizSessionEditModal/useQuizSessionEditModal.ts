@@ -15,6 +15,10 @@ import type {
   UseQuizSessionEditModalResult,
 } from "./useQuizSessionEditModal.types";
 
+/**
+ * Modale d’édition / création de question pendant une session : détail question, sauvegarde, rattachements sous-collection
+ * et synchronisation avec la liste `session.questions`.
+ */
 export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): UseQuizSessionEditModalResult {
   const { navigation, identity, session, refs, feedback, dataDeps } = opts;
   const { userId } = identity;

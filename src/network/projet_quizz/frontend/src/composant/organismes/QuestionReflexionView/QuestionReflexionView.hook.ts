@@ -6,6 +6,10 @@ import { useQuestionReflexionLeaveGuard } from "./hooks/useQuestionReflexionLeav
 import { useQuestionReflexionQuestionEdit } from "./hooks/useQuestionReflexionQuestionEdit";
 import type { QuestionReflexionViewProps } from "./QuestionReflexionView.types";
 
+/**
+ * Orchestrateur vue « suite logique » : assemble bootstrap, état chaîne, gardes de sortie, liste des groupes,
+ * modale question et erreurs globales ; résout `confirmLeave` via ref pour éviter les dépendances circulaires.
+ */
 export function useQuestionReflexionViewState(props: QuestionReflexionViewProps) {
   const chainFlushRef = useRef<((cid: number, gid: number | null) => Promise<void>) | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);

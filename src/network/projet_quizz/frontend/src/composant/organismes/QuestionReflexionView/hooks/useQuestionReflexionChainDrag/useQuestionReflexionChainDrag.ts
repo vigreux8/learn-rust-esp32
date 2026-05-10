@@ -13,6 +13,10 @@ import type {
   UseQuestionReflexionChainDragResult,
 } from "./useQuestionReflexionChainDrag.types";
 
+/**
+ * Glisser-déposer sur la vue suite logique : palette de teintes par question, insertion / réordonnancement
+ * entre suite et brouillon, retrait vers le pool, et déplacement par index (`moveOrdered`).
+ */
 export function useQuestionReflexionChainDrag({
   refs,
   applyLocalChainIds,

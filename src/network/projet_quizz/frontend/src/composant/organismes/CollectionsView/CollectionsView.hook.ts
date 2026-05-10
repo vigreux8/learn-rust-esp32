@@ -8,6 +8,10 @@ import { useCollectionsMutations } from "./hooks/useCollectionsMutations";
 import type { CollectionFilter } from "./CollectionsView.types";
 import { pendingDeleteLabels } from "./CollectionsView.metier";
 
+/**
+ * Orchestrateur liste des collections : bootstrap, filtres / affichage, mutations, import JSON et branchements UX
+ * (navigation jouer, suppression différée).
+ */
 export function useCollectionsView() {
   const { userId } = useUserSession();
 

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 
+/**
+ * Toast / message éphémère pour feedback utilisateur pendant la session (auto-effacement après délai).
+ */
 export function useQuizSessionActionMessage() {
   const [message, setMessage] = useState<string | null>(null);
 

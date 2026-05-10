@@ -19,6 +19,10 @@ import type {
   UseQuizSessionPlayStateResult,
 } from "./useQuizSessionPlayState.types";
 
+/**
+ * Déroulé du quiz : index question, choix réponse, révélation, score, fin de session, actions suivant / recommencer,
+ * KPI et persistance locale du dernier résultat.
+ */
 export function useQuizSessionPlayState(opts: UseQuizSessionPlayStateOptions): UseQuizSessionPlayStateResult {
   const {
     route: routeOpts,

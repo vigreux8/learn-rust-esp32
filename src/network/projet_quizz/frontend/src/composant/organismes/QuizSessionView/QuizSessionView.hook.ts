@@ -15,6 +15,10 @@ import { useQuizSessionPlayState } from "./hooks/useQuizSessionPlayState";
 import { useQuizSessionSessionLoad } from "./hooks/useQuizSessionSessionLoad";
 import type { QuizSessionViewProps } from "./QuizSessionView.types";
 
+/**
+ * Orchestrateur session quiz : charge référentiels, hydrate la session, gère lecture/édition/annotations et message
+ * utilisateur ; compose les sous-hooks spécialisés en un seul modèle pour la vue.
+ */
 export function useQuizSessionView(props: QuizSessionViewProps) {
   const { route } = props;
   const { userId } = useUserSession();

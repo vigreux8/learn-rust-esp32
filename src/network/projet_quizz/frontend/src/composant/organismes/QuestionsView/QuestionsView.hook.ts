@@ -23,6 +23,10 @@ import {
 import type { QuestionsViewProps } from "./QuestionsView.types";
 import type { QuestionCreateSavePayload } from "../QuestionEditModal/QuestionEditModal";
 
+/**
+ * Liste / gestion des questions par collection : chargements multiples (collections, questions, refs),
+ * filtres, modales CRUD, import JSON et rattachements sous-collection.
+ */
 export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   const { userId } = useUserSession();
   const [collections, setCollections] = useState<CollectionUi[]>([]);

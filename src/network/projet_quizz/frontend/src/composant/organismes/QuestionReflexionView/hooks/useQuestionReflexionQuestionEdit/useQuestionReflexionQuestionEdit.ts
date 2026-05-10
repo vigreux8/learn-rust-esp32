@@ -4,6 +4,10 @@ import type { QuizzQuestionDetail, QuizzQuestionRow } from "../../../../../types
 import type { ReflexionLocalPoolDraft } from "../../QuestionReflexionView.types";
 import type { UseQuestionReflexionQuestionEditProps } from "./useQuestionReflexionQuestionEdit.types";
 
+/**
+ * Modale d’édition d’une question dans le contexte réflexion : chargement détail API, brouillons locaux
+ * (ids négatifs), champs et réponses éditables, sauvegarde et synchro avec les listes ordonnée / pool.
+ */
 export function useQuestionReflexionQuestionEdit({
   routing,
   data,

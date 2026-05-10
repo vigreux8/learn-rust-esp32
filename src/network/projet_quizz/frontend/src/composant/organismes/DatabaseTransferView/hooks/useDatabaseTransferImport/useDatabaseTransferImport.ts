@@ -7,6 +7,9 @@ import {
 } from "../../../../../lib/api";
 import { readFileAsText } from "../../DatabaseTransferView.utils";
 
+/**
+ * Import base / dump : sélection de fichier, étapes et appels d’import, messages d’erreur ou de succès.
+ */
 export function useDatabaseTransferImport() {
   const sqlImportInputRef = useRef<HTMLInputElement | null>(null);
   const jsonImportInputRef = useRef<HTMLInputElement | null>(null);

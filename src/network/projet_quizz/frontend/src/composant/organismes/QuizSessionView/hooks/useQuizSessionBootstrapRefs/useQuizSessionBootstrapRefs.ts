@@ -15,6 +15,10 @@ import {
   sortRefImportanceForQuizSession,
 } from "../../QuizSessionView.metier";
 
+/**
+ * Référentiels nécessaires au quiz (catégories, hiérarchie, échelles importance / difficulté), chargés une fois
+ * et triés pour l’UI session.
+ */
 export function useQuizSessionBootstrapRefs(): {
   refCategories: RefCategorieRow[];
   refCategoriesHierarchy: RefCategorieHierarchyRow[];

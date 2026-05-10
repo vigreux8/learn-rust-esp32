@@ -10,6 +10,10 @@ import {
 } from "../../QuestionReflexionView.metier";
 import type { UseQuestionReflexionChainSaveProps } from "./useQuestionReflexionChainSave.types";
 
+/**
+ * Persistance serveur de la suite réflexion : matérialisation des questions brouillon (ids négatifs),
+ * envoi `patchReflexionChain`, rechargement de la chaîne ; gère le retry si le groupe ciblé est périmé.
+ */
 export function useQuestionReflexionChainSave({
   routing,
   identity,

@@ -12,6 +12,10 @@ import type {
   UseSousCollectionsSousInteractionsProps,
 } from "./useSousCollectionsSousInteractions.types";
 
+/**
+ * Interactions sur les sous-collections et le pool : DnD d’attachement / détachement, CRUD sous-collection,
+ * modales de formulaire et appels API associés.
+ */
 export function useSousCollectionsSousInteractions({
   routing,
   catalogue,

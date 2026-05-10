@@ -13,6 +13,10 @@ import type {
   UseSousCollectionsDataProps,
 } from "./useSousCollectionsData.types";
 
+/**
+ * Données de la vue sous-collections : collection, questions, liste des sous-collections, sélection, recherche,
+ * erreurs et opérations sur le pool (filtrage côté client).
+ */
 export function useSousCollectionsData({ routing }: UseSousCollectionsDataProps) {
   const { collectionIdNum } = routing;
   const { userId } = useUserSession();

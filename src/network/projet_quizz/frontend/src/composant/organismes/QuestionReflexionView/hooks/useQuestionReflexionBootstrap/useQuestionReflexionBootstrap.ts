@@ -5,6 +5,10 @@ import type { CollectionUi, GroupeQuestionsUi } from "../../../../../types/quizz
 import { normalizeCollectionIdParam } from "../../../SousCollectionsView/SousCollectionsView.metier";
 import type { UseQuestionReflexionBootstrapProps } from "./useQuestionReflexionBootstrap.types";
 
+/**
+ * Chargement initial et navigation « collection » : id normalisé, collection, liste des groupes, sélection,
+ * erreurs de chargement et `reloadAll` (synchronisé avec le flush chaîne pour recharger l’ordre réflexion).
+ */
 export function useQuestionReflexionBootstrap({ route, chainFlush }: UseQuestionReflexionBootstrapProps) {
   const { userId } = useUserSession();
   const collectionIdNum = useMemo(() => normalizeCollectionIdParam(route.collectionId), [route.collectionId]);

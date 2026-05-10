@@ -1,6 +1,10 @@
 import { useCallback, useRef, useState } from "preact/hooks";
 import type { UseQuestionReflexionLeaveGuardProps } from "./useQuestionReflexionLeaveGuard.types";
 
+/**
+ * Sortie de page avec garde : si la chaîne locale est « sale », ouvre la modale enregistrer / abandonner /
+ * annuler ; résout une promesse pour laisser la navigation ou le changement de groupe continuer ou non.
+ */
 export function useQuestionReflexionLeaveGuard({
   chain,
   routing,

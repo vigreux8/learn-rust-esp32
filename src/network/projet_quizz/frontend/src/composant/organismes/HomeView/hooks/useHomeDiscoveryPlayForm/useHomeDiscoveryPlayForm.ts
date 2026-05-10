@@ -9,6 +9,10 @@ import {
 import type { PlayModeSettings } from "../../../../atomes/PlayModePicker/PlayModePicker.types";
 import type { UseHomeDiscoveryPlayFormProps } from "./useHomeDiscoveryPlayForm.types";
 
+/**
+ * Formulaire « lancer une session » depuis l’accueil : réglages de mode de jeu, construction des ordres de tirage
+ * et navigation vers la route quiz avec la query attendue.
+ */
 export function useHomeDiscoveryPlayForm({ identity }: UseHomeDiscoveryPlayFormProps) {
   const [playMode, setPlayMode] = useState<PlayModeSettings>({
     neverAnswered: false,

@@ -8,6 +8,10 @@ import { normalizeAndValidateAppCollectionImportText } from "../../../../../lib/
 import { normalizeAndValidateImportText } from "../../../../../lib/llmImportNormalize";
 import type { UseCollectionsJsonImportOptions, UseCollectionsJsonImportPanel } from "./useCollectionsJsonImport.types";
 
+/**
+ * Panneau d’import JSON (questions LLM ou export d’app) : fichier, validation normalisée, création de collection
+ * vide le cas échéant et rappel des intégrations parent (reload).
+ */
 export function useCollectionsJsonImport(
   options: UseCollectionsJsonImportOptions,
 ): UseCollectionsJsonImportPanel {

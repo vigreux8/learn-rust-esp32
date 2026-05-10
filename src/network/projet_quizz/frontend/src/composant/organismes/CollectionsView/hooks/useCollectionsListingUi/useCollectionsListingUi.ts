@@ -11,6 +11,10 @@ import { applyTagFilter, filterCollections } from "../../CollectionsView.metier"
 import type { CollectionFilter } from "../../CollectionsView.types";
 import type { UseCollectionsListingUiOptions, UseCollectionsListingUiResult } from "./useCollectionsListingUi.types";
 
+/**
+ * Comportement UI de la liste : filtres (possession, tags), mode de lecture, hiérarchie / recherche,
+ * et projection des cartes affichées sans muter les données serveur.
+ */
 export function useCollectionsListingUi({
   identity,
   data,

@@ -19,6 +19,11 @@ import { useQuestionReflexionChainDrag } from "../useQuestionReflexionChainDrag"
 import { useQuestionReflexionChainSave } from "../useQuestionReflexionChainSave";
 import type { UseQuestionReflexionChainDraftProps } from "./useQuestionReflexionChainDraft.types";
 
+/**
+ * Cœur « suite logique » : état de la chaîne ordonnée, du pool, des couleurs et des brouillons LLM ;
+ * chargement `loadChainFor`, filtres, import local LLM, navigation, suppression de question côté chaîne,
+ * et exposition des setters / refs pour les autres sous-hooks (édition, garde de sortie).
+ */
 export function useQuestionReflexionChainDraft({
   bootstrap,
   chainFlush,

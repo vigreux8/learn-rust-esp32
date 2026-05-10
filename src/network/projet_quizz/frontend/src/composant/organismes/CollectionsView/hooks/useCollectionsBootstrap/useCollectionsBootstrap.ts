@@ -6,6 +6,10 @@ import type {
   UseCollectionsBootstrapResult,
 } from "./useCollectionsBootstrap.types";
 
+/**
+ * Données initiales de l’écran collections : chargement des collections utilisateur et du picker de personnalités,
+ * états loading / erreur, et fonction de rechargement.
+ */
 export function useCollectionsBootstrap({
   identity,
 }: UseCollectionsBootstrapOptions): UseCollectionsBootstrapResult {

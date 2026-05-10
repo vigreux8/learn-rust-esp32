@@ -3,6 +3,9 @@ import { parsePlayQtypeSelectValue } from "./HomeView.metier";
 import type { HomeViewProps } from "./HomeView.types";
 import { useHomeDiscoveryPlayForm } from "./hooks/useHomeDiscoveryPlayForm";
 
+/**
+ * Orchestrateur accueil : expose les choix de lancement de session (`useHomeDiscoveryPlayForm`) pour la vue.
+ */
 export function useHomeView(_props: HomeViewProps) {
   const { userId } = useUserSession();
   const discovery = useHomeDiscoveryPlayForm({ identity: { userId } });

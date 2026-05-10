@@ -5,6 +5,9 @@ import { useUserSession } from "../../../lib/userSession";
 import type { SessionDetail } from "../../../types/quizz";
 import type { SessionDetailsViewProps } from "./SessionDetailsView.types";
 
+/**
+ * Détail d’une session historique : chargement par id, droits utilisateur et navigation retour.
+ */
 export function useSessionDetailsView(props: SessionDetailsViewProps) {
   const { route } = props;
   const { sessionId } = route;
