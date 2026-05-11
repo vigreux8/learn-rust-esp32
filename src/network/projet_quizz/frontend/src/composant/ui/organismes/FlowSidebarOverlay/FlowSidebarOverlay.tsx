@@ -3,6 +3,7 @@ import { useFlowSidebarOverlay } from "./FlowSidebarOverlay.hook";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "./FlowSidebarOverlay.styles";
 import type { FlowSidebarOverlayProps } from "./FlowSidebarOverlay.types";
 import { CollectionFilterPanel } from "./parts/CollectionFilterPanel";
+import { CreationShortcutsPanel } from "./parts/CreationShortcutsPanel";
 import { PersonalityFilterPanel } from "./parts/PersonalityFilterPanel";
 import { QuestionListPanel } from "./parts/QuestionListPanel";
 import { SidebarRail } from "./parts/SidebarRail";
@@ -21,7 +22,9 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
         ? "Questions par collection"
         : panneau.activeTab === "personalities"
           ? "Personnalités"
-          : "";
+          : panneau.activeTab === "create"
+            ? "Créer sur le graphe"
+            : "";
 
   return (
     <div class={FLOW_SIDEBAR_OVERLAY_STYLES.overlayWrapper}>
@@ -84,6 +87,10 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                   onDragStart: drag.onDragStart,
                 }}
               />
+            ) : null}
+
+            {panneau.activeTab === "create" ? (
+              <CreationShortcutsPanel actions={{ onDragStart: drag.onDragStart }} />
             ) : null}
           </div>
         </aside>

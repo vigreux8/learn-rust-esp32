@@ -1,4 +1,4 @@
-export type SidebarTab = "collections" | "questions" | "personalities" | null;
+export type SidebarTab = "collections" | "questions" | "personalities" | "create" | null;
 
 export type FlowSidebarCollectionRow = {
   id: string;

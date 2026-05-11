@@ -102,7 +102,12 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           : `node_${Date.now()}`;
 
       if (parsed.type === "collectionNode") {
-        const patch = (parsed.data ?? {}) as { label?: unknown; collectionId?: unknown };
+        const patch = (parsed.data ?? {}) as {
+          label?: unknown;
+          collectionId?: unknown;
+          blankTemplate?: unknown;
+        };
+        const blankTemplate = patch.blankTemplate === true;
         const labelFallback =
           typeof patch.label === "string" ? patch.label : DEFAULT_COLLECTION_NODE_DATA.label;
         const cid = typeof patch.collectionId === "number" ? patch.collectionId : null;
@@ -127,15 +132,26 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
                   })),
                 },
               }
-            : {
-                id,
-                type: "collectionNode",
-                position,
-                data: {
-                  ...DEFAULT_COLLECTION_NODE_DATA,
-                  label: labelFallback,
-                },
-              };
+            : blankTemplate
+              ? {
+                  id,
+                  type: "collectionNode",
+                  position,
+                  data: {
+                    label: labelFallback,
+                    supercollections: [],
+                    creators: [],
+                  },
+                }
+              : {
+                  id,
+                  type: "collectionNode",
+                  position,
+                  data: {
+                    ...DEFAULT_COLLECTION_NODE_DATA,
+                    label: labelFallback,
+                  },
+                };
         setNodes((nds) => nds.concat(newNode));
         onNodeCreate?.(parsed.type, position, newNode.data);
         return;
@@ -163,7 +179,9 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           personaliteId?: unknown;
           collectionLabel?: unknown;
           ficheCollectionId?: unknown;
+          blankTemplate?: unknown;
         };
+        const blankTemplate = patch.blankTemplate === true;
         const label = typeof patch.label === "string" ? patch.label : "Personnalité";
         const importanceType =
           patch.importanceType === null || patch.importanceType === undefined
@@ -172,11 +190,13 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
               ? patch.importanceType
               : null;
         const personaliteId =
-          typeof patch.personaliteId === "number" ? patch.personaliteId : undefined;
+          blankTemplate || typeof patch.personaliteId !== "number" ? undefined : patch.personaliteId;
         const collectionLabel =
-          typeof patch.collectionLabel === "string" ? patch.collectionLabel : undefined;
+          blankTemplate || typeof patch.collectionLabel !== "string" ? undefined : patch.collectionLabel;
         const ficheCollectionId =
-          typeof patch.ficheCollectionId === "number" ? patch.ficheCollectionId : undefined;
+          blankTemplate || typeof patch.ficheCollectionId !== "number"
+            ? undefined
+            : patch.ficheCollectionId;
         const newNode: AppNode = {
           id,
           type: "personalityNode",

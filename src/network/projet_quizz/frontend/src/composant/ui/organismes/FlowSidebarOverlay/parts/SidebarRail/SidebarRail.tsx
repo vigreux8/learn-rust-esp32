@@ -1,4 +1,4 @@
-import { Database, MessageSquare, UserRound } from "lucide-preact";
+import { Database, MessageSquare, Plus, UserRound } from "lucide-preact";
 import { cn } from "../../../../../../lib/cn";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import type { SidebarRailProps } from "./SidebarRail.types";
@@ -11,6 +11,7 @@ export function SidebarRail(props: SidebarRailProps) {
   const collectionsActive = data.activeTab === "collections";
   const questionsActive = data.activeTab === "questions";
   const personalitiesActive = data.activeTab === "personalities";
+  const createActive = data.activeTab === "create";
 
   return (
     <nav class={FLOW_SIDEBAR_OVERLAY_STYLES.rail} aria-label="Outils du graphe">
@@ -49,6 +50,18 @@ export function SidebarRail(props: SidebarRailProps) {
         onClick={() => actions.toggleTab("personalities")}
       >
         <UserRound size={20} aria-hidden />
+      </button>
+      <button
+        type="button"
+        class={cn(
+          FLOW_SIDEBAR_OVERLAY_STYLES.railButton,
+          createActive && FLOW_SIDEBAR_OVERLAY_STYLES.railButtonActiveCreate,
+        )}
+        aria-pressed={createActive}
+        aria-label="Créer un nœud collection ou personnalité"
+        onClick={() => actions.toggleTab("create")}
+      >
+        <Plus size={20} aria-hidden />
       </button>
     </nav>
   );

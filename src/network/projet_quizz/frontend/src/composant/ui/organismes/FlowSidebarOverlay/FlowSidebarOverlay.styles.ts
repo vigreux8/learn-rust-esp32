@@ -8,6 +8,7 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   railButtonActiveCollections: "btn-active text-warning",
   railButtonActiveQuestions: "btn-active text-primary",
   railButtonActivePersonalities: "btn-active text-success",
+  railButtonActiveCreate: "btn-active text-accent",
   panel: cn(
     "pointer-events-auto flex h-[80vh] w-80 flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl transition-all duration-300",
   ),
