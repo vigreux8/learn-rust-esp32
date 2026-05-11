@@ -22,6 +22,12 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
       </label>
 
       <div class="flex min-h-0 flex-col gap-2 overflow-y-auto">
+        {data.groups.length === 0 ? (
+          <p class="rounded-lg border border-base-content/10 bg-base-200/40 px-3 py-6 text-center text-xs text-base-content/60">
+            Aucune question pour ce filtre. Clique sur le fond du graphe (hors nœud) ou désélectionne pour tout
+            afficher.
+          </p>
+        ) : null}
         {data.groups.map((group) => (
           <div key={group.category} class={FLOW_SIDEBAR_OVERLAY_STYLES.collapse}>
             <input type="checkbox" defaultChecked aria-label={`Déplier ${group.category}`} />
@@ -35,6 +41,8 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                   onDragStart={(event) =>
                     actions.onDragStart(event as unknown as DragEvent, "questionNode", {
                       title: item.title,
+                      questionId: Number(item.id),
+                      collectionId: item.collectionId,
                     })
                   }
                 >

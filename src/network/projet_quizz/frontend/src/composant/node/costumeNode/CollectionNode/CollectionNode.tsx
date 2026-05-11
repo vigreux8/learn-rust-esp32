@@ -15,7 +15,7 @@ export function CollectionNode(props: CollectionNodeProps) {
       <div class={COLLECTION_NODE_STYLES.coreColumn}>
         {layout.isExpanded ? (
           <div class={COLLECTION_NODE_STYLES.panelsFloating}>
-            <CollectionPanel collections={content.collections} />
+            <CollectionPanel supercollections={content.supercollections} />
             <CreatorPanel creators={content.creators} />
           </div>
         ) : null}
@@ -38,7 +38,12 @@ export function CollectionNode(props: CollectionNodeProps) {
         </div>
 
         <div class={COLLECTION_NODE_STYLES.mainBar}>
-          <button type="button" class={COLLECTION_NODE_STYLES.buttonIconCollections} onClick={layout.toggle} aria-label="Basculer panneau collections">
+          <button
+            type="button"
+            class={COLLECTION_NODE_STYLES.buttonIconCollections}
+            onClick={layout.toggle}
+            aria-label="Basculer panneau supercollections (collections étiquette)"
+          >
             <Hash class="h-4 w-4" aria-hidden />
           </button>
 

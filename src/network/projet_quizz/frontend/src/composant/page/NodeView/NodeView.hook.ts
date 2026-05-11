@@ -5,6 +5,7 @@ import {
   useNodesState,
   useReactFlow,
   type Connection,
+  type OnSelectionChangeFunc,
 } from "@xyflow/react";
 import { fetchCollections } from "../../../lib/api";
 import { useUserSession } from "../../../lib/userSession";
@@ -13,7 +14,10 @@ import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionNode";
 import { readReactFlowDnDFromEvent } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.metier";
 import type { CollectionUi } from "../../../types/quizz";
-import { buildNodeViewSidebarData } from "./NodeView.metier";
+import {
+  buildNodeViewSidebarData,
+  resolveQuestionsScopeCollectionIdFromSelection,
+} from "./NodeView.metier";
 import type { NodeViewProps } from "./NodeView.types";
 
 /**
@@ -25,6 +29,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const { screenToFlowPosition } = useReactFlow<AppNode, AppEdge>();
 
   const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
+  const [questionsScopeCollectionId, setQuestionsScopeCollectionId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +75,16 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     }
   }, []);
 
+  const onSelectionChange = useCallback<OnSelectionChangeFunc<AppNode, AppEdge>>(({ nodes }) => {
+    const flagged = nodes.filter((n) => n.selected);
+    const selected = flagged.length > 0 ? flagged : nodes;
+    setQuestionsScopeCollectionId(resolveQuestionsScopeCollectionIdFromSelection(selected));
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    setQuestionsScopeCollectionId(null);
+  }, []);
+
   const onDrop = useCallback(
     (event: DragEvent) => {
       event.preventDefault();
@@ -101,9 +116,10 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
                 position,
                 data: {
                   label: coll.nom,
-                  collections: (coll.sous_collections ?? []).map((sc) => ({
-                    id: String(sc.id),
-                    label: sc.nom,
+                  collectionId: coll.id,
+                  supercollections: (coll.collection_tags ?? []).map((tag) => ({
+                    id: String(tag.id),
+                    label: tag.nom,
                   })),
                   creators: (coll.personnalites ?? []).map((p) => ({
                     id: String(p.id),
@@ -126,13 +142,14 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       }
 
       if (parsed.type === "questionNode") {
-        const patch = (parsed.data ?? {}) as { title?: unknown };
+        const patch = (parsed.data ?? {}) as { title?: unknown; collectionId?: unknown };
         const title = typeof patch.title === "string" ? patch.title : "Question";
+        const collectionId = typeof patch.collectionId === "number" ? patch.collectionId : null;
         const newNode: AppNode = {
           id,
           type: "questionNode",
           position,
-          data: { title },
+          data: { title, collectionId },
         };
         setNodes((nds) => nds.concat(newNode));
         onNodeCreate?.(parsed.type, position, newNode.data);
@@ -141,7 +158,23 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     [apiCollections, onNodeCreate, screenToFlowPosition, setNodes],
   );
 
-  const sidebarData = useMemo(() => buildNodeViewSidebarData(apiCollections), [apiCollections]);
+  const sidebarBase = useMemo(() => buildNodeViewSidebarData(apiCollections), [apiCollections]);
+
+  const sidebarData = useMemo(() => {
+    if (questionsScopeCollectionId == null) {
+      return sidebarBase;
+    }
+    return {
+      collections: sidebarBase.collections,
+      questions: sidebarBase.questions.filter((q) => q.collectionId === questionsScopeCollectionId),
+    };
+  }, [questionsScopeCollectionId, sidebarBase]);
+
+  const questionsPanelHint = useMemo(() => {
+    if (questionsScopeCollectionId == null) return null;
+    const coll = apiCollections.find((c) => c.id === questionsScopeCollectionId);
+    return coll != null ? `Affichage limité à « ${coll.nom} »` : "Affichage limité à la sélection du graphe";
+  }, [apiCollections, questionsScopeCollectionId]);
 
   return {
     flow: {
@@ -152,6 +185,8 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       onConnect,
       onDrop,
       onDragOver,
+      onSelectionChange,
+      onPaneClick,
       nodeTypes: flowNodeTypes,
       edgeTypes: flowEdgeTypes,
     },
@@ -159,6 +194,9 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       data: sidebarData,
       actions: {
         onNodeCreate,
+      },
+      presentation: {
+        questionsPanelHint,
       },
     },
   };

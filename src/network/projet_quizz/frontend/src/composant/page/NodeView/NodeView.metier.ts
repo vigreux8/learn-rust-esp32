@@ -3,6 +3,7 @@ import {
   orderCollectionsHierarchy,
 } from "../../../lib/collectionHierarchyVis";
 import type { CollectionUi } from "../../../types/quizz";
+import type { AppNode } from "../../node/config/flow.types";
 import type {
   FlowSidebarCollectionRow,
   FlowSidebarQuestionRow,
@@ -35,9 +36,28 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
         id: String(q.id),
         title: q.question,
         category: c.nom,
+        collectionId: c.id,
       });
     }
   }
 
   return { collections: collectionRows, questions };
+}
+
+/**
+ * Déduit la collection dont on restreint la liste Questions (un seul nœud sélectionné avec `collectionId`).
+ */
+export function resolveQuestionsScopeCollectionIdFromSelection(selectedNodes: AppNode[]): number | null {
+  if (selectedNodes.length !== 1) return null;
+  const node = selectedNodes[0];
+  if (node == null) return null;
+  if (node.type === "collectionNode") {
+    const cid = node.data.collectionId;
+    return typeof cid === "number" ? cid : null;
+  }
+  if (node.type === "questionNode") {
+    const cid = node.data.collectionId;
+    return typeof cid === "number" ? cid : null;
+  }
+  return null;
 }

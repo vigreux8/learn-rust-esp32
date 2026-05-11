@@ -21,7 +21,7 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     layout: { isExpanded, toggle },
     content: {
       title: data.label,
-      collections: data.collections ?? [],
+      supercollections: data.supercollections ?? [],
       creators: data.creators ?? [],
     },
     dnd: { isOverBar: false },

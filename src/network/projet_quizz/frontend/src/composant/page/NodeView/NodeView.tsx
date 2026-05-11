@@ -24,6 +24,8 @@ function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
           onConnect={flow.onConnect}
           onDrop={flow.onDrop}
           onDragOver={flow.onDragOver}
+          onSelectionChange={flow.onSelectionChange}
+          onPaneClick={flow.onPaneClick}
           nodeTypes={flow.nodeTypes}
           edgeTypes={flow.edgeTypes}
           fitView
@@ -32,7 +34,11 @@ function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
           <Background gap={16} />
           <Controls />
         </ReactFlow>
-        <FlowSidebarOverlay data={sidebar.data} actions={sidebar.actions} />
+        <FlowSidebarOverlay
+          data={sidebar.data}
+          actions={sidebar.actions}
+          presentation={sidebar.presentation}
+        />
       </div>
     </div>
   );

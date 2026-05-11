@@ -10,6 +10,7 @@ import { SidebarRail } from "./parts/SidebarRail";
  * Overlay flottant : rail d’icônes + panneau filtre collections ou liste questions / collection.
  */
 export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
+  const { presentation } = props;
   const { rail, panneau, collections, questions, drag } = useFlowSidebarOverlay(props);
   const panelOpen = panneau.activeTab !== null;
   const panelTitle =
@@ -26,7 +27,14 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       {panelOpen ? (
         <aside class={FLOW_SIDEBAR_OVERLAY_STYLES.panel}>
           <div class={FLOW_SIDEBAR_OVERLAY_STYLES.panelHeader}>
-            <h2 class={FLOW_SIDEBAR_OVERLAY_STYLES.panelTitle}>{panelTitle}</h2>
+            <div class="min-w-0 flex-1">
+              <h2 class={FLOW_SIDEBAR_OVERLAY_STYLES.panelTitle}>{panelTitle}</h2>
+              {panneau.activeTab === "questions" && presentation?.questionsPanelHint != null ? (
+                <p class="mt-1 text-[10px] font-normal normal-case tracking-normal text-base-content/65">
+                  {presentation.questionsPanelHint}
+                </p>
+              ) : null}
+            </div>
             <button
               type="button"
               class="btn btn-circle btn-ghost btn-xs"

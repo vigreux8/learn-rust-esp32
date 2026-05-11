@@ -14,6 +14,8 @@ export type FlowSidebarQuestionRow = {
   title: string;
   /** Libellé de regroupement (ex. nom de collection affiché dans le panneau Questions). */
   category: string;
+  /** Identifiant API de la collection parente de la question. */
+  collectionId: number;
 };
 
 export type FlowSidebarOverlayProps = {
@@ -23,5 +25,9 @@ export type FlowSidebarOverlayProps = {
   };
   actions: {
     onNodeCreate?: (type: string, position: { x: number; y: number }, data: unknown) => void;
+  };
+  presentation?: {
+    /** Affiché sous le titre du panneau Questions lorsque la liste est restreinte au graphe. */
+    questionsPanelHint?: string | null;
   };
 };

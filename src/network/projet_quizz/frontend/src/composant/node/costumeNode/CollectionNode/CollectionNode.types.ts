@@ -10,7 +10,13 @@ export type CollectionNodeActions = {
 
 export type CollectionNodeData = {
   label: string;
-  collections: CollectionItem[];
+  /** Si renseigné, aligné sur l’API collections (filtre sidebar Questions au clic sur ce nœud). */
+  collectionId?: number | null;
+  /**
+   * Collections qui étiquettent celle-ci (`collection_tags` côté API) — affichées derrière l’icône #.
+   * Ce ne sont pas les sous-collections enfants (`sous_collections`).
+   */
+  supercollections: CollectionItem[];
   creators: CreatorItem[];
   actions?: CollectionNodeActions;
 };
@@ -26,7 +32,7 @@ export type CollectionNodeViewStates = {
   };
   content: {
     title: string;
-    collections: CollectionItem[];
+    supercollections: CollectionItem[];
     creators: CreatorItem[];
   };
   dnd: {

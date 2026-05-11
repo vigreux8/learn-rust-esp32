@@ -2,12 +2,12 @@ import { COLLECTION_PANEL_STYLES } from "./CollectionPanel.styles";
 import type { CollectionPanelProps } from "./CollectionPanel.types";
 
 export function CollectionPanel(props: CollectionPanelProps) {
-  const { collections } = props;
+  const { supercollections } = props;
 
   return (
     <div class={COLLECTION_PANEL_STYLES.root}>
-      <span class={COLLECTION_PANEL_STYLES.legend}>Collections</span>
-      {collections.map((c) => (
+      <span class={COLLECTION_PANEL_STYLES.legend}>Supercollections</span>
+      {supercollections.map((c) => (
         <div key={c.id} class={COLLECTION_PANEL_STYLES.badge}>
           #{c.label}
         </div>
