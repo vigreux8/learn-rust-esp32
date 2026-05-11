@@ -1,6 +1,8 @@
 # Audit : `composant/page/` vs `composant/ui/organismes/`
 
-Contexte : aujourd’hui **tous** les écrans routés et plusieurs blocs « pleine largeur » vivent sous `composant/ui/organismes/`. Le dossier `composant/page/` sert à **séparer** ce qui est une **entrée de route** (`app.tsx` → `<Route component={…} />`) de ce qui est un **organisme embarqué** (modale, bandeau d’actions, sous-arbre réutilisé).
+**État** : migration effectuée — les écrans routés vivent sous `composant/page/` ; seuls `QuestionEditModal` et `QuestionsActionBoutons` restent dans `composant/ui/organismes/`. Route `/node` + page `NodeView/` pour le futur canvas XYFlow.
+
+Le dossier `composant/page/` **sépare** une **entrée de route** (`app.tsx` → `<Route component={…} />`) des **organismes embarqués** (modale, bandeau d’actions).
 
 Référence routage actuel : `src/app.tsx`.
 

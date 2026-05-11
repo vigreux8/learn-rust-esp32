@@ -45,6 +45,8 @@ frontend/
     │   └── quizz.ts             # types TS alignés sur l’API quizz
     ├── lib/                     # logique non-UI (API, session, import LLM, etc.)
     └── composant/
+        ├── node/                  # XYFlow : `config/`, `costumeNode/`, `costumeEdge/`, `costumeHandle/` (canvas hors `ui/`)
+        ├── page/                  # écrans routés (`app.tsx`) : HomeView, CollectionsView, NodeView, etc.
         └── ui/                    # périmètre UI : atomes, molécules, organismes (imports hors `ui/` : préfixe `composant/ui/...`)
             ├── atomes/            # composants UI sans import d’un autre atome du projet (dossier par composant)
             │   ├── AppFooter/
@@ -65,19 +67,9 @@ frontend/
             │   ├── QuestionsLlmImportPromptPanel/
             │   ├── QuizzDndQuestionPanels/       # uniquement `QuizzDndQuestionPanels.styles.ts` (styles DnD partagés)
             │   └── QuizzQuestionDndRow/
-            └── organismes/        # pages / écrans complets (dossier par composant) — ordre = racine réelle du dépôt
-                ├── CollectionsView/
-                ├── DatabaseTransferView/
-                ├── HomeView/
+            └── organismes/        # gros blocs hors route racine (modales, barres d’actions)
                 ├── QuestionEditModal/
-                ├── QuestionReflexionView/
-                ├── QuestionsActionBoutons/
-                ├── QuestionsView/
-                ├── QuizResultsView/
-                ├── QuizSessionView/
-                ├── SessionDetailsView/
-                ├── SousCollectionsView/
-                └── StatsDashboard/
+                └── QuestionsActionBoutons/
 ```
 
 ## Analogie avec `reglage_bouton/src`
@@ -94,7 +86,7 @@ Ici le pattern est le même, mais **découpé davantage** :
 ### Racine `src/`
 
 - **`main.tsx`** : point d’entrée ; rend `<App />` dans le document.
-- **`app.tsx`** : définition des routes (`/`, `/collections`, `/collections/:id/sous-collections`, `/play/:collectionId`, `/dashboard`, `/database`, etc.) et fournisseurs (`RoutePathContext`, `DeviceAuthGate`).
+- **`app.tsx`** : définition des routes (`/`, `/collections`, `/collections/:id/sous-collections`, `/node`, `/play/:collectionId`, `/dashboard`, `/database`, etc.) et fournisseurs (`RoutePathContext`, `DeviceAuthGate`).
 
 ### `composant/ui/atomes/`
 
@@ -124,26 +116,34 @@ Blocs composés qui **importent au moins un** composant sous `composant/ui/atome
 | `QuizzDndQuestionPanels/`        | Pas de JSX public : fichier `QuizzDndQuestionPanels.styles.ts` commun aux zones DnD (réflexion, sous-collections).                      |
 | `DeviceAuthGate/`                | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`). Orchestration dans `DeviceAuthGate.hook.ts` ; sous-écrans dans `parts/`. |
 
-Les morceaux **uniquement** utilisés par un organisme vivent sous `composant/ui/organismes/<Nom>/parts/` (ex. `QuestionsActionBoutons/parts/ActionExportCollectionJson`, `StatsDashboard/parts/KpiCard`, `CollectionsView/parts/PopUpInformation`, `QuestionsView/parts/QuestionsTable`, `QuestionsView/parts/QuestionsCollectionContextBar`, widgets réflexion / sous-collections).
+Les morceaux **uniquement** utilisés par une page vivent sous `composant/page/<Nom>/parts/` (ex. `CollectionsView/parts/PopUpInformation`, `QuestionsView/parts/QuestionsTable`, `StatsDashboard/parts/KpiCard`, widgets réflexion / sous-collections). Les `parts/` des deux organismes restants suivent la même règle sous `composant/ui/organismes/<Nom>/parts/`.
 
-### `composant/ui/organismes/`
+### `composant/page/`
 
-Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
+Écrans passés en `component={…}` sur une `Route` dans `app.tsx` : même conventions de fichiers que sous `ui/` (`.tsx`, `.types.ts`, `.hook.ts`, `parts/`, etc.). Importent `composant/ui/atomes|molecules|organismes` et `lib/`, **pas** l’inverse.
 
 | Dossier                   | Rôle                                                                                                                                                                                                                                                                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `HomeView/`               | Accueil et navigation vers collections, jeu, stats.                                                                                                                                                                                                                                                                                   |
-| `CollectionsView/`        | Liste et gestion des collections (découpé en sections) ; sous-composants locaux dans `parts/` (ex. modale « nouvelle personnalité »).                                                                                                                                                                                                 |
-| `QuestionEditModal/`      | Modale d’édition ou de création d’une question (QCM).                                                                                                                                                                                                                                                                                 |
+| `CollectionsView/`        | Liste et gestion des collections (découpé en sections) ; sous-composants locaux dans `parts/`.                                                                                                                                                                                                                                       |
 | `QuestionsView/`          | Liste / édition des questions (filtrage par collection). Sous-composants locaux : `parts/QuestionsTable`, `parts/QuestionsCollectionContextBar`.                                                                                                                                                                                      |
-| `SousCollectionsView/`    | Sous-collections (schéma **v4** : collections **enfants** via `relation-collection` + doubles liens `question_collection` parent/enfant) : grille, modale, DnD (`dnd-kit`).                                                                                                                                                           |
-| `QuestionsActionBoutons/` | En-tête Questions : actions export / import LLM + panneau.                                                                                                                                                                                                                                                                            |
-| `QuizSessionView/`        | Déroulé d’une partie (questions, réponses, progression) ; morceaux réservés au quiz dans `parts/` (réponse cliquable, barre de progression).                                                                                                                                                                                          |
+| `SousCollectionsView/`    | Sous-collections (schéma **v4**) : grille, modale, DnD (`dnd-kit`).                                                                                                                                                                                                                                                                    |
+| `QuizSessionView/`        | Déroulé d’une partie (questions, réponses, progression) ; `parts/` (réponse cliquable, barre de progression).                                                                                                                                                                                                                         |
 | `QuizResultsView/`        | Résumé à la fin d’un quiz.                                                                                                                                                                                                                                                                                                            |
 | `StatsDashboard/`         | Vue d’ensemble des statistiques / KPI.                                                                                                                                                                                                                                                                                                |
 | `SessionDetailsView/`     | Détail d’une session de jeu.                                                                                                                                                                                                                                                                                                          |
 | `DatabaseTransferView/`   | Écran d’import / export de données (admin côté UI).                                                                                                                                                                                                                                                                                   |
-| `QuestionReflexionView/`  | **Suite logique** (`/collections/:id/reflexion`) : chaîne ordonnée `question_reflexion` par `groupe_questions`, deux colonnes DnD (`dnd-kit`), import LLM optionnel, **pastilles couleur** (palette = `COLLECTION_TREE_LEVEL_BORDER_HEX` dans `collectionHierarchyVis.ts`, persistées en JSON `groupe_questions.chain_color_levels`). |
+| `QuestionReflexionView/`  | **Suite logique** (`/collections/:id/reflexion`) : chaîne ordonnée `question_reflexion`, DnD, import LLM, pastilles couleur (`COLLECTION_TREE_LEVEL_BORDER_HEX`, `groupe_questions.chain_color_levels`).                                                                                                                            |
+| `NodeView/`               | Placeholder route `/node` pour le canvas **XYFlow** ; le registry et les nœuds custom restent sous `composant/node/`.                                                                                                                                                                                                                  |
+
+### `composant/ui/organismes/`
+
+Gros blocs **sans** route dédiée : modales et barres d’actions réutilisées par plusieurs pages.
+
+| Dossier                   | Rôle                                                                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QuestionEditModal/`      | Modale d’édition ou de création d’une question (QCM).                                                                                                   |
+| `QuestionsActionBoutons/` | En-tête Questions : actions export / import LLM + panneau.                                                                                              |
 
 ### `lib/`
 
@@ -176,7 +176,7 @@ Ressources statiques **importées** depuis le code sous `src/` (illustrations, l
 
 ### dans arborecence
 
-À appliquer à chaque composant sous `composant/ui/` (atomes, molécules, organismes).
+À appliquer à chaque composant sous `composant/ui/` (atomes, molécules, organismes) et sous `composant/page/` (écrans routés).
 
 - **Un composant = un dossier** nommé comme le composant.
 - **`NomComposant.tsx`** : JSX et câblage ; pas de logique métier.
@@ -192,7 +192,7 @@ Ressources statiques **importées** depuis le code sous `src/` (illustrations, l
 - **Critère de placement** : un sous-composant est mis dans `NomComposant/parts/` **si et seulement si** il est utilisé **uniquement** par `NomComposant` (couplage exclusif aux types / au hook du parent, libellés ou props non réutilisables ailleurs).
 - **À l’inverse** : si le sous-composant peut servir à un autre écran, il doit être placé dans `composant/ui/atomes/` ou `composant/ui/molecules/` selon la règle « importe-t-il un atome ? » (cf. sections plus haut), pas dans `parts/`.
 - **Structure interne** : chaque entrée de `parts/` reste **un composant = un dossier** avec les mêmes fichiers (`.tsx`, `.types.ts`, `.hook.ts` si besoin, `.styles.ts`, `index.ts`).
-- **Sens des dépendances** : les sous-composants de `parts/` peuvent importer des `composant/ui/atomes/` et des `composant/ui/molecules/` (souvent via chemins relatifs depuis le fichier courant). Ils n’importent **jamais** un autre organisme et ne sont **pas** importés depuis l’extérieur du dossier parent (le seul export public reste `index.ts` à la racine de l’organisme).
+- **Sens des dépendances** : les sous-composants de `parts/` peuvent importer des `composant/ui/atomes/` et des `composant/ui/molecules/` (souvent via chemins relatifs depuis le fichier courant). Ils n’importent **jamais** un autre organisme **ni** une autre page complète et ne sont **pas** importés depuis l’extérieur du dossier parent (le seul export public reste `index.ts` à la racine du composant).
 
 ```text
 NomComposant/

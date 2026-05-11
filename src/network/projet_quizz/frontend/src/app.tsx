@@ -12,6 +12,7 @@ import { QuizResultsView } from "./composant/page/QuizResultsView/QuizResultsVie
 import { QuizSessionView } from "./composant/page/QuizSessionView/QuizSessionView";
 import { SessionDetailsView } from "./composant/page/SessionDetailsView/SessionDetailsView";
 import { StatsDashboard } from "./composant/page/StatsDashboard/StatsDashboard";
+import { NodeView } from "./composant/page/NodeView";
 
 function readPathWithSearch() {
   if (typeof window === "undefined") return "/";
@@ -36,6 +37,7 @@ export function App() {
           <Route path="/collections/:collectionId/reflexion" component={QuestionReflexionView} />
           <Route path="/collections" component={CollectionsView} />
           <Route path="/database" component={DatabaseTransferView} />
+          <Route path="/node" component={NodeView} />
           <Route path="/questions/:collectionId" component={QuestionsView} />
           <Route path="/questions" component={QuestionsView} />
           <Route path="/dashboard/session/:sessionId" component={SessionDetailsView} />
