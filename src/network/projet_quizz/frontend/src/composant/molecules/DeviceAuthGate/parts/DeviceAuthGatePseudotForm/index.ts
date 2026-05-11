@@ -1,0 +1,1 @@
+export { DeviceAuthGatePseudotForm } from "./DeviceAuthGatePseudotForm";

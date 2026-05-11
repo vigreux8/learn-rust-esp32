@@ -55,17 +55,16 @@ frontend/
         │   ├── PageMain/
         │   ├── PlayModePicker/
         │   └── QuestionsLlmImportOptionsPanel/
-        ├── molecules/           # blocs composés important au moins un atome local (dossier par composant)
+        ├── molecules/           # blocs composés important au moins un atome local (dossier par composant) — liste exhaustive ci-dessous
         │   ├── ActionImportLlm/
-        │   ├── CollectionCard/   # contient `parts/SearchAssociateBlock/` (usage exclusif à la carte)
-        │   ├── CollectionGroupEditModal/   # titre / édition d’un groupe_questions (sous-collections + réflexion)
-        │   ├── DeviceAuthGate/
+        │   ├── CollectionCard/               # `parts/SearchAssociateBlock/` + `CollectionCard.hook.ts`
+        │   ├── CollectionGroupEditModal/
+        │   ├── DeviceAuthGate/              # flux appareil : `DeviceAuthGate.hook.ts` + `parts/` (welcome, pseudot, erreur API, chargement)
         │   ├── QuestionsLlmImportPanel/
         │   ├── QuestionsLlmImportPromptPanel/
-        │   ├── QuizzDndQuestionPanels/     # uniquement `QuizzDndQuestionPanels.styles.ts` (styles DnD partagés)
-        │   ├── QuizzQuestionDndRow/       # ligne DnD question (réflexion + sous-collections)
-        │   └── …                 # plusieurs molécules « globales » ; celles à un seul parent sont sous `organismes/…/parts/`
-        └── organismes/          # pages / écrans complets (dossier par composant)
+        │   ├── QuizzDndQuestionPanels/       # uniquement `QuizzDndQuestionPanels.styles.ts` (styles DnD partagés)
+        │   └── QuizzQuestionDndRow/
+        └── organismes/          # pages / écrans complets (dossier par composant) — ordre = racine réelle du dépôt
             ├── CollectionsView/
             ├── DatabaseTransferView/
             ├── HomeView/
@@ -73,10 +72,10 @@ frontend/
             ├── QuestionReflexionView/
             ├── QuestionsActionBoutons/
             ├── QuestionsView/
-            ├── SousCollectionsView/
             ├── QuizResultsView/
             ├── QuizSessionView/
             ├── SessionDetailsView/
+            ├── SousCollectionsView/
             └── StatsDashboard/
 ```
 
@@ -106,30 +105,25 @@ Composants UI **sans import** d’un autre dossier `atomes/*` (feuilles de l’a
 | `AppHeader/` / `AppFooter/`       | En-tête et pied de page communs.                                                                                                                        |
 | `PageMain/`                       | Mise en page centrale des pages.                                                                                                                        |
 | `PlayModePicker/`                 | Choix du mode de lecture (filtres, tri, KPI, suites réflexion, inclusion des **collections enfant** `relation_collection` via query `includeChildren`). |
-| `MarkdownViewer/`                 | Rendu Markdown léger pour intitulés de questions, réponses, sessions (tables, quiz, modales).                                                            |
-| *(déplacé)* `QuestionsCollectionContextBar` | Vivant sous `QuestionsView/parts/` — utilisé uniquement par l’écran questions.                                                                      |
+| `MarkdownViewer/`                 | Rendu Markdown léger pour intitulés de questions, réponses, sessions (tables, quiz, modales).                                                           |
 | `QuestionsLlmImportOptionsPanel/` | Options de l’import LLM (sans atome projet dans ce dossier).                                                                                            |
 
 ### `composant/molecules/`
 
 Blocs composés qui **importent au moins un** composant sous `atomes/`.
 
-| Dossier                               | Rôle                                                              |
-| ------------------------------------- | ----------------------------------------------------------------- |
-| `ActionImportLlm/`                    | Bouton pour ouvrir ou refermer le panneau d’import LLM (partagé par plusieurs écrans / widgets LLM). |
-| `CollectionCard/`                     | Carte d’une collection (aperçu, actions) ; `parts/SearchAssociateBlock/` pour le couple recherche + tag réservé à cette carte. |
-| `QuestionsLlmImportPanel/`            | Panneau regroupant options + prompt import LLM.                   |
-| `QuestionsLlmImportPromptPanel/`      | Zone prompt / JSON pour l’import LLM (partagée : panel import, modale question, widgets réflexion / sous-collections). |
-| `CollectionGroupEditModal/`          | Formulaire titre / métadonnées d’un groupe de questions (liste groupes sous-collections, liste groupes réflexion). |
-| `QuizzQuestionDndRow/`                | Ligne sortable ou draggable (`dnd-kit`) pour une question affichée en liste DnD. |
-| `QuizzDndQuestionPanels/`             | Pas de JSX public : fichier `QuizzDndQuestionPanels.styles.ts` commun aux zones DnD (réflexion, sous-collections). |
-| `DeviceAuthGate/`                     | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`).    |
-| *(déplacé)* `ActionExportCollectionJson` | `QuestionsActionBoutons/parts/` — export JSON d’une collection. |
-| *(déplacé)* `KpiCard`                 | `StatsDashboard/parts/`.                                          |
-| *(déplacé)* `PopUpInformation`        | `CollectionsView/parts/`.                                         |
-| *(déplacé)* `QuestionsTable`          | `QuestionsView/parts/`.                                           |
-| *(déplacé)* `CollectionReflexionLlmImportWidget`, `UnsavedChainLeaveModal` | `QuestionReflexionView/parts/`. |
-| *(déplacé)* `SousCollectionLlmImportWidget` | `SousCollectionsView/parts/`. |
+| Dossier                          | Rôle                                                                                                                                    |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `ActionImportLlm/`               | Bouton pour ouvrir ou refermer le panneau d’import LLM (partagé par plusieurs écrans / widgets LLM).                                    |
+| `CollectionCard/`                | Carte d’une collection (aperçu, actions) ; `parts/SearchAssociateBlock/` pour le couple recherche + tag réservé à cette carte.          |
+| `QuestionsLlmImportPanel/`       | Panneau regroupant options + prompt import LLM.                                                                                         |
+| `QuestionsLlmImportPromptPanel/` | Zone prompt / JSON pour l’import LLM (partagée : panel import, modale question, widgets réflexion / sous-collections).                  |
+| `CollectionGroupEditModal/`      | Formulaire titre / métadonnées d’un groupe de questions (liste groupes sous-collections, liste groupes réflexion).                      |
+| `QuizzQuestionDndRow/`           | Ligne sortable ou draggable (`dnd-kit`) pour une question affichée en liste DnD ; logique dans `QuizzQuestionDndRow.hook.ts`.           |
+| `QuizzDndQuestionPanels/`        | Pas de JSX public : fichier `QuizzDndQuestionPanels.styles.ts` commun aux zones DnD (réflexion, sous-collections).                      |
+| `DeviceAuthGate/`                | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`). Orchestration dans `DeviceAuthGate.hook.ts` ; sous-écrans dans `parts/`. |
+
+Les morceaux **uniquement** utilisés par un organisme vivent sous `organismes/<Nom>/parts/` (ex. `QuestionsActionBoutons/parts/ActionExportCollectionJson`, `StatsDashboard/parts/KpiCard`, `CollectionsView/parts/PopUpInformation`, `QuestionsView/parts/QuestionsTable`, `QuestionsView/parts/QuestionsCollectionContextBar`, widgets réflexion / sous-collections).
 
 ### `composant/organismes/`
 
@@ -138,12 +132,12 @@ Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 | Dossier                   | Rôle                                                                                                                                                                                                                                                                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `HomeView/`               | Accueil et navigation vers collections, jeu, stats.                                                                                                                                                                                                                                                                                   |
-| `CollectionsView/`        | Liste et gestion des collections (découpé en sections) ; sous-composants locaux dans `parts/` (ex. modale « nouvelle personnalité »).                                                                                                                                                                                                                                                                               |
+| `CollectionsView/`        | Liste et gestion des collections (découpé en sections) ; sous-composants locaux dans `parts/` (ex. modale « nouvelle personnalité »).                                                                                                                                                                                                 |
 | `QuestionEditModal/`      | Modale d’édition ou de création d’une question (QCM).                                                                                                                                                                                                                                                                                 |
-| `QuestionsView/`          | Liste / édition des questions (filtrage par collection).                                                                                                                                                                                                                                                                              |
+| `QuestionsView/`          | Liste / édition des questions (filtrage par collection). Sous-composants locaux : `parts/QuestionsTable`, `parts/QuestionsCollectionContextBar`.                                                                                                                                                                                      |
 | `SousCollectionsView/`    | Sous-collections (schéma **v4** : collections **enfants** via `relation-collection` + doubles liens `question_collection` parent/enfant) : grille, modale, DnD (`dnd-kit`).                                                                                                                                                           |
 | `QuestionsActionBoutons/` | En-tête Questions : actions export / import LLM + panneau.                                                                                                                                                                                                                                                                            |
-| `QuizSessionView/`        | Déroulé d’une partie (questions, réponses, progression) ; morceaux réservés au quiz dans `parts/` (réponse cliquable, barre de progression).                                                                                                                                                                                                                                                                              |
+| `QuizSessionView/`        | Déroulé d’une partie (questions, réponses, progression) ; morceaux réservés au quiz dans `parts/` (réponse cliquable, barre de progression).                                                                                                                                                                                          |
 | `QuizResultsView/`        | Résumé à la fin d’un quiz.                                                                                                                                                                                                                                                                                                            |
 | `StatsDashboard/`         | Vue d’ensemble des statistiques / KPI.                                                                                                                                                                                                                                                                                                |
 | `SessionDetailsView/`     | Détail d’une session de jeu.                                                                                                                                                                                                                                                                                                          |
