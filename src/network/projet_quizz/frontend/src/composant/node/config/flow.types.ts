@@ -1,8 +1,9 @@
-import type { Edge, Node } from "@xyflow/react";
-import type { CollectionNodeData } from "../costumeNode/CollectionNode/CollectionNode.types";
+import type { Edge } from "@xyflow/react";
+import type { CollectionNodeType } from "../costumeNode/CollectionNode/CollectionNode.types";
+import type { QuestionNodeType } from "../costumeNode/QuestionNode/QuestionNode.types";
 
-/** Aligné sur les clés de `flow.registry.ts` (`collectionNode`, …). */
-export type CustomNodeKind = "collectionNode";
+/** Aligné sur les clés de `flow.registry.ts` (`collectionNode`, `questionNode`, …). */
+export type CustomNodeKind = CollectionNodeType["type"] | QuestionNodeType["type"];
 
-export type AppNode = Node<CollectionNodeData, CustomNodeKind>;
+export type AppNode = CollectionNodeType | QuestionNodeType;
 export type AppEdge = Edge;

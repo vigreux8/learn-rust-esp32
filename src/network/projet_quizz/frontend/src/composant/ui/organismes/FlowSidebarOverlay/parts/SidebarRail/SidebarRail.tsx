@@ -1,0 +1,42 @@
+import { Database, MessageSquare } from "lucide-preact";
+import { cn } from "../../../../../../lib/cn";
+import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
+import type { SidebarRailProps } from "./SidebarRail.types";
+
+/**
+ * Barre verticale d’icônes pour ouvrir les panneaux Collections ou Questions.
+ */
+export function SidebarRail(props: SidebarRailProps) {
+  const { data, actions } = props;
+  const collectionsActive = data.activeTab === "collections";
+  const questionsActive = data.activeTab === "questions";
+
+  return (
+    <nav class={FLOW_SIDEBAR_OVERLAY_STYLES.rail} aria-label="Outils du graphe">
+      <button
+        type="button"
+        class={cn(
+          FLOW_SIDEBAR_OVERLAY_STYLES.railButton,
+          collectionsActive && FLOW_SIDEBAR_OVERLAY_STYLES.railButtonActiveCollections,
+        )}
+        aria-pressed={collectionsActive}
+        aria-label="Filtrer les collections"
+        onClick={() => actions.toggleTab("collections")}
+      >
+        <Database size={20} aria-hidden />
+      </button>
+      <button
+        type="button"
+        class={cn(
+          FLOW_SIDEBAR_OVERLAY_STYLES.railButton,
+          questionsActive && FLOW_SIDEBAR_OVERLAY_STYLES.railButtonActiveQuestions,
+        )}
+        aria-pressed={questionsActive}
+        aria-label="Voir les questions par collection"
+        onClick={() => actions.toggleTab("questions")}
+      >
+        <MessageSquare size={20} aria-hidden />
+      </button>
+    </nav>
+  );
+}
