@@ -1,15 +1,16 @@
-import { Database, MessageSquare } from "lucide-preact";
+import { Database, MessageSquare, UserRound } from "lucide-preact";
 import { cn } from "../../../../../../lib/cn";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import type { SidebarRailProps } from "./SidebarRail.types";
 
 /**
- * Barre verticale d’icônes pour ouvrir les panneaux Collections ou Questions.
+ * Barre verticale d’icônes pour ouvrir les panneaux Collections, Questions ou Personnalités.
  */
 export function SidebarRail(props: SidebarRailProps) {
   const { data, actions } = props;
   const collectionsActive = data.activeTab === "collections";
   const questionsActive = data.activeTab === "questions";
+  const personalitiesActive = data.activeTab === "personalities";
 
   return (
     <nav class={FLOW_SIDEBAR_OVERLAY_STYLES.rail} aria-label="Outils du graphe">
@@ -36,6 +37,18 @@ export function SidebarRail(props: SidebarRailProps) {
         onClick={() => actions.toggleTab("questions")}
       >
         <MessageSquare size={20} aria-hidden />
+      </button>
+      <button
+        type="button"
+        class={cn(
+          FLOW_SIDEBAR_OVERLAY_STYLES.railButton,
+          personalitiesActive && FLOW_SIDEBAR_OVERLAY_STYLES.railButtonActivePersonalities,
+        )}
+        aria-pressed={personalitiesActive}
+        aria-label="Filtrer les personnalités"
+        onClick={() => actions.toggleTab("personalities")}
+      >
+        <UserRound size={20} aria-hidden />
       </button>
     </nav>
   );

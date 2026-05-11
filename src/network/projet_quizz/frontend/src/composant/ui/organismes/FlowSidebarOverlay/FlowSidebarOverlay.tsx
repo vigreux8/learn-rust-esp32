@@ -3,6 +3,7 @@ import { useFlowSidebarOverlay } from "./FlowSidebarOverlay.hook";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "./FlowSidebarOverlay.styles";
 import type { FlowSidebarOverlayProps } from "./FlowSidebarOverlay.types";
 import { CollectionFilterPanel } from "./parts/CollectionFilterPanel";
+import { PersonalityFilterPanel } from "./parts/PersonalityFilterPanel";
 import { QuestionListPanel } from "./parts/QuestionListPanel";
 import { SidebarRail } from "./parts/SidebarRail";
 
@@ -11,14 +12,16 @@ import { SidebarRail } from "./parts/SidebarRail";
  */
 export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const { presentation } = props;
-  const { rail, panneau, collections, questions, drag } = useFlowSidebarOverlay(props);
+  const { rail, panneau, collections, questions, personalities, drag } = useFlowSidebarOverlay(props);
   const panelOpen = panneau.activeTab !== null;
   const panelTitle =
     panneau.activeTab === "collections"
       ? "Filtrer collections"
       : panneau.activeTab === "questions"
         ? "Questions par collection"
-        : "";
+        : panneau.activeTab === "personalities"
+          ? "Personnalités"
+          : "";
 
   return (
     <div class={FLOW_SIDEBAR_OVERLAY_STYLES.overlayWrapper}>
@@ -65,6 +68,21 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
               <QuestionListPanel
                 data={{ search: questions.search, groups: questions.groups }}
                 actions={{ setSearch: questions.setSearch, onDragStart: drag.onDragStart }}
+              />
+            ) : null}
+
+            {panneau.activeTab === "personalities" ? (
+              <PersonalityFilterPanel
+                data={{
+                  search: personalities.search,
+                  rows: personalities.rows,
+                  isBucketActive: personalities.isBucketActive,
+                }}
+                actions={{
+                  setSearch: personalities.setSearch,
+                  toggleBucket: personalities.toggleBucket,
+                  onDragStart: drag.onDragStart,
+                }}
               />
             ) : null}
           </div>

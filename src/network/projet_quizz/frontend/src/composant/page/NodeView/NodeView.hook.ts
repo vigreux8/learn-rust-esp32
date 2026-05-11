@@ -153,6 +153,44 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         };
         setNodes((nds) => nds.concat(newNode));
         onNodeCreate?.(parsed.type, position, newNode.data);
+        return;
+      }
+
+      if (parsed.type === "personalityNode") {
+        const patch = (parsed.data ?? {}) as {
+          label?: unknown;
+          importanceType?: unknown;
+          personaliteId?: unknown;
+          collectionLabel?: unknown;
+          ficheCollectionId?: unknown;
+        };
+        const label = typeof patch.label === "string" ? patch.label : "Personnalité";
+        const importanceType =
+          patch.importanceType === null || patch.importanceType === undefined
+            ? null
+            : typeof patch.importanceType === "string"
+              ? patch.importanceType
+              : null;
+        const personaliteId =
+          typeof patch.personaliteId === "number" ? patch.personaliteId : undefined;
+        const collectionLabel =
+          typeof patch.collectionLabel === "string" ? patch.collectionLabel : undefined;
+        const ficheCollectionId =
+          typeof patch.ficheCollectionId === "number" ? patch.ficheCollectionId : undefined;
+        const newNode: AppNode = {
+          id,
+          type: "personalityNode",
+          position,
+          data: {
+            label,
+            importanceType,
+            personaliteId,
+            collectionLabel,
+            ficheCollectionId,
+          },
+        };
+        setNodes((nds) => nds.concat(newNode));
+        onNodeCreate?.(parsed.type, position, newNode.data);
       }
     },
     [apiCollections, onNodeCreate, screenToFlowPosition, setNodes],
@@ -167,6 +205,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     return {
       collections: sidebarBase.collections,
       questions: sidebarBase.questions.filter((q) => q.collectionId === questionsScopeCollectionId),
+      personalities: sidebarBase.personalities,
     };
   }, [questionsScopeCollectionId, sidebarBase]);
 

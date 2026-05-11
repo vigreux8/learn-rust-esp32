@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useState } from "preact/hooks";
-import { collectionTreePaletteBucket } from "../../../../lib/collectionHierarchyVis";
+import {
+  collectionTreePaletteBucket,
+  personaliteImportanceBucket,
+  type PersonaliteImportanceBucket,
+} from "../../../../lib/collectionHierarchyVis";
 import { REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
 import type { FlowSidebarOverlayProps, SidebarTab } from "./FlowSidebarOverlay.types";
 
@@ -18,6 +22,10 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const [questionSearch, setQuestionSearch] = useState("");
   /** Indices de palette (0…dernier) : même regroupement visuel que les bords de carte collections. */
   const [paletteBucketFilters, setPaletteBucketFilters] = useState<number[]>([]);
+  const [personalitySearch, setPersonalitySearch] = useState("");
+  const [personalityBucketFilters, setPersonalityBucketFilters] = useState<PersonaliteImportanceBucket[]>(
+    [],
+  );
 
   const toggleTab = useCallback((tab: Exclude<SidebarTab, null>) => {
     setActiveTab((current) => (current === tab ? null : tab));
@@ -39,6 +47,37 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     },
     [paletteBucketFilters],
   );
+
+  const personalitiesSource = data.personalities ?? [];
+
+  const togglePersonalityBucket = useCallback((bucket: PersonaliteImportanceBucket) => {
+    setPersonalityBucketFilters((prev) =>
+      prev.includes(bucket) ? prev.filter((value) => value !== bucket) : [...prev, bucket],
+    );
+  }, []);
+
+  const isPersonalityBucketActive = useCallback(
+    (bucket: PersonaliteImportanceBucket) => personalityBucketFilters.includes(bucket),
+    [personalityBucketFilters],
+  );
+
+  const filteredPersonalities = useMemo(() => {
+    let rows = personalitiesSource;
+    if (personalityBucketFilters.length > 0) {
+      rows = rows.filter((row) =>
+        personalityBucketFilters.includes(personaliteImportanceBucket(row.importanceType)),
+      );
+    }
+    const query = personalitySearch.trim().toLowerCase();
+    if (query.length > 0) {
+      rows = rows.filter(
+        (row) =>
+          row.label.toLowerCase().includes(query) ||
+          row.collectionLabel.toLowerCase().includes(query),
+      );
+    }
+    return rows;
+  }, [personalityBucketFilters, personalitySearch, personalitiesSource]);
 
   const filteredCollections = useMemo(() => {
     let rows = data.collections;
@@ -98,6 +137,13 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       search: questionSearch,
       setSearch: setQuestionSearch,
       groups: questionGroups,
+    },
+    personalities: {
+      search: personalitySearch,
+      setSearch: setPersonalitySearch,
+      rows: filteredPersonalities,
+      toggleBucket: togglePersonalityBucket,
+      isBucketActive: isPersonalityBucketActive,
     },
     drag: { onDragStart },
   };

@@ -22,6 +22,32 @@ export const COLLECTION_PERSONNALITE_BORDER = {
 } as const;
 
 /**
+ * Accents par niveau d’importance (filtre sidebar graphe, pastilles).
+ * Pionnier / important partagent le même groupe « auteur » sur les cartes Collections mais sont distingués ici.
+ */
+export const PERSONNALITE_IMPORTANCE_ACCENT_HEX = {
+  pionnier: "#38D19F",
+  important: "#F5A623",
+  secondaire: "#49C5E3",
+  sans: "#94a3b8",
+} as const;
+
+export type PersonaliteImportanceBucket = keyof typeof PERSONNALITE_IMPORTANCE_ACCENT_HEX;
+
+export function personaliteImportanceBucket(
+  importanceType: string | null | undefined,
+): PersonaliteImportanceBucket {
+  if (importanceType === "secondaire") return "secondaire";
+  if (importanceType === "important") return "important";
+  if (importanceType === "pionnier") return "pionnier";
+  return "sans";
+}
+
+export function personaliteImportanceAccentHex(importanceType: string | null | undefined): string {
+  return PERSONNALITE_IMPORTANCE_ACCENT_HEX[personaliteImportanceBucket(importanceType)];
+}
+
+/**
  * Calcule la profondeur d’une collection dans l’arbre (nombre de liens parent remontés).
  */
 export function computeTreeDepth(collection: CollectionUi, byId: Map<number, CollectionUi>): number {

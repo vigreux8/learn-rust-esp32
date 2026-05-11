@@ -1,4 +1,4 @@
-export type SidebarTab = "collections" | "questions" | null;
+export type SidebarTab = "collections" | "questions" | "personalities" | null;
 
 export type FlowSidebarCollectionRow = {
   id: string;
@@ -7,6 +7,18 @@ export type FlowSidebarCollectionRow = {
   label: string;
   /** Profondeur dans l’arbre (parents remontés), comme `computeTreeDepth` / cartes Collections. */
   treeDepth: number;
+};
+
+export type FlowSidebarPersonalityRow = {
+  id: string;
+  personaliteId: number;
+  /** Affichage « Prénom Nom ». */
+  label: string;
+  importanceType: string | null;
+  /** Collection sur laquelle la personnalité est liée dans cette ligne. */
+  collectionId: number;
+  collectionLabel: string;
+  ficheCollectionId: number;
 };
 
 export type FlowSidebarQuestionRow = {
@@ -22,6 +34,7 @@ export type FlowSidebarOverlayProps = {
   data: {
     collections: FlowSidebarCollectionRow[];
     questions: FlowSidebarQuestionRow[];
+    personalities: FlowSidebarPersonalityRow[];
   };
   actions: {
     onNodeCreate?: (type: string, position: { x: number; y: number }, data: unknown) => void;

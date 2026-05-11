@@ -6,6 +6,7 @@ import type { CollectionUi } from "../../../types/quizz";
 import type { AppNode } from "../../node/config/flow.types";
 import type {
   FlowSidebarCollectionRow,
+  FlowSidebarPersonalityRow,
   FlowSidebarQuestionRow,
 } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
 
@@ -15,9 +16,10 @@ import type {
 export function buildNodeViewSidebarData(collections: CollectionUi[]): {
   collections: FlowSidebarCollectionRow[];
   questions: FlowSidebarQuestionRow[];
+  personalities: FlowSidebarPersonalityRow[];
 } {
   if (collections.length === 0) {
-    return { collections: [], questions: [] };
+    return { collections: [], questions: [], personalities: [] };
   }
 
   const byId = new Map(collections.map((c) => [c.id, c]));
@@ -30,6 +32,7 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
   }));
 
   const questions: FlowSidebarQuestionRow[] = [];
+  const personalities: FlowSidebarPersonalityRow[] = [];
   for (const c of collections) {
     for (const q of c.questions) {
       questions.push({
@@ -39,9 +42,25 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
         collectionId: c.id,
       });
     }
+    for (const p of c.personnalites ?? []) {
+      personalities.push({
+        id: `${c.id}-${p.id}`,
+        personaliteId: p.id,
+        label: `${p.prenom} ${p.nom}`.trim(),
+        importanceType: p.importance_type ?? null,
+        collectionId: c.id,
+        collectionLabel: c.nom,
+        ficheCollectionId: p.fiche_collection_id,
+      });
+    }
   }
 
-  return { collections: collectionRows, questions };
+  personalities.sort((a, b) => {
+    const byLabel = a.label.localeCompare(b.label, "fr");
+    return byLabel !== 0 ? byLabel : a.collectionLabel.localeCompare(b.collectionLabel, "fr");
+  });
+
+  return { collections: collectionRows, questions, personalities };
 }
 
 /**
