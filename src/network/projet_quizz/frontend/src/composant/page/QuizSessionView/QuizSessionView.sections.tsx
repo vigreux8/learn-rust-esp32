@@ -1,0 +1,414 @@
+import { ArrowLeft, ClipboardCopy, Pencil, Plus, Trash2 } from "lucide-preact";
+import { route } from "preact-router";
+import {
+  formatQuestionCategorieEnfantLabel,
+  formatQuestionCategorieParentLabel,
+} from "../../../lib/questionCategories";
+import { playOrdersLabel, playQtypeLabel } from "../../../lib/playOrder";
+import { cn } from "../../../lib/cn";
+import { Badge } from "../../ui/atomes/Badge/Badge";
+import { Button } from "../../ui/atomes/Button/Button";
+import { Card } from "../../ui/atomes/Card/Card";
+import { AnswerOption } from "./parts/AnswerOption";
+import { ProgressBar } from "./parts/ProgressBar";
+import { MarkdownViewer } from "../../ui/atomes/MarkdownViewer";
+import { AppFooter } from "../../ui/atomes/AppFooter/AppFooter";
+import { AppHeader } from "../../ui/atomes/AppHeader/AppHeader";
+import type {
+  QuizSessionHeaderProps,
+  QuizSessionProgressProps,
+  QuizSessionQuestionCardProps,
+} from "./QuizSessionView.types";
+import {
+  formatRefLvlLabel,
+  quizSessionDifficulteChipClass,
+  quizSessionImportanceChipClass,
+} from "./QuizSessionView.metier";
+import { QUIZ_SESSION_STYLES } from "./QuizSessionView.styles";
+
+export function QuizSessionLoading() {
+  return (
+    <div class={QUIZ_SESSION_STYLES.pageShell}>
+      <AppHeader />
+      <main class={QUIZ_SESSION_STYLES.centeredMain}>
+        <p class="text-base text-base-content/70">Chargement du quiz…</p>
+      </main>
+      <AppFooter />
+    </div>
+  );
+}
+
+export function QuizSessionError({ loadError }: { loadError: string | null }) {
+  return (
+    <div class={QUIZ_SESSION_STYLES.pageShell}>
+      <AppHeader />
+      <main class={QUIZ_SESSION_STYLES.centeredMain}>
+        <p class="text-lg font-medium text-base-content">Parcours introuvable</p>
+        {loadError === "fetch" ? (
+          <p class="text-sm text-base-content/60">Impossible de joindre l’API. Le backend est-il démarré ?</p>
+        ) : null}
+        {loadError === "empty" ? (
+          <p class="text-sm text-base-content/60">
+            Aucune question avec ce filtre (essaie « Mélanger » ou un autre type) ou collection vide.
+          </p>
+        ) : null}
+        <Button variant="flow" onClick={() => route("/")}>
+          Accueil
+        </Button>
+      </main>
+      <AppFooter />
+    </div>
+  );
+}
+
+export function QuizSessionHeader({
+  data,
+  backTarget,
+  questionSourceNom,
+}: QuizSessionHeaderProps) {
+  return (
+    <div class={QUIZ_SESSION_STYLES.topRow}>
+      <Button variant="ghost" class="btn-sm gap-1 px-3" onClick={() => route(backTarget)}>
+        <ArrowLeft class="h-4 w-4" aria-hidden />
+        Retour
+      </Button>
+      <div class={QUIZ_SESSION_STYLES.badgesRow}>
+        <Badge tone={data.mode === "random" ? "flow" : "learn"}>{data.nom}</Badge>
+        {questionSourceNom != null && questionSourceNom !== "" ? (
+          <span class="min-w-0" title={`Question issue de la collection « ${questionSourceNom} »`}>
+            <Badge tone="neutral" class="max-w-[min(280px,55vw)] truncate font-normal opacity-90">
+              Origine : {questionSourceNom}
+            </Badge>
+          </span>
+        ) : null}
+        <span class={QUIZ_SESSION_STYLES.orderBadgeWrap} title={playOrdersLabel(data.playOrders)}>
+          <Badge tone="learn" class="font-normal opacity-90">
+            {playOrdersLabel(data.playOrders)}
+          </Badge>
+        </span>
+        <Badge tone="flow" class="font-normal opacity-90">
+          {playQtypeLabel(data.playQtype)}
+        </Badge>
+        {data.playInfinite ? (
+          <Badge tone="learn" class="font-normal opacity-90">
+            Session infinie
+          </Badge>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function QuizSessionQuestionCard( {
+  data,
+  index,
+  total,
+  q,
+  pickedId,
+  revealed,
+  anecdote,
+  correct,
+  draftVerifier,
+  nextBusy,
+  fetchingMore,
+  onPick,
+  onOpenCreateLinkedQuestionModal,
+  onOpenEditQuestionModal,
+  onCopyCurrentQuestionJson,
+  canDeleteCurrentQuestion,
+  deleteBusy,
+  onDeleteCurrentQuestion,
+  onDraftVerifier,
+  onNext,
+  onEndInfiniteSession,
+  categorieSections,
+  scaleSections,
+}: QuizSessionQuestionCardProps) {
+  const disabledCat = nextBusy || fetchingMore || deleteBusy;
+  const disabledScale = disabledCat;
+  const draftParentNode = categorieSections.hierarchy.find(
+    (h) => h.id === categorieSections.draftParentId,
+  );
+  const enfantsDuParent =
+    categorieSections.draftParentId == null ? [] : (draftParentNode?.enfants ?? []);
+  return (
+    <div class={QUIZ_SESSION_STYLES.bodyLayout}>
+      <aside class={QUIZ_SESSION_STYLES.aside} aria-label="Actions sur la question">
+        <Button
+          variant="outline"
+          class={QUIZ_SESSION_STYLES.actionButton}
+          type="button"
+          title="Ajouter une question liée à celle-ci (relation parent → enfant)"
+          onClick={() => onOpenCreateLinkedQuestionModal(q)}
+        >
+          <Plus class="h-4 w-4 shrink-0" aria-hidden />
+          <span class={QUIZ_SESSION_STYLES.actionButtonText}>Ajouter</span>
+        </Button>
+        <Button
+          variant="outline"
+          class={QUIZ_SESSION_STYLES.actionButton}
+          type="button"
+          title="Modifier la question affichée"
+          onClick={() => onOpenEditQuestionModal(q)}
+        >
+          <Pencil class="h-4 w-4 shrink-0" aria-hidden />
+          <span class={QUIZ_SESSION_STYLES.actionButtonText}>Modifier</span>
+        </Button>
+        <Button
+          variant="outline"
+          class={QUIZ_SESSION_STYLES.actionButton}
+          type="button"
+          title="Copier un JSON (question, commentaire, réponses)"
+          onClick={() => void onCopyCurrentQuestionJson(q)}
+        >
+          <ClipboardCopy class="h-4 w-4 shrink-0" aria-hidden />
+          <span class={QUIZ_SESSION_STYLES.actionButtonText}>Copier</span>
+        </Button>
+        <Button
+          variant="outline"
+          class={`${QUIZ_SESSION_STYLES.actionButton} border-error/40 text-error hover:bg-error/10`}
+          type="button"
+          title={
+            canDeleteCurrentQuestion
+              ? "Supprimer cette question de la base"
+              : "Réservé aux questions que tu as créées (même utilisateur)."
+          }
+          disabled={!canDeleteCurrentQuestion || deleteBusy || nextBusy || fetchingMore}
+          onClick={() => void onDeleteCurrentQuestion(q)}
+        >
+          {deleteBusy ? (
+            <span class="loading loading-spinner loading-sm shrink-0" aria-hidden />
+          ) : (
+            <Trash2 class="h-4 w-4 shrink-0" aria-hidden />
+          )}
+          <span class={QUIZ_SESSION_STYLES.actionButtonText}>{deleteBusy ? "…" : "Supprimer"}</span>
+        </Button>
+        <label
+          aria-label={`Fake-checker, ${draftVerifier ? "oui" : "non"}. Cliquer pour basculer.`}
+          class={cn(
+            QUIZ_SESSION_STYLES.verifierToggleBase,
+            draftVerifier
+              ? QUIZ_SESSION_STYLES.verifierToggleOn
+              : QUIZ_SESSION_STYLES.verifierToggleOff,
+            nextBusy && "pointer-events-none opacity-50",
+          )}
+        >
+          <input
+            type="checkbox"
+            class="sr-only"
+            checked={draftVerifier}
+            disabled={nextBusy}
+            onChange={(e) => onDraftVerifier((e.target as HTMLInputElement).checked)}
+          />
+          <span class="pointer-events-none select-none">verifier : {draftVerifier ? "Oui" : "Non"}</span>
+        </label>
+
+        <div class={QUIZ_SESSION_STYLES.categorieSectionWrap}>
+          <p class={QUIZ_SESSION_STYLES.categorieResume}>
+            Catégorie (brouillon) : {categorieSections.resumeLine}
+          </p>
+   
+          <div class={QUIZ_SESSION_STYLES.scaleAsideBlock}>
+            <div class={QUIZ_SESSION_STYLES.categorieBlockInner}>
+              <div>
+                <p class={QUIZ_SESSION_STYLES.scaleAsideTitle}>Catégorie</p>
+                <div
+                  class={QUIZ_SESSION_STYLES.categorieButtonRow}
+                  role="group"
+                  aria-label="Catégorie parente"
+                >
+                  {categorieSections.parentKeys.map((key) => {
+                    const active = categorieSections.draftParentKeyResolved === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        title={
+                          active
+                            ? `Aucune : désélectionner ${formatQuestionCategorieParentLabel(key)} (choisir un parent avant de continuer)`
+                            : `Choisir la catégorie ${formatQuestionCategorieParentLabel(key)}`
+                        }
+                        disabled={disabledCat}
+                        class={cn(
+                          QUIZ_SESSION_STYLES.categorieChip,
+                          active
+                            ? QUIZ_SESSION_STYLES.categorieChipActive
+                            : QUIZ_SESSION_STYLES.categorieChipInactive,
+                        )}
+                        onClick={() => categorieSections.onParentCategory(key)}
+                      >
+                        {formatQuestionCategorieParentLabel(key)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {enfantsDuParent.length > 0 ? (
+                <div class={QUIZ_SESSION_STYLES.categorieBlockSubDivider}>
+                  <p class={QUIZ_SESSION_STYLES.scaleAsideTitle}>Sous-catégories</p>
+                  <div
+                    class={QUIZ_SESSION_STYLES.categorieButtonRow}
+                    role="group"
+                    aria-label="Sous-catégories pour la catégorie parente choisie"
+                  >
+                    {enfantsDuParent.map((e) => {
+                      const active = categorieSections.draftEnfantId === e.id;
+                      return (
+                        <button
+                          key={e.id}
+                          type="button"
+                          title={
+                            active
+                              ? `Retirer « ${formatQuestionCategorieEnfantLabel(e.type)} » (brouillon ; enregistrement avec Suivant / fin)`
+                              : `Associer « ${formatQuestionCategorieEnfantLabel(e.type)} »`
+                          }
+                          disabled={disabledCat}
+                          class={cn(
+                            QUIZ_SESSION_STYLES.categorieChip,
+                            active
+                              ? QUIZ_SESSION_STYLES.categorieChipActive
+                              : QUIZ_SESSION_STYLES.categorieChipInactive,
+                          )}
+                          onClick={() => categorieSections.onChildCategory(e.id)}
+                        >
+                          {formatQuestionCategorieEnfantLabel(e.type)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <Card padding="lg" class={QUIZ_SESSION_STYLES.card}>
+        <p class={QUIZ_SESSION_STYLES.questionMeta}>
+          Question {index + 1} / {total}
+        </p>
+        <div class={QUIZ_SESSION_STYLES.questionTitle}>
+          <MarkdownViewer data={{ content: q.question }} />
+        </div>
+        <div class={QUIZ_SESSION_STYLES.answers}>
+          {q.reponses.map((r) => (
+            <AnswerOption
+              key={r.id}
+              label={r.reponse}
+              reponseId={r.id}
+              pickedId={pickedId}
+              revealed={revealed}
+              isCorrectAnswer={r.bonne_reponse}
+              disabled={pickedId != null}
+              onPick={() => onPick(r.id)}
+            />
+          ))}
+        </div>
+
+        {revealed ? (
+          <div class={QUIZ_SESSION_STYLES.revealBox}>
+            <p class={QUIZ_SESSION_STYLES.revealText}>
+              {anecdote ? (
+                <span class="block"><MarkdownViewer data={{ content: anecdote }} /></span>
+              ) : correct ? (
+                <>
+                  Bien vu — <span class="font-semibold text-flow">c’est la bonne réponse</span>.
+                </>
+              ) : (
+                <>Ce n’était pas la bonne proposition.</>
+              )}
+            </p>
+            <div class={QUIZ_SESSION_STYLES.revealActions}>
+              <Button
+                variant="flow"
+                class={QUIZ_SESSION_STYLES.nextButton}
+                disabled={nextBusy || fetchingMore}
+                onClick={onNext}
+              >
+                {nextBusy
+                  ? "Enregistrement…"
+                  : fetchingMore
+                    ? "Chargement…"
+                    : index >= total - 1
+                      ? data.playInfinite
+                        ? "Nouvelles questions"
+                        : "Voir le résultat"
+                      : "Suivant"}
+              </Button>
+              {data.playInfinite && index >= total - 1 ? (
+                <Button
+                  variant="outline"
+                  class={QUIZ_SESSION_STYLES.nextButton}
+                  disabled={nextBusy || fetchingMore}
+                  onClick={onEndInfiniteSession}
+                >
+                  Terminer la session
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      <aside class={QUIZ_SESSION_STYLES.asideRight} aria-label="Difficulté et importance">
+        <div class={QUIZ_SESSION_STYLES.scaleAsideBlock}>
+          <p class={QUIZ_SESSION_STYLES.scaleAsideTitle}>Difficulté</p>
+          <div class={QUIZ_SESSION_STYLES.scaleAsideStack} role="group" aria-label="Difficulté">
+            {scaleSections.difficulteRows.map((row) => {
+              const active = scaleSections.draftDifficulteId === row.id;
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  disabled={disabledScale}
+                  title={
+                    active
+                      ? "Aucune difficulté (brouillon)"
+                      : `Difficulté : ${formatRefLvlLabel(row.lvl)}`
+                  }
+                  class={quizSessionDifficulteChipClass(row.lvl, active)}
+                  onClick={() => scaleSections.onDifficulte(row.id)}
+                >
+                  {formatRefLvlLabel(row.lvl)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div class={`${QUIZ_SESSION_STYLES.scaleAsideBlock} mt-2`}>
+          <p class={QUIZ_SESSION_STYLES.scaleAsideTitle}>Importance</p>
+          <div class={QUIZ_SESSION_STYLES.scaleAsideStack} role="group" aria-label="Importance">
+            {scaleSections.importanceRows.map((row) => {
+              const active = scaleSections.draftImportanceId === row.id;
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  disabled={disabledScale}
+                  title={
+                    active
+                      ? "Aucune importance (brouillon)"
+                      : `Importance : ${formatRefLvlLabel(row.lvl)}`
+                  }
+                  class={quizSessionImportanceChipClass(row.lvl, active)}
+                  onClick={() => scaleSections.onImportance(row.id)}
+                >
+                  {formatRefLvlLabel(row.lvl)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+export function QuizSessionProgress({
+  playInfinite,
+  progressValue,
+  total,
+}: QuizSessionProgressProps) {
+  if (playInfinite) return null;
+  return <ProgressBar value={progressValue} max={total} class="mb-6" />;
+}
