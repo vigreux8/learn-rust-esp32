@@ -7,7 +7,7 @@ import { CollectionPanel } from "./parts/CollectionPanel/CollectionPanel";
 import { CreatorPanel } from "./parts/CreatorPanel/CreatorPanel";
 
 export function CollectionNode(props: CollectionNodeProps) {
-  const { layout, content, actions } = useCollectionNode(props);
+  const { layout, content, actions, dnd } = useCollectionNode(props);
   const { isConnectable } = props;
 
   return (
@@ -15,8 +15,11 @@ export function CollectionNode(props: CollectionNodeProps) {
       <div class={COLLECTION_NODE_STYLES.coreColumn}>
         {layout.isExpanded ? (
           <div class={COLLECTION_NODE_STYLES.panelsFloating}>
-            <CollectionPanel supercollections={content.supercollections} />
-            <CreatorPanel creators={content.creators} />
+            <CollectionPanel
+              supercollections={content.supercollections}
+              dropZone={dnd.supercollections}
+            />
+            <CreatorPanel creators={content.creators} dropZone={dnd.influenceurs} />
           </div>
         ) : null}
 
@@ -50,7 +53,12 @@ export function CollectionNode(props: CollectionNodeProps) {
           <h3 class={COLLECTION_NODE_STYLES.title}>{content.title}</h3>
 
           <div class="flex shrink-0 items-center gap-2">
-            <button type="button" class={COLLECTION_NODE_STYLES.buttonIconCreators} onClick={layout.toggle} aria-label="Basculer panneau créateurs">
+            <button
+              type="button"
+              class={COLLECTION_NODE_STYLES.buttonIconCreators}
+              onClick={layout.toggle}
+              aria-label="Basculer panneau influenceurs"
+            >
               <User class="h-4 w-4" aria-hidden />
             </button>
             <button type="button" class={COLLECTION_NODE_STYLES.playButton} onClick={actions.onPlay} aria-label="Lancer">

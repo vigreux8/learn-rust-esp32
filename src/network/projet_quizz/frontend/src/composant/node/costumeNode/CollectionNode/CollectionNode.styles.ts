@@ -17,7 +17,7 @@ export const COLLECTION_NODE_STYLES = {
   topStrip: "relative h-0.5 w-full shrink-0 rounded-full bg-flow/25",
   mainBar: cn("relative flex w-full items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3", cardLike),
   panel: cn(
-    "flex flex-1 flex-col gap-2 overflow-y-auto rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/90 p-2.5 shadow-sm backdrop-blur-sm",
+    "nodrag flex flex-1 flex-col gap-2 overflow-y-auto rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/90 p-2.5 shadow-sm backdrop-blur-sm",
     "nowheel",
   ),
   panelLegend: "text-[11px] font-medium uppercase tracking-wide text-base-content/45",

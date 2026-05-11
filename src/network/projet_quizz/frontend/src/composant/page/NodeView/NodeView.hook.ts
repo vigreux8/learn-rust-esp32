@@ -12,7 +12,7 @@ import { useUserSession } from "../../../lib/userSession";
 import { flowEdgeTypes, flowNodeTypes } from "../../node/config/flow.registry";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionNode";
-import { readReactFlowDnDFromEvent } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.metier";
+import { readReactFlowDnDFromEvent } from "../../../lib/reactFlowDnD";
 import type { CollectionUi } from "../../../types/quizz";
 import {
   buildNodeViewSidebarData,
