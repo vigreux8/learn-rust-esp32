@@ -1,7 +1,7 @@
 import { Fragment } from "preact";
 import { useDroppable } from "@dnd-kit/react";
-import type { CollectionReflexionLlmImportWidgetProps } from "../../molecules/CollectionReflexionLlmImportWidget/CollectionReflexionLlmImportWidget.types";
-import { CollectionReflexionLlmImportWidget } from "../../molecules/CollectionReflexionLlmImportWidget";
+import type { CollectionReflexionLlmImportWidgetProps } from "./parts/CollectionReflexionLlmImportWidget/CollectionReflexionLlmImportWidget.types";
+import { CollectionReflexionLlmImportWidget } from "./parts/CollectionReflexionLlmImportWidget";
 import { QUIZZ_DND_PANEL_STYLES } from "../../molecules/QuizzDndQuestionPanels/QuizzDndQuestionPanels.styles";
 import { QuizzQuestionDndRow } from "../../molecules/QuizzQuestionDndRow";
 import { ReflexionGroupeListeSection } from "./QuestionReflexionView.groupeListe";

@@ -1,7 +1,7 @@
 import { LayoutGrid, ListOrdered } from "lucide-preact";
 import { route } from "preact-router";
 import { Button } from "../../atomes/Button/Button";
-import { ActionExportCollectionJson } from "../../molecules/ActionExportCollectionJson";
+import { ActionExportCollectionJson } from "./parts/ActionExportCollectionJson";
 import { ActionImportLlm } from "../../molecules/ActionImportLlm";
 import { buildReflexionRoutePath, buildSousCollectionsRoutePath } from "../../molecules/CollectionCard/CollectionCard.metier";
 import { QuestionsLlmImportPanel } from "../../molecules/QuestionsLlmImportPanel";

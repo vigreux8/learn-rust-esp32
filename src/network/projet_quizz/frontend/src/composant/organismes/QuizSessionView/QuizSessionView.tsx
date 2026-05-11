@@ -10,9 +10,10 @@ import {
   QuizSessionQuestionCard,
 } from "./QuizSessionView.sections";
 import { QUIZ_SESSION_STYLES } from "./QuizSessionView.styles";
-import type { QuizSessionViewProps } from "./QuizSessionView.types";
+import type { QuizSessionRouterInject, QuizSessionViewProps } from "./QuizSessionView.types";
 
-export function QuizSessionView(props: QuizSessionViewProps) {
+export function QuizSessionView(router: QuizSessionRouterInject) {
+  const props: QuizSessionViewProps = { route: { collectionId: router.collectionId } };
   const view = useQuizSessionView(props);
 
   if (view.kind === "loading") return <QuizSessionLoading />;

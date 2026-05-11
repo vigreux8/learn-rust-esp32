@@ -3,8 +3,13 @@ import { route } from "preact-router";
 import { readLastQuizResult } from "../../../lib/lastQuizResult";
 import { useUserSession } from "../../../lib/userSession";
 import { buildReplayTarget, computeScorePercent } from "./QuizResultsView.metier";
+import type { QuizResultsViewProps } from "./QuizResultsView.types";
 
-export function useQuizResultsView() {
+/**
+ * Écran résultat de session : lecture du dernier score stocké localement et raccourcis navigation / replay.
+ */
+export function useQuizResultsView(props: QuizResultsViewProps = {}) {
+  void props;
   const { userId } = useUserSession();
   const result = useMemo(() => readLastQuizResult(), []);
 

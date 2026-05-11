@@ -19,6 +19,9 @@ import {
 import type { QuestionsActionBoutonsProps } from "./QuestionsActionBoutons.types";
 import { getOptionValue } from "./QuestionsActionBoutons.utils";
 
+/**
+ * Barre d’actions questions : panneau import LLM (options dynamiques, prompts, appel API) et workflow lié.
+ */
 export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
   const { data, actions, llmImportExtras } = props;
   const { targetCollectionNumeric, collections, importTargetTagCollectionId, questions } = data;

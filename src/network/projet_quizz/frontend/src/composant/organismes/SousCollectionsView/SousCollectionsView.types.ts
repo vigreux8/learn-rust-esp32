@@ -1,9 +1,16 @@
-import type { SousCollectionLlmImportWidgetProps } from "../../molecules/SousCollectionLlmImportWidget";
+import type { SousCollectionLlmImportWidgetProps } from "./parts/SousCollectionLlmImportWidget";
 import type { QuizzQuestionRow, SousCollectionUi } from "../../../types/quizz";
 
-/** Props injectées par preact-router. */
-export type SousCollectionsViewProps = {
+/** Entrées injectées par `preact-router` (`/collections/:collectionId/sous-collections`). */
+export type SousCollectionsRouterInject = {
   collectionId?: string;
+};
+
+/** Contrat interne après normalisation pour le hook. */
+export type SousCollectionsViewProps = {
+  route: {
+    collectionId?: string;
+  };
 };
 
 export type SousCollectionsDndPayload = {

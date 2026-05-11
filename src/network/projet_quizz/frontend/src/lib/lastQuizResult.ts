@@ -85,11 +85,3 @@ export function readLastQuizResult(): LastQuizResult | null {
     return null;
   }
 }
-
-export function clearLastQuizResult() {
-  try {
-    sessionStorage.removeItem(KEY);
-  } catch {
-    /* ignore */
-  }
-}

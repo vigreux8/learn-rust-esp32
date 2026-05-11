@@ -6,9 +6,10 @@ import { Button } from "../../atomes/Button/Button";
 import { Badge } from "../../atomes/Badge/Badge";
 import { useQuizResultsView } from "./QuizResultsView.hook";
 import { QUIZ_RESULTS_VIEW_STYLES } from "./QuizResultsView.styles";
+import type { QuizResultsViewProps } from "./QuizResultsView.types";
 
-export function QuizResultsView() {
-  const { result, summary, navigation } = useQuizResultsView();
+export function QuizResultsView(props: QuizResultsViewProps = {}) {
+  const { result, summary, navigation } = useQuizResultsView(props);
 
   if (result == null || summary == null) {
     return (

@@ -1,9 +1,15 @@
 import type { LlmImportQuestion } from "../../molecules/QuestionsLlmImportPanel";
 import type { QuizzQuestionRow } from "../../../types/quizz";
 
-/** Props injectées par preact-router. */
-export type QuestionReflexionViewProps = {
+/** Entrées injectées par `preact-router` (`/collections/:collectionId/reflexion`). */
+export type QuestionReflexionRouterInject = {
   collectionId?: string;
+};
+
+export type QuestionReflexionViewProps = {
+  route: {
+    collectionId?: string;
+  };
 };
 
 /** Brouillon LLM uniquement côté navigateur (pas encore de ligne `quizz_question`). */

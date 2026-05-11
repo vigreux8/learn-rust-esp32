@@ -1,6 +1,8 @@
 import type { DatabaseJsonMergeResult, DatabaseSqlReplaceResult } from "../../../lib/api";
 
-export type DatabaseTransferViewProps = Record<string, never>;
+export type DatabaseTransferViewProps = {
+  route?: Record<string, never>;
+};
 
 export type DatabaseTransferExportSlice = {
   sqlBusy: boolean;

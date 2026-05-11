@@ -1,4 +1,10 @@
+export type StatsDashboardProps = {
+  route?: Record<string, never>;
+};
+
 export type DayBar = { key: string; label: string; count: number; h: number };
+
+export type WeekBarChartRow = DayBar & { barHeightPct: number };
 
 export type KpisAgg = {
   total: number;

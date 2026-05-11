@@ -2,7 +2,7 @@ import { useDroppable } from "@dnd-kit/react";
 import { Button } from "../../atomes/Button/Button";
 import { CollectionGroupEditModal } from "../../molecules/CollectionGroupEditModal";
 import { QuizzQuestionDndRow } from "../../molecules/QuizzQuestionDndRow";
-import { SousCollectionLlmImportWidget } from "../../molecules/SousCollectionLlmImportWidget";
+import { SousCollectionLlmImportWidget } from "./parts/SousCollectionLlmImportWidget";
 import { SOUS_COLLECTIONS_VIEW_STYLES } from "./SousCollectionsView.styles";
 import type {
   SousCollectionsAssignedPanelProps,

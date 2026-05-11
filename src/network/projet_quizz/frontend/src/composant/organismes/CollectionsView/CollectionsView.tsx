@@ -2,7 +2,7 @@ import { AppHeader } from "../../atomes/AppHeader/AppHeader";
 import { AppFooter } from "../../atomes/AppFooter/AppFooter";
 import { PageMain } from "../../atomes/PageMain/PageMain";
 import { Button } from "../../atomes/Button/Button";
-import { PopUpInformation } from "../../molecules/PopUpInformation/PopUpInformation";
+import { PopUpInformation } from "./parts/PopUpInformation/PopUpInformation";
 import { useCollectionsView } from "./CollectionsView.hook";
 import { CollectionsContent, CollectionsHeader, JsonImportPanel } from "./CollectionsView.sections";
 import { COLLECTIONS_VIEW_STYLES } from "./CollectionsView.styles";

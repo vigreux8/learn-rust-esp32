@@ -5,9 +5,10 @@ import { PageMain } from "../../atomes/PageMain/PageMain";
 import { Button } from "../../atomes/Button/Button";
 import { useDatabaseTransferView } from "./DatabaseTransferView.hook";
 import { DATABASE_TRANSFER_VIEW_STYLES } from "./DatabaseTransferView.styles";
+import type { DatabaseTransferViewProps } from "./DatabaseTransferView.types";
 
-export function DatabaseTransferView() {
-  const { exporting, importing } = useDatabaseTransferView();
+export function DatabaseTransferView(props: DatabaseTransferViewProps = {}) {
+  const { exporting, importing } = useDatabaseTransferView(props);
 
   return (
     <div class={DATABASE_TRANSFER_VIEW_STYLES.root}>

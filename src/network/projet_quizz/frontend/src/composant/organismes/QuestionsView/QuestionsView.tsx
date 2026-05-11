@@ -1,4 +1,4 @@
-import { QuestionsCollectionContextBar } from "../../atomes/QuestionsCollectionContextBar/QuestionsCollectionContextBar";
+import { QuestionsCollectionContextBar } from "./parts/QuestionsCollectionContextBar";
 import { QuestionsActionBoutons } from "../QuestionsActionBoutons/QuestionsActionBoutons";
 import { QuestionEditModal } from "../QuestionEditModal/QuestionEditModal";
 import { AppHeader } from "../../atomes/AppHeader/AppHeader";

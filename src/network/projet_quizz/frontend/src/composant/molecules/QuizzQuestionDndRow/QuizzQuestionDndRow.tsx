@@ -1,12 +1,9 @@
-import { useDraggable } from "@dnd-kit/react";
-import { useDroppable } from "@dnd-kit/react";
-import { useSortable } from "@dnd-kit/react/sortable";
 import { ChevronDown, ChevronUp, GripVertical } from "lucide-preact";
 import { cn } from "../../../lib/cn";
-import { reflexionColorTargetId } from "../../../lib/reflexionChainColors";
 import { Button } from "../../atomes/Button/Button";
 import { QUIZZ_DND_PANEL_STYLES } from "../QuizzDndQuestionPanels/QuizzDndQuestionPanels.styles";
 import { MarkdownViewer } from "../../atomes/MarkdownViewer";
+import { useQuizzQuestionDndRowDraggable, useQuizzQuestionDndRowSortable } from "./QuizzQuestionDndRow.hook";
 import type { QuizzQuestionDndRowProps } from "./QuizzQuestionDndRow.types";
 
 function RowFooter(props: NonNullable<QuizzQuestionDndRowProps["actions"]>) {
@@ -85,133 +82,82 @@ function QuestionCardBody(props: {
   );
 }
 
-/** Ligne triable (suite ordonnée) : drag pour réordonner. */
 function QuizzQuestionDndRowSortable(props: QuizzQuestionDndRowProps) {
-  const { row } = props.data;
-  const { draggableId, disabled, payload } = props.dnd;
-  const { dragActivation, sequence, sortable } = props.settings;
-  const sort = sortable!;
-  const cd = props.visual?.colorDrop;
-
-  const { ref, handleRef, isDragging } = useSortable({
-    id: draggableId,
-    index: sort.index,
-    group: sort.group,
-    disabled,
-    data: payload,
-  });
-
-  const colorDrop = useDroppable({
-    id: reflexionColorTargetId(row.id),
-    disabled: cd == null || cd.disabled,
-    data: { zone: "color-target", questionId: row.id },
-  });
-
-  const borderHex = props.visual?.leftBorderHex ?? null;
-
-  /**
-   * `ref` = enveloppe sortable (mesure / collision). `handleRef` = zone qui démarre le drag.
-   * Si les deux pointent vers le bloc actions, les clics boutons sont avalés par le capteur pointer.
-   * En mode pleine carte, seule la rangée question est poignée ; le pied reste cliquable.
-   */
-  const innerRowRef =
-    dragActivation === "fullCard"
-      ? (el: Element | null) => {
-          handleRef(el);
-          colorDrop.ref(el);
-        }
-      : (el: Element | null) => colorDrop.ref(el);
+  const vm = useQuizzQuestionDndRowSortable(props);
 
   return (
-    <div ref={ref} class="mb-2" style={{ opacity: isDragging ? 0.45 : 1 }}>
+    <div ref={vm.containerRef} class="mb-2" style={{ opacity: vm.isDragging ? 0.45 : 1 }}>
       <div
-        ref={innerRowRef}
+        ref={vm.innerRowRef}
         class={cn(
           QUIZZ_DND_PANEL_STYLES.questionRow,
-          colorDrop.isDropTarget && "ring-2 ring-learn/45 ring-offset-1 ring-offset-base-200",
+          vm.isDropTarget && "ring-2 ring-learn/45 ring-offset-1 ring-offset-base-200",
         )}
         style={{
-          ...(borderHex != null && borderHex !== ""
+          ...(vm.borderHex != null && vm.borderHex !== ""
             ? {
                 borderLeftWidth: "4px",
                 borderLeftStyle: "solid",
-                borderLeftColor: borderHex,
+                borderLeftColor: vm.borderHex,
               }
             : {}),
         }}
       >
-        {dragActivation === "handle" ? (
+        {vm.dragActivation === "handle" ? (
           <span
-            ref={handleRef}
+            ref={vm.handleRef}
             class="mt-0.5 text-base-content/40"
             aria-label="Déplacer la question (glisser-déposer)"
           >
             <GripVertical class="h-4 w-4" aria-hidden />
           </span>
         ) : null}
-        <QuestionCardBody categorieType={row.categorie_type} question={row.question} sequence={sequence} />
+        <QuestionCardBody categorieType={vm.row.categorie_type} question={vm.row.question} sequence={vm.sequence} />
       </div>
-      {props.actions != null &&
-      (props.actions.onEdit != null ||
-        props.actions.onDelete != null ||
-        props.actions.onMoveUp != null ||
-        props.actions.onMoveDown != null) ? (
-        <RowFooter {...props.actions} />
+      {vm.footer != null &&
+      (vm.footer.onEdit != null ||
+        vm.footer.onDelete != null ||
+        vm.footer.onMoveUp != null ||
+        vm.footer.onMoveDown != null) ? (
+        <RowFooter {...vm.footer} />
       ) : null}
     </div>
   );
 }
 
-/** Ligne draggable simple (pool, ou colonnes sans tri interne). */
 function QuizzQuestionDndRowDraggable(props: QuizzQuestionDndRowProps) {
-  const { row } = props.data;
-  const { draggableId, disabled, payload } = props.dnd;
-  const { dragActivation, sequence } = props.settings;
-
-  const { ref, handleRef, isDragging } = useDraggable({
-    id: draggableId,
-    disabled,
-    data: payload,
-  });
-
-  const cardRef =
-    dragActivation === "fullCard"
-      ? (el: Element | null) => {
-          ref(el);
-          handleRef(el);
-        }
-      : ref;
+  const vm = useQuizzQuestionDndRowDraggable(props);
 
   return (
     <div class="mb-2">
       <div
-        ref={cardRef}
+        ref={vm.cardRef}
         class={QUIZZ_DND_PANEL_STYLES.questionRow}
-        style={{ opacity: isDragging ? 0.45 : 1 }}
+        style={{ opacity: vm.isDragging ? 0.45 : 1 }}
       >
-        {dragActivation === "handle" ? (
+        {vm.dragActivation === "handle" ? (
           <span
-            ref={handleRef}
+            ref={vm.handleRef}
             class="mt-0.5 text-base-content/40"
             aria-label="Déplacer la question (glisser-déposer)"
           >
             <GripVertical class="h-4 w-4" aria-hidden />
           </span>
         ) : null}
-        <QuestionCardBody categorieType={row.categorie_type} question={row.question} sequence={sequence} />
+        <QuestionCardBody categorieType={vm.row.categorie_type} question={vm.row.question} sequence={vm.sequence} />
       </div>
-      {props.actions != null &&
-      (props.actions.onEdit != null ||
-        props.actions.onDelete != null ||
-        props.actions.onMoveUp != null ||
-        props.actions.onMoveDown != null) ? (
-        <RowFooter {...props.actions} />
+      {vm.footer != null &&
+      (vm.footer.onEdit != null ||
+        vm.footer.onDelete != null ||
+        vm.footer.onMoveUp != null ||
+        vm.footer.onMoveDown != null) ? (
+        <RowFooter {...vm.footer} />
       ) : null}
     </div>
   );
 }
 
-export function QuizzQuestionDndRow( props: QuizzQuestionDndRowProps) {
+export function QuizzQuestionDndRow(props: QuizzQuestionDndRowProps) {
   if (props.settings.sortable != null) {
     return <QuizzQuestionDndRowSortable {...props} />;
   }

@@ -1,7 +1,7 @@
 import { Plus } from "lucide-preact";
 import { Button } from "../../atomes/Button/Button";
 import { Card } from "../../atomes/Card/Card";
-import { QuestionsTable } from "../../molecules/QuestionsTable/QuestionsTable";
+import { QuestionsTable } from "./parts/QuestionsTable";
 import { QUESTIONS_VIEW_STYLES } from "./QuestionsView.styles";
 import type { QuestionsViewFiltersSectionProps, QuestionsViewQuestionsBodyProps } from "./QuestionsView.types";
 

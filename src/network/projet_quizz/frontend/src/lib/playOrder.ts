@@ -69,29 +69,6 @@ export function buildPlayOrdersFromPicker(opts: {
   return o;
 }
 
-/** Déduit l’état du sélecteur à partir d’une liste de modes (pour pré-remplissage / rejouer). */
-export function pickerStateFromPlayOrders(orders: PlayOrder[]): {
-  neverAnswered: boolean;
-  wrongAnswered: boolean;
-  sortBase: PlaySortBase;
-  errorPriority: boolean;
-  shuffleExtra: boolean;
-} {
-  return {
-    neverAnswered: orders.includes("jamais_repondu"),
-    wrongAnswered: orders.includes("mal_repondu_filtre"),
-    sortBase: orders.includes("linear")
-      ? "linear"
-      : orders.includes("recent")
-        ? "recent"
-        : orders.includes("ancien")
-          ? "ancien"
-          : "none",
-    errorPriority: orders.includes("mal_repondu"),
-    shuffleExtra: orders.includes("random"),
-  };
-}
-
 /** Mélange parent + collections enfants (`GET /quizz/collections/:id?includeChildren=1`). */
 export type ChildCollectionsMix = "famille" | "melange";
 

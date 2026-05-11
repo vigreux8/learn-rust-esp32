@@ -7,9 +7,13 @@ import { Badge } from "../../atomes/Badge/Badge";
 import { MarkdownViewer } from "../../atomes/MarkdownViewer";
 import { useSessionDetailsView } from "./SessionDetailsView.hook";
 import { SESSION_DETAILS_VIEW_STYLES } from "./SessionDetailsView.styles";
-import type { SessionDetailsViewProps } from "./SessionDetailsView.types";
+import type {
+  SessionDetailsRouterInject,
+  SessionDetailsViewProps,
+} from "./SessionDetailsView.types";
 
-export function SessionDetailsView( props: SessionDetailsViewProps) {
+export function SessionDetailsView(router: SessionDetailsRouterInject) {
+  const props: SessionDetailsViewProps = { route: { sessionId: router.sessionId } };
   const { status, navigation, session } = useSessionDetailsView(props);
 
   if (status.loading) {
