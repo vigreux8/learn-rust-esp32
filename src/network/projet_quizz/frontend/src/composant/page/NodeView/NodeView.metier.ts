@@ -5,6 +5,7 @@ import {
 import type { CollectionUi } from "../../../types/quizz";
 import type { AppNode } from "../../node/config/flow.types";
 import type {
+  FlowSidebarCollectionHierarchyRef,
   FlowSidebarCollectionRow,
   FlowSidebarPersonalityRow,
   FlowSidebarQuestionRow,
@@ -17,9 +18,10 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
   collections: FlowSidebarCollectionRow[];
   questions: FlowSidebarQuestionRow[];
   personalities: FlowSidebarPersonalityRow[];
+  collectionHierarchy: FlowSidebarCollectionHierarchyRef[];
 } {
   if (collections.length === 0) {
-    return { collections: [], questions: [], personalities: [] };
+    return { collections: [], questions: [], personalities: [], collectionHierarchy: [] };
   }
 
   const byId = new Map(collections.map((c) => [c.id, c]));
@@ -60,7 +62,12 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
     return byLabel !== 0 ? byLabel : a.collectionLabel.localeCompare(b.collectionLabel, "fr");
   });
 
-  return { collections: collectionRows, questions, personalities };
+  const collectionHierarchy: FlowSidebarCollectionHierarchyRef[] = collections.map((c) => ({
+    id: c.id,
+    parent_collection_id: c.parent_collection_id ?? null,
+  }));
+
+  return { collections: collectionRows, questions, personalities, collectionHierarchy };
 }
 
 /**

@@ -11,15 +11,17 @@ export function CollectionNode(props: CollectionNodeProps) {
   const { isConnectable } = props;
 
   return (
-    <div class={COLLECTION_NODE_STYLES.wrapper}>
+    <div
+      class={COLLECTION_NODE_STYLES.wrapper}
+      onDragOver={dnd.nodeSurface.onDragOver}
+      onDragOverCapture={dnd.nodeSurface.onDragOverCapture}
+      onDrop={dnd.nodeSurface.onDrop}
+    >
       <div class={COLLECTION_NODE_STYLES.coreColumn}>
         {layout.isExpanded ? (
           <div class={COLLECTION_NODE_STYLES.panelsFloating}>
-            <CollectionPanel
-              supercollections={content.supercollections}
-              dropZone={dnd.supercollections}
-            />
-            <CreatorPanel creators={content.creators} dropZone={dnd.influenceurs} />
+            <CollectionPanel supercollections={content.supercollections} />
+            <CreatorPanel creators={content.creators} />
           </div>
         ) : null}
 

@@ -103,10 +103,19 @@ export function personnaliteStripBorderHex(importanceType: string | null | undef
   return COLLECTION_PERSONNALITE_BORDER.auteur;
 }
 
+/** Référence minimale pour parcourir l’arbre parent → enfants (filtres sidebar, etc.). */
+export type CollectionParentRef = {
+  id: number;
+  parent_collection_id?: number | null;
+};
+
 /**
  * Tous les ids de collections descendantes de `rootId` (sans inclure `rootId`).
  */
-export function collectDescendantCollectionIds(rootId: number, collections: CollectionUi[]): Set<number> {
+export function collectDescendantCollectionIds(
+  rootId: number,
+  collections: readonly CollectionParentRef[],
+): Set<number> {
   const childrenByParent = new Map<number, number[]>();
   for (const c of collections) {
     const p = c.parent_collection_id ?? null;
@@ -124,5 +133,18 @@ export function collectDescendantCollectionIds(rootId: number, collections: Coll
     const ch = childrenByParent.get(id);
     if (ch) for (const x of ch) stack.push(x);
   }
+  return out;
+}
+
+/**
+ * `rootId` et toutes ses collections descendantes (personnalités liées à cette branche).
+ */
+export function collectSubtreeCollectionIds(
+  rootId: number,
+  collections: readonly CollectionParentRef[],
+): Set<number> {
+  const descendants = collectDescendantCollectionIds(rootId, collections);
+  const out = new Set(descendants);
+  out.add(rootId);
   return out;
 }

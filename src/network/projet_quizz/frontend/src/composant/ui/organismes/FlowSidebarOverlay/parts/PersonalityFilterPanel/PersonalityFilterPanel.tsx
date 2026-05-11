@@ -6,14 +6,13 @@ import {
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import {
   PERSONALITE_BUCKET_LABEL_FR,
-  PERSONALITE_FILTER_BUCKET_ORDER,
-  personalityFilterChipHex,
+  personalityRowAccentBucketHex,
 } from "./PersonalityFilterPanel.metier";
 import { PERSONALITY_FILTER_PANEL_STYLES } from "./PersonalityFilterPanel.styles";
 import type { PersonalityFilterPanelProps } from "./PersonalityFilterPanel.types";
 
 /**
- * Panneau : recherche, filtres par importance (couleurs Collections / bandeaux personnalité), liste draggables.
+ * Panneau : recherche, filtre par branche collection (parent + descendants), liste draggables.
  */
 export function PersonalityFilterPanel(props: PersonalityFilterPanelProps) {
   const { data, actions } = props;
@@ -31,37 +30,38 @@ export function PersonalityFilterPanel(props: PersonalityFilterPanelProps) {
         />
       </label>
 
-      <div class={FLOW_SIDEBAR_OVERLAY_STYLES.levelRow} role="group" aria-label="Filtrer par niveau d importance">
-        {PERSONALITE_FILTER_BUCKET_ORDER.map((bucket) => {
-          const hex = personalityFilterChipHex(bucket);
-          return (
-            <button
-              key={bucket}
-              type="button"
-              class={PERSONALITY_FILTER_PANEL_STYLES.bucketChip(data.isBucketActive(bucket))}
-              aria-pressed={data.isBucketActive(bucket)}
-              title={PERSONALITE_BUCKET_LABEL_FR[bucket]}
-              onClick={() => actions.toggleBucket(bucket)}
-            >
-              <span
-                class={PERSONALITY_FILTER_PANEL_STYLES.bucketDot}
-                style={{ backgroundColor: hex }}
-                aria-hidden
-              />
-              <span class="text-xs font-medium text-base-content/90">{PERSONALITE_BUCKET_LABEL_FR[bucket]}</span>
-            </button>
-          );
-        })}
-      </div>
+      <label class="flex flex-col gap-1">
+        <span class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">
+          Branche collection (cette collection + enfants)
+        </span>
+        <select
+          class="select select-bordered select-sm w-full rounded-xl border-base-content/15 bg-base-100 text-sm"
+          value={data.branchRootCollectionId == null ? "" : String(data.branchRootCollectionId)}
+          aria-label="Filtrer par branche de collection"
+          onChange={(event) => {
+            const raw = (event.target as HTMLSelectElement).value;
+            actions.setBranchRootCollectionId(raw === "" ? null : Number(raw));
+          }}
+        >
+          <option value="">Toutes les collections</option>
+          {data.collectionOptions.map((opt) => (
+            <option key={opt.id} value={String(opt.id)}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div class="flex min-h-0 flex-col gap-2 overflow-y-auto">
         {data.rows.length === 0 ? (
           <p class={PERSONALITY_FILTER_PANEL_STYLES.emptyState}>
-            Aucune personnalité liée aux collections chargées. Associe des personnalités depuis l écran Collections.
+            Aucune personnalité pour ce filtre. Associe des personnalités depuis l écran Collections.
           </p>
         ) : null}
         {data.rows.map((row) => {
+          const bucket = personaliteImportanceBucket(row.importanceType);
           const accentHex = personaliteImportanceAccentHex(row.importanceType);
+          const chipHex = personalityRowAccentBucketHex(bucket);
           return (
             <div
               key={row.id}
@@ -86,9 +86,9 @@ export function PersonalityFilterPanel(props: PersonalityFilterPanelProps) {
               </div>
               <span
                 class="badge badge-sm shrink-0 border font-mono text-[10px] font-semibold capitalize"
-                style={{ borderColor: accentHex, color: accentHex, backgroundColor: "transparent" }}
+                style={{ borderColor: chipHex, color: chipHex, backgroundColor: "transparent" }}
               >
-                {PERSONALITE_BUCKET_LABEL_FR[personaliteImportanceBucket(row.importanceType)]}
+                {PERSONALITE_BUCKET_LABEL_FR[bucket]}
               </span>
             </div>
           );

@@ -2,14 +2,10 @@ import { COLLECTION_PANEL_STYLES } from "./CollectionPanel.styles";
 import type { CollectionPanelProps } from "./CollectionPanel.types";
 
 export function CollectionPanel(props: CollectionPanelProps) {
-  const { supercollections, dropZone } = props;
+  const { supercollections } = props;
 
   return (
-    <div
-      class={COLLECTION_PANEL_STYLES.root}
-      onDragOver={dropZone?.onDragOver}
-      onDrop={dropZone?.onDrop}
-    >
+    <div class={COLLECTION_PANEL_STYLES.root}>
       <span class={COLLECTION_PANEL_STYLES.legend}>Supercollections</span>
       {supercollections.map((c) => (
         <div key={c.id} class={COLLECTION_PANEL_STYLES.badge}>

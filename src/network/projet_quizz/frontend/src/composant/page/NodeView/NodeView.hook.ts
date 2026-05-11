@@ -226,6 +226,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       collections: sidebarBase.collections,
       questions: sidebarBase.questions.filter((q) => q.collectionId === questionsScopeCollectionId),
       personalities: sidebarBase.personalities,
+      collectionHierarchy: sidebarBase.collectionHierarchy,
     };
   }, [questionsScopeCollectionId, sidebarBase]);
 

@@ -1,13 +1,7 @@
 import type { PersonaliteImportanceBucket } from "../../../../../../lib/collectionHierarchyVis";
 import { PERSONNALITE_IMPORTANCE_ACCENT_HEX } from "../../../../../../lib/collectionHierarchyVis";
 
-export const PERSONALITE_FILTER_BUCKET_ORDER: PersonaliteImportanceBucket[] = [
-  "pionnier",
-  "important",
-  "secondaire",
-  "sans",
-];
-
+/** Libellés courts pour les pastilles d importance sur les lignes. */
 export const PERSONALITE_BUCKET_LABEL_FR: Record<PersonaliteImportanceBucket, string> = {
   pionnier: "Pionnier",
   important: "Important",
@@ -15,6 +9,6 @@ export const PERSONALITE_BUCKET_LABEL_FR: Record<PersonaliteImportanceBucket, st
   sans: "Sans niveau",
 };
 
-export function personalityFilterChipHex(bucket: PersonaliteImportanceBucket): string {
+export function personalityRowAccentBucketHex(bucket: PersonaliteImportanceBucket): string {
   return PERSONNALITE_IMPORTANCE_ACCENT_HEX[bucket];
 }

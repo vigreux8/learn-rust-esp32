@@ -30,11 +30,18 @@ export type FlowSidebarQuestionRow = {
   collectionId: number;
 };
 
+/** Hiérarchie plate pour filtre personnalités (parent → enfants). */
+export type FlowSidebarCollectionHierarchyRef = {
+  id: number;
+  parent_collection_id: number | null;
+};
+
 export type FlowSidebarOverlayProps = {
   data: {
     collections: FlowSidebarCollectionRow[];
     questions: FlowSidebarQuestionRow[];
     personalities: FlowSidebarPersonalityRow[];
+    collectionHierarchy: FlowSidebarCollectionHierarchyRef[];
   };
   actions: {
     onNodeCreate?: (type: string, position: { x: number; y: number }, data: unknown) => void;

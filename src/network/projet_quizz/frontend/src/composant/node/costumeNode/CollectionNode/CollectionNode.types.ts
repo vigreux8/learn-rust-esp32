@@ -37,9 +37,12 @@ export type CollectionNodeViewStates = {
   };
   dnd: {
     isOverBar: boolean;
-    /** Zones HTML5 drop : supercollections (#) et influenceurs. */
-    supercollections: { onDragOver: (event: DragEvent) => void; onDrop: (event: DragEvent) => void };
-    influenceurs: { onDragOver: (event: DragEvent) => void; onDrop: (event: DragEvent) => void };
+    /** Drop depuis la sidebar sur tout le nœud : collection → #, personnalité → influenceurs. */
+    nodeSurface: {
+      onDragOver: (event: DragEvent) => void;
+      onDragOverCapture: (event: DragEvent) => void;
+      onDrop: (event: DragEvent) => void;
+    };
   };
   actions: {
     onPlay: () => void;

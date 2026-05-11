@@ -79,11 +79,12 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                 data={{
                   search: personalities.search,
                   rows: personalities.rows,
-                  isBucketActive: personalities.isBucketActive,
+                  collectionOptions: personalities.collectionOptions,
+                  branchRootCollectionId: personalities.branchRootCollectionId,
                 }}
                 actions={{
                   setSearch: personalities.setSearch,
-                  toggleBucket: personalities.toggleBucket,
+                  setBranchRootCollectionId: personalities.setBranchRootCollectionId,
                   onDragStart: drag.onDragStart,
                 }}
               />

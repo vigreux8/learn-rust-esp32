@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useState } from "preact/hooks";
 import {
+  collectSubtreeCollectionIds,
   collectionTreePaletteBucket,
-  personaliteImportanceBucket,
-  type PersonaliteImportanceBucket,
 } from "../../../../lib/collectionHierarchyVis";
 import { REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
 import type { FlowSidebarOverlayProps, SidebarTab } from "./FlowSidebarOverlay.types";
@@ -13,7 +12,7 @@ type QuestionGroup = {
 };
 
 /**
- * Orchestre onglets sidebar, filtres collections / questions et drag HTML5 vers React Flow.
+ * Orchestre onglets sidebar, filtres collections / questions / personnalités et drag HTML5 vers React Flow.
  */
 export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const { data } = props;
@@ -23,9 +22,10 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   /** Indices de palette (0…dernier) : même regroupement visuel que les bords de carte collections. */
   const [paletteBucketFilters, setPaletteBucketFilters] = useState<number[]>([]);
   const [personalitySearch, setPersonalitySearch] = useState("");
-  const [personalityBucketFilters, setPersonalityBucketFilters] = useState<PersonaliteImportanceBucket[]>(
-    [],
-  );
+  /** Collection racine : personnalités liées à cette collection ou à une collection enfant. `null` = tout. */
+  const [personalityBranchRootCollectionId, setPersonalityBranchRootCollectionId] = useState<
+    number | null
+  >(null);
 
   const toggleTab = useCallback((tab: Exclude<SidebarTab, null>) => {
     setActiveTab((current) => (current === tab ? null : tab));
@@ -49,24 +49,25 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   );
 
   const personalitiesSource = data.personalities ?? [];
+  const collectionHierarchy = data.collectionHierarchy ?? [];
 
-  const togglePersonalityBucket = useCallback((bucket: PersonaliteImportanceBucket) => {
-    setPersonalityBucketFilters((prev) =>
-      prev.includes(bucket) ? prev.filter((value) => value !== bucket) : [...prev, bucket],
-    );
-  }, []);
-
-  const isPersonalityBucketActive = useCallback(
-    (bucket: PersonaliteImportanceBucket) => personalityBucketFilters.includes(bucket),
-    [personalityBucketFilters],
+  const personalityCollectionOptions = useMemo(
+    () =>
+      data.collections.map((row) => ({
+        id: row.collectionId,
+        label: row.label,
+      })),
+    [data.collections],
   );
 
   const filteredPersonalities = useMemo(() => {
     let rows = personalitiesSource;
-    if (personalityBucketFilters.length > 0) {
-      rows = rows.filter((row) =>
-        personalityBucketFilters.includes(personaliteImportanceBucket(row.importanceType)),
+    if (personalityBranchRootCollectionId != null && collectionHierarchy.length > 0) {
+      const subtree = collectSubtreeCollectionIds(
+        personalityBranchRootCollectionId,
+        collectionHierarchy,
       );
+      rows = rows.filter((row) => subtree.has(row.collectionId));
     }
     const query = personalitySearch.trim().toLowerCase();
     if (query.length > 0) {
@@ -77,7 +78,12 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       );
     }
     return rows;
-  }, [personalityBucketFilters, personalitySearch, personalitiesSource]);
+  }, [
+    collectionHierarchy,
+    personalityBranchRootCollectionId,
+    personalitySearch,
+    personalitiesSource,
+  ]);
 
   const filteredCollections = useMemo(() => {
     let rows = data.collections;
@@ -142,8 +148,9 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       search: personalitySearch,
       setSearch: setPersonalitySearch,
       rows: filteredPersonalities,
-      toggleBucket: togglePersonalityBucket,
-      isBucketActive: isPersonalityBucketActive,
+      branchRootCollectionId: personalityBranchRootCollectionId,
+      setBranchRootCollectionId: setPersonalityBranchRootCollectionId,
+      collectionOptions: personalityCollectionOptions,
     },
     drag: { onDragStart },
   };

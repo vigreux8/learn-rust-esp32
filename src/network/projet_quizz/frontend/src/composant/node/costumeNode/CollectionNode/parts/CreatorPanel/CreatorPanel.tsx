@@ -3,14 +3,10 @@ import { CREATOR_PANEL_STYLES } from "./CreatorPanel.styles";
 import type { CreatorPanelProps } from "./CreatorPanel.types";
 
 export function CreatorPanel(props: CreatorPanelProps) {
-  const { creators, dropZone } = props;
+  const { creators } = props;
 
   return (
-    <div
-      class={CREATOR_PANEL_STYLES.root}
-      onDragOver={dropZone?.onDragOver}
-      onDrop={dropZone?.onDrop}
-    >
+    <div class={CREATOR_PANEL_STYLES.root}>
       <span class={CREATOR_PANEL_STYLES.legend}>Influenceurs</span>
       {creators.map((u) => (
         <div key={u.id} class={CREATOR_PANEL_STYLES.row}>

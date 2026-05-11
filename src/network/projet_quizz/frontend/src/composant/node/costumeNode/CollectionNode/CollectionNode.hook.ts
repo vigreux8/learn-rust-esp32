@@ -9,7 +9,7 @@ import {
 import type { CollectionNodeProps, CollectionNodeViewStates } from "./CollectionNode.types";
 
 /**
- * Orchestration locale du nœud (expansion, contenu dérivé de `data`, drop sidebar → panneaux # / influenceurs).
+ * Orchestration locale du nœud (expansion, drop sidebar sur tout le nœud → # ou influenceurs).
  */
 export function useCollectionNode(props: CollectionNodeProps): CollectionNodeViewStates {
   const { data, id } = props;
@@ -24,57 +24,45 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     data.actions?.onPlay?.(id);
   }, [data.actions, id]);
 
-  const onSupercollectionDragOver = useCallback((event: DragEvent) => {
+  const onNodeDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
-    event.stopPropagation();
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = "move";
     }
   }, []);
 
-  const onSupercollectionDrop = useCallback(
+  const onNodeDrop = useCallback(
     (event: DragEvent) => {
       event.preventDefault();
       event.stopPropagation();
       const parsed = readReactFlowDnDFromEvent(event);
-      if (parsed == null || parsed.type !== "collectionNode") return;
-      setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id !== id || node.type !== "collectionNode") return node;
-          const merged = mergeSupercollectionFromSidebarPayload(
-            node.data.supercollections ?? [],
-            parsed.data,
-          );
-          if (merged == null) return node;
-          return { ...node, data: { ...node.data, supercollections: merged } };
-        }),
-      );
-    },
-    [id, setNodes],
-  );
+      if (parsed == null) return;
 
-  const onInfluenceurDragOver = useCallback((event: DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
-    }
-  }, []);
+      if (parsed.type === "collectionNode") {
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id !== id || node.type !== "collectionNode") return node;
+            const merged = mergeSupercollectionFromSidebarPayload(
+              node.data.supercollections ?? [],
+              parsed.data,
+            );
+            if (merged == null) return node;
+            return { ...node, data: { ...node.data, supercollections: merged } };
+          }),
+        );
+        return;
+      }
 
-  const onInfluenceurDrop = useCallback(
-    (event: DragEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const parsed = readReactFlowDnDFromEvent(event);
-      if (parsed == null || parsed.type !== "personalityNode") return;
-      setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id !== id || node.type !== "collectionNode") return node;
-          const merged = mergeInfluenceurFromSidebarPayload(node.data.creators ?? [], parsed.data);
-          if (merged == null) return node;
-          return { ...node, data: { ...node.data, creators: merged } };
-        }),
-      );
+      if (parsed.type === "personalityNode") {
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id !== id || node.type !== "collectionNode") return node;
+            const merged = mergeInfluenceurFromSidebarPayload(node.data.creators ?? [], parsed.data);
+            if (merged == null) return node;
+            return { ...node, data: { ...node.data, creators: merged } };
+          }),
+        );
+      }
     },
     [id, setNodes],
   );
@@ -88,13 +76,10 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     },
     dnd: {
       isOverBar: false,
-      supercollections: {
-        onDragOver: onSupercollectionDragOver,
-        onDrop: onSupercollectionDrop,
-      },
-      influenceurs: {
-        onDragOver: onInfluenceurDragOver,
-        onDrop: onInfluenceurDrop,
+      nodeSurface: {
+        onDragOver: onNodeDragOver,
+        onDragOverCapture: onNodeDragOver,
+        onDrop: onNodeDrop,
       },
     },
     actions: { onPlay },
