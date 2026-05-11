@@ -28,9 +28,9 @@ Les dossiers suivants existent à la racine de `src/composant/node/` :
 ```text
 src/composant/node/
 ├── config/                 # Registres et types TypeScript du graphe
-│   ├── flow.registry.ts    # Map nodeTypes / edgeTypes → composants
-│   └── flow.types.ts       # Types dérivés du registry (+ types natifs XYFlow)
-├── costumeNode/            # Un dossier par type de nœud custom (voir § 4)
+│   ├── flow.registry.ts    # Map `flowNodeTypes` / `flowEdgeTypes` → composants (ex. `collectionNode` → `CollectionNode`)
+│   └── flow.types.ts       # `AppNode` / `AppEdge` alignés sur le registry
+├── costumeNode/            # Un dossier par type de nœud custom (voir § 4), ex. `CollectionNode/`
 ├── costumeEdge/            # Un dossier par type d’arête custom
 ├── costumeHandle/          # Handles réutilisables entre plusieurs nœuds
 └── regle-implementation.md
