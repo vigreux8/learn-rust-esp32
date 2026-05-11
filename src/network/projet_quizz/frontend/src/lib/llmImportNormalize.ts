@@ -3,7 +3,7 @@ import type {
   LlmImportPayload,
   LlmImportQuestion,
   LlmImportReponse,
-} from "../composant/molecules/QuestionsLlmImportPanel";
+} from "../composant/ui/molecules/QuestionsLlmImportPanel";
 
 function parseReponses(value: unknown, ctx: string): LlmImportQuestion["reponses"] {
   if (!Array.isArray(value) || value.length !== 4) {

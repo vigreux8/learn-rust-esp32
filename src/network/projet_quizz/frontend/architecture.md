@@ -45,38 +45,39 @@ frontend/
     │   └── quizz.ts             # types TS alignés sur l’API quizz
     ├── lib/                     # logique non-UI (API, session, import LLM, etc.)
     └── composant/
-        ├── atomes/              # composants UI sans import d’autre atome du projet (dossier par composant)
-        │   ├── AppFooter/
-        │   ├── AppHeader/
-        │   ├── Badge/
-        │   ├── Button/
-        │   ├── Card/
-        │   ├── MarkdownViewer/
-        │   ├── PageMain/
-        │   ├── PlayModePicker/
-        │   └── QuestionsLlmImportOptionsPanel/
-        ├── molecules/           # blocs composés important au moins un atome local (dossier par composant) — liste exhaustive ci-dessous
-        │   ├── ActionImportLlm/
-        │   ├── CollectionCard/               # `parts/SearchAssociateBlock/` + `CollectionCard.hook.ts`
-        │   ├── CollectionGroupEditModal/
-        │   ├── DeviceAuthGate/              # flux appareil : `DeviceAuthGate.hook.ts` + `parts/` (welcome, pseudot, erreur API, chargement)
-        │   ├── QuestionsLlmImportPanel/
-        │   ├── QuestionsLlmImportPromptPanel/
-        │   ├── QuizzDndQuestionPanels/       # uniquement `QuizzDndQuestionPanels.styles.ts` (styles DnD partagés)
-        │   └── QuizzQuestionDndRow/
-        └── organismes/          # pages / écrans complets (dossier par composant) — ordre = racine réelle du dépôt
-            ├── CollectionsView/
-            ├── DatabaseTransferView/
-            ├── HomeView/
-            ├── QuestionEditModal/
-            ├── QuestionReflexionView/
-            ├── QuestionsActionBoutons/
-            ├── QuestionsView/
-            ├── QuizResultsView/
-            ├── QuizSessionView/
-            ├── SessionDetailsView/
-            ├── SousCollectionsView/
-            └── StatsDashboard/
+        └── ui/                    # périmètre UI : atomes, molécules, organismes (imports hors `ui/` : préfixe `composant/ui/...`)
+            ├── atomes/            # composants UI sans import d’un autre atome du projet (dossier par composant)
+            │   ├── AppFooter/
+            │   ├── AppHeader/
+            │   ├── Badge/
+            │   ├── Button/
+            │   ├── Card/
+            │   ├── MarkdownViewer/
+            │   ├── PageMain/
+            │   ├── PlayModePicker/
+            │   └── QuestionsLlmImportOptionsPanel/
+            ├── molecules/         # blocs composés important au moins un atome local (dossier par composant) — liste exhaustive ci-dessous
+            │   ├── ActionImportLlm/
+            │   ├── CollectionCard/               # `parts/SearchAssociateBlock/` + `CollectionCard.hook.ts`
+            │   ├── CollectionGroupEditModal/
+            │   ├── DeviceAuthGate/              # flux appareil : `DeviceAuthGate.hook.ts` + `parts/` (welcome, pseudot, erreur API, chargement)
+            │   ├── QuestionsLlmImportPanel/
+            │   ├── QuestionsLlmImportPromptPanel/
+            │   ├── QuizzDndQuestionPanels/       # uniquement `QuizzDndQuestionPanels.styles.ts` (styles DnD partagés)
+            │   └── QuizzQuestionDndRow/
+            └── organismes/        # pages / écrans complets (dossier par composant) — ordre = racine réelle du dépôt
+                ├── CollectionsView/
+                ├── DatabaseTransferView/
+                ├── HomeView/
+                ├── QuestionEditModal/
+                ├── QuestionReflexionView/
+                ├── QuestionsActionBoutons/
+                ├── QuestionsView/
+                ├── QuizResultsView/
+                ├── QuizSessionView/
+                ├── SessionDetailsView/
+                ├── SousCollectionsView/
+                └── StatsDashboard/
 ```
 
 ## Analogie avec `reglage_bouton/src`
@@ -95,9 +96,9 @@ Ici le pattern est le même, mais **découpé davantage** :
 - **`main.tsx`** : point d’entrée ; rend `<App />` dans le document.
 - **`app.tsx`** : définition des routes (`/`, `/collections`, `/collections/:id/sous-collections`, `/play/:collectionId`, `/dashboard`, `/database`, etc.) et fournisseurs (`RoutePathContext`, `DeviceAuthGate`).
 
-### `composant/atomes/`
+### `composant/ui/atomes/`
 
-Composants UI **sans import** d’un autre dossier `atomes/*` (feuilles de l’arbre local). Peuvent utiliser `lib/`, `types/`, Lucide, etc.
+Composants UI **sans import** d’un autre dossier `composant/ui/atomes/*` (feuilles de l’arbre local). Peuvent utiliser `lib/`, `types/`, Lucide, etc.
 
 | Dossier                           | Rôle                                                                                                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -108,9 +109,9 @@ Composants UI **sans import** d’un autre dossier `atomes/*` (feuilles de l’a
 | `MarkdownViewer/`                 | Rendu Markdown léger pour intitulés de questions, réponses, sessions (tables, quiz, modales).                                                           |
 | `QuestionsLlmImportOptionsPanel/` | Options de l’import LLM (sans atome projet dans ce dossier).                                                                                            |
 
-### `composant/molecules/`
+### `composant/ui/molecules/`
 
-Blocs composés qui **importent au moins un** composant sous `atomes/`.
+Blocs composés qui **importent au moins un** composant sous `composant/ui/atomes/`.
 
 | Dossier                          | Rôle                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -123,9 +124,9 @@ Blocs composés qui **importent au moins un** composant sous `atomes/`.
 | `QuizzDndQuestionPanels/`        | Pas de JSX public : fichier `QuizzDndQuestionPanels.styles.ts` commun aux zones DnD (réflexion, sous-collections).                      |
 | `DeviceAuthGate/`                | Vérifie / enregistre l’appareil (MAC) avant l’app (`app.tsx`). Orchestration dans `DeviceAuthGate.hook.ts` ; sous-écrans dans `parts/`. |
 
-Les morceaux **uniquement** utilisés par un organisme vivent sous `organismes/<Nom>/parts/` (ex. `QuestionsActionBoutons/parts/ActionExportCollectionJson`, `StatsDashboard/parts/KpiCard`, `CollectionsView/parts/PopUpInformation`, `QuestionsView/parts/QuestionsTable`, `QuestionsView/parts/QuestionsCollectionContextBar`, widgets réflexion / sous-collections).
+Les morceaux **uniquement** utilisés par un organisme vivent sous `composant/ui/organismes/<Nom>/parts/` (ex. `QuestionsActionBoutons/parts/ActionExportCollectionJson`, `StatsDashboard/parts/KpiCard`, `CollectionsView/parts/PopUpInformation`, `QuestionsView/parts/QuestionsTable`, `QuestionsView/parts/QuestionsCollectionContextBar`, widgets réflexion / sous-collections).
 
-### `composant/organismes/`
+### `composant/ui/organismes/`
 
 Pages ou écrans majeurs branchés sur le routeur, structurés en dossiers.
 
@@ -175,7 +176,7 @@ Ressources statiques **importées** depuis le code sous `src/` (illustrations, l
 
 ### dans arborecence
 
-À appliquer à chaque composant sous `composant/` (atomes, molécules, organismes).
+À appliquer à chaque composant sous `composant/ui/` (atomes, molécules, organismes).
 
 - **Un composant = un dossier** nommé comme le composant.
 - **`NomComposant.tsx`** : JSX et câblage ; pas de logique métier.
@@ -189,9 +190,9 @@ Ressources statiques **importées** depuis le code sous `src/` (illustrations, l
 #### Sous-composants locaux : dossier `parts/`
 
 - **Critère de placement** : un sous-composant est mis dans `NomComposant/parts/` **si et seulement si** il est utilisé **uniquement** par `NomComposant` (couplage exclusif aux types / au hook du parent, libellés ou props non réutilisables ailleurs).
-- **À l’inverse** : si le sous-composant peut servir à un autre écran, il doit être placé dans `composant/atomes/` ou `composant/molecules/` selon la règle « importe-t-il un atome ? » (cf. sections plus haut), pas dans `parts/`.
+- **À l’inverse** : si le sous-composant peut servir à un autre écran, il doit être placé dans `composant/ui/atomes/` ou `composant/ui/molecules/` selon la règle « importe-t-il un atome ? » (cf. sections plus haut), pas dans `parts/`.
 - **Structure interne** : chaque entrée de `parts/` reste **un composant = un dossier** avec les mêmes fichiers (`.tsx`, `.types.ts`, `.hook.ts` si besoin, `.styles.ts`, `index.ts`).
-- **Sens des dépendances** : les sous-composants de `parts/` peuvent importer des `atomes/` et des `molecules/`. Ils n’importent **jamais** un autre organisme et ne sont **pas** importés depuis l’extérieur du dossier parent (le seul export public reste `index.ts` à la racine de l’organisme).
+- **Sens des dépendances** : les sous-composants de `parts/` peuvent importer des `composant/ui/atomes/` et des `composant/ui/molecules/` (souvent via chemins relatifs depuis le fichier courant). Ils n’importent **jamais** un autre organisme et ne sont **pas** importés depuis l’extérieur du dossier parent (le seul export public reste `index.ts` à la racine de l’organisme).
 
 ```text
 NomComposant/

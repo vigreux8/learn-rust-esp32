@@ -16,7 +16,7 @@ import type {
   SousCollectionUi,
   UserKpiRow,
 } from "../types/quizz";
-import type { LlmImportPayload } from "../composant/molecules/QuestionsLlmImportPanel";
+import type { LlmImportPayload } from "../composant/ui/molecules/QuestionsLlmImportPanel";
 import type { AppCollectionImportPayload } from "./appCollectionImportNormalize";
 import type { ChildCollectionsMix, PlayOrder } from "./playOrder";
 

@@ -1,4 +1,4 @@
-import type { LlmImportReponse } from "../composant/molecules/QuestionsLlmImportPanel";
+import type { LlmImportReponse } from "../composant/ui/molecules/QuestionsLlmImportPanel";
 
 export type AppCollectionImportPayload = {
   format: "flowlearn-app-collection-export";

@@ -1,5 +1,5 @@
 import type { CollectionUi, QuestionUi } from "../types/quizz";
-import type { LlmImportReponse } from "../composant/molecules/QuestionsLlmImportPanel";
+import type { LlmImportReponse } from "../composant/ui/molecules/QuestionsLlmImportPanel";
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
