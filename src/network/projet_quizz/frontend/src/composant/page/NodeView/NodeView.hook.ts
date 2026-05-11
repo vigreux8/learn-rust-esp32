@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import {
   addEdge,
   useEdgesState,
@@ -6,19 +6,40 @@ import {
   useReactFlow,
   type Connection,
 } from "@xyflow/react";
+import { fetchCollections } from "../../../lib/api";
+import { useUserSession } from "../../../lib/userSession";
 import { flowEdgeTypes, flowNodeTypes } from "../../node/config/flow.registry";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionNode";
 import { readReactFlowDnDFromEvent } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.metier";
-import { NODE_VIEW_SIDEBAR_DATA } from "./NodeView.metier";
+import type { CollectionUi } from "../../../types/quizz";
+import { buildNodeViewSidebarData } from "./NodeView.metier";
 import type { NodeViewProps } from "./NodeView.types";
 
 /**
- * État du canvas `/node` : nœuds, arêtes, drop depuis la sidebar, données sidebar démo.
+ * État du canvas `/node` : nœuds, arêtes, drop depuis la sidebar, données collections / questions depuis l’API.
  */
 export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const onNodeCreate = page.actions?.onNodeCreate;
+  const { userId } = useUserSession();
   const { screenToFlowPosition } = useReactFlow<AppNode, AppEdge>();
+
+  const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await fetchCollections();
+        if (!cancelled) setApiCollections(list);
+      } catch {
+        if (!cancelled) setApiCollections([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const initialNodes = useMemo<AppNode[]>(
     () => [
@@ -66,18 +87,39 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           : `node_${Date.now()}`;
 
       if (parsed.type === "collectionNode") {
-        const patch = (parsed.data ?? {}) as { label?: unknown };
-        const label =
+        const patch = (parsed.data ?? {}) as { label?: unknown; collectionId?: unknown };
+        const labelFallback =
           typeof patch.label === "string" ? patch.label : DEFAULT_COLLECTION_NODE_DATA.label;
-        const newNode: AppNode = {
-          id,
-          type: "collectionNode",
-          position,
-          data: {
-            ...DEFAULT_COLLECTION_NODE_DATA,
-            label,
-          },
-        };
+        const cid = typeof patch.collectionId === "number" ? patch.collectionId : null;
+        const coll = cid != null ? apiCollections.find((c) => c.id === cid) : undefined;
+
+        const newNode: AppNode =
+          coll != null
+            ? {
+                id,
+                type: "collectionNode",
+                position,
+                data: {
+                  label: coll.nom,
+                  collections: (coll.sous_collections ?? []).map((sc) => ({
+                    id: String(sc.id),
+                    label: sc.nom,
+                  })),
+                  creators: (coll.personnalites ?? []).map((p) => ({
+                    id: String(p.id),
+                    name: `${p.prenom} ${p.nom}`.trim(),
+                  })),
+                },
+              }
+            : {
+                id,
+                type: "collectionNode",
+                position,
+                data: {
+                  ...DEFAULT_COLLECTION_NODE_DATA,
+                  label: labelFallback,
+                },
+              };
         setNodes((nds) => nds.concat(newNode));
         onNodeCreate?.(parsed.type, position, newNode.data);
         return;
@@ -96,8 +138,10 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         onNodeCreate?.(parsed.type, position, newNode.data);
       }
     },
-    [onNodeCreate, screenToFlowPosition, setNodes],
+    [apiCollections, onNodeCreate, screenToFlowPosition, setNodes],
   );
+
+  const sidebarData = useMemo(() => buildNodeViewSidebarData(apiCollections), [apiCollections]);
 
   return {
     flow: {
@@ -112,7 +156,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       edgeTypes: flowEdgeTypes,
     },
     sidebar: {
-      data: NODE_VIEW_SIDEBAR_DATA,
+      data: sidebarData,
       actions: {
         onNodeCreate,
       },

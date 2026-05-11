@@ -2,8 +2,11 @@ export type SidebarTab = "collections" | "questions" | null;
 
 export type FlowSidebarCollectionRow = {
   id: string;
+  /** Identifiant API de la collection (pour drop enrichi). */
+  collectionId: number;
   label: string;
-  level: number;
+  /** Profondeur dans l’arbre (parents remontés), comme `computeTreeDepth` / cartes Collections. */
+  treeDepth: number;
 };
 
 export type FlowSidebarQuestionRow = {

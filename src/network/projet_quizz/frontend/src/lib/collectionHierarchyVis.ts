@@ -8,6 +8,13 @@ export const COLLECTION_TREE_LEVEL_BORDER_HEX = [
   "#D1BCB2",
 ] as const;
 
+/**
+ * Indice de palette (bord carte / légende) pour une profondeur d’arbre, comme sur les cartes collections.
+ */
+export function collectionTreePaletteBucket(treeDepth: number): number {
+  return Math.min(Math.max(treeDepth, 0), COLLECTION_TREE_LEVEL_BORDER_HEX.length - 1);
+}
+
 /** Contours des bandeaux personnalité (auteur vs secondaire). */
 export const COLLECTION_PERSONNALITE_BORDER = {
   auteur: "#38D19F",

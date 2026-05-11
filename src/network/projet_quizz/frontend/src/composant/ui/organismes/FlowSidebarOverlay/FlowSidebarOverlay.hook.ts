@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "preact/hooks";
+import { collectionTreePaletteBucket } from "../../../../lib/collectionHierarchyVis";
 import { REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
 import type { FlowSidebarOverlayProps, SidebarTab } from "./FlowSidebarOverlay.types";
 
@@ -15,7 +16,8 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>(null);
   const [collectionSearch, setCollectionSearch] = useState("");
   const [questionSearch, setQuestionSearch] = useState("");
-  const [levelFilters, setLevelFilters] = useState<number[]>([]);
+  /** Indices de palette (0…dernier) : même regroupement visuel que les bords de carte collections. */
+  const [paletteBucketFilters, setPaletteBucketFilters] = useState<number[]>([]);
 
   const toggleTab = useCallback((tab: Exclude<SidebarTab, null>) => {
     setActiveTab((current) => (current === tab ? null : tab));
@@ -25,30 +27,32 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     setActiveTab(null);
   }, []);
 
-  const toggleLevel = useCallback((level: number) => {
-    setLevelFilters((prev) =>
-      prev.includes(level) ? prev.filter((value) => value !== level) : [...prev, level],
+  const togglePaletteBucket = useCallback((bucket: number) => {
+    setPaletteBucketFilters((prev) =>
+      prev.includes(bucket) ? prev.filter((value) => value !== bucket) : [...prev, bucket],
     );
   }, []);
 
-  const isLevelActive = useCallback(
-    (level: number) => {
-      return levelFilters.includes(level);
+  const isPaletteBucketActive = useCallback(
+    (bucket: number) => {
+      return paletteBucketFilters.includes(bucket);
     },
-    [levelFilters],
+    [paletteBucketFilters],
   );
 
   const filteredCollections = useMemo(() => {
     let rows = data.collections;
-    if (levelFilters.length > 0) {
-      rows = rows.filter((row) => levelFilters.includes(row.level));
+    if (paletteBucketFilters.length > 0) {
+      rows = rows.filter((row) =>
+        paletteBucketFilters.includes(collectionTreePaletteBucket(row.treeDepth)),
+      );
     }
     const query = collectionSearch.trim().toLowerCase();
     if (query.length > 0) {
       rows = rows.filter((row) => row.label.toLowerCase().includes(query));
     }
     return rows;
-  }, [collectionSearch, data.collections, levelFilters]);
+  }, [collectionSearch, data.collections, paletteBucketFilters]);
 
   const questionGroups = useMemo(() => {
     const query = questionSearch.trim().toLowerCase();
@@ -87,8 +91,8 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       search: collectionSearch,
       setSearch: setCollectionSearch,
       rows: filteredCollections,
-      toggleLevel,
-      isLevelActive,
+      togglePaletteBucket,
+      isPaletteBucketActive,
     },
     questions: {
       search: questionSearch,

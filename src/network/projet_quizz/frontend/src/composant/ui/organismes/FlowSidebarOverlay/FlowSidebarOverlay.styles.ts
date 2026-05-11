@@ -18,25 +18,12 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   searchInput: "grow",
   levelRow: "mb-2 flex flex-wrap gap-1",
   dragItem: cn(
-    "flex cursor-grab items-center gap-3 rounded-xl border-2 border-transparent bg-base-200 p-3 transition-all hover:border-orange-400 hover:bg-base-300 active:cursor-grabbing",
+    "flex cursor-grab items-center gap-3 rounded-xl border-2 border-transparent bg-base-200 p-3 transition-all hover:border-flow/35 hover:bg-flow/8 active:cursor-grabbing",
   ),
   grip: "opacity-30",
-  collectionLabel: "text-sm font-medium text-warning",
+  collectionLabel: "min-w-0 flex-1 text-sm font-medium text-base-content",
   questionTitle: "text-[11px] leading-tight",
   collapse: "collapse collapse-arrow bg-base-200",
   collapseTitle: "collapse-title text-sm font-bold text-primary",
   collapseContent: "collapse-content flex flex-col gap-2",
 } as const;
-
-export function flowSidebarLevelBadgeClass(level: number): string {
-  return cn(
-    "badge badge-sm font-bold",
-    level === 1 && "badge-warning",
-    level === 2 && "badge-outline border-warning text-warning",
-    level === 3 && "badge-ghost border-warning",
-  );
-}
-
-export function flowSidebarLevelFilterButtonClass(active: boolean): string {
-  return cn("btn btn-xs gap-1", active ? "btn-warning" : "btn-ghost border border-base-300");
-}

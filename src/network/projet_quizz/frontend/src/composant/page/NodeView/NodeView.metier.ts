@@ -1,17 +1,43 @@
-import type { FlowSidebarOverlayProps } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
+import {
+  computeTreeDepth,
+  orderCollectionsHierarchy,
+} from "../../../lib/collectionHierarchyVis";
+import type { CollectionUi } from "../../../types/quizz";
+import type {
+  FlowSidebarCollectionRow,
+  FlowSidebarQuestionRow,
+} from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
 
-/** Données de démo pour la sidebar du graphe (collections + questions groupées par `category`). */
-export const NODE_VIEW_SIDEBAR_DATA: FlowSidebarOverlayProps["data"] = {
-  collections: [
-    { id: "col-geom", label: "Géométrie plane", level: 1 },
-    { id: "col-stat", label: "Statistique & Probabilité", level: 2 },
-    { id: "col-adv", label: "Optimisation avancée", level: 3 },
-  ],
-  questions: [
-    { id: "q1", title: "Aire d’un triangle", category: "Géométrie plane" },
-    { id: "q2", title: "Théorème de Pythagore", category: "Géométrie plane" },
-    { id: "q3", title: "Espérance d’une variable aléatoire", category: "Statistique & Probabilité" },
-    { id: "q4", title: "Intervalle de confiance", category: "Statistique & Probabilité" },
-    { id: "q5", title: "Descente de gradient", category: "Optimisation avancée" },
-  ],
-};
+/**
+ * Projette les collections API (même source que la page Collections) vers les lignes sidebar + questions groupées.
+ */
+export function buildNodeViewSidebarData(collections: CollectionUi[]): {
+  collections: FlowSidebarCollectionRow[];
+  questions: FlowSidebarQuestionRow[];
+} {
+  if (collections.length === 0) {
+    return { collections: [], questions: [] };
+  }
+
+  const byId = new Map(collections.map((c) => [c.id, c]));
+  const ordered = orderCollectionsHierarchy(collections);
+  const collectionRows: FlowSidebarCollectionRow[] = ordered.map((c) => ({
+    id: String(c.id),
+    collectionId: c.id,
+    label: c.nom,
+    treeDepth: computeTreeDepth(c, byId),
+  }));
+
+  const questions: FlowSidebarQuestionRow[] = [];
+  for (const c of collections) {
+    for (const q of c.questions) {
+      questions.push({
+        id: String(q.id),
+        title: q.question,
+        category: c.nom,
+      });
+    }
+  }
+
+  return { collections: collectionRows, questions };
+}

@@ -4,11 +4,11 @@ export type CollectionFilterPanelProps = {
   data: {
     search: string;
     rows: FlowSidebarCollectionRow[];
-    isLevelActive: (level: number) => boolean;
+    isPaletteBucketActive: (bucket: number) => boolean;
   };
   actions: {
     setSearch: (value: string) => void;
-    toggleLevel: (level: number) => void;
+    togglePaletteBucket: (bucket: number) => void;
     onDragStart: (event: DragEvent, nodeType: string, payload: unknown) => void;
   };
 };

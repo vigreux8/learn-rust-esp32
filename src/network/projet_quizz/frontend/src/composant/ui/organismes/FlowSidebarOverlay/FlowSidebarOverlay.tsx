@@ -43,11 +43,11 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                 data={{
                   search: collections.search,
                   rows: collections.rows,
-                  isLevelActive: collections.isLevelActive,
+                  isPaletteBucketActive: collections.isPaletteBucketActive,
                 }}
                 actions={{
                   setSearch: collections.setSearch,
-                  toggleLevel: collections.toggleLevel,
+                  togglePaletteBucket: collections.togglePaletteBucket,
                   onDragStart: drag.onDragStart,
                 }}
               />

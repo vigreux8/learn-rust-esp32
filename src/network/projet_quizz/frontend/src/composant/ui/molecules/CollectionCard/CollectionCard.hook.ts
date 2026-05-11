@@ -4,6 +4,7 @@ import { route } from "preact-router";
 
 import {
   COLLECTION_TREE_LEVEL_BORDER_HEX,
+  collectionTreePaletteBucket,
   sortPersonnalitesForDisplay,
 } from "../../../../lib/collectionHierarchyVis";
 import {
@@ -51,7 +52,7 @@ export function useCollectionCard(props: CollectionCardProps) {
   const sousForPlay = collection.sous_collections ?? [];
   const sousChildren = collection.sous_collections ?? [];
   const personnalitesSorted = sortPersonnalitesForDisplay(collection.personnalites ?? []);
-  const levelBorderIdx = Math.min(Math.max(treeDepth, 0), COLLECTION_TREE_LEVEL_BORDER_HEX.length - 1);
+  const levelBorderIdx = collectionTreePaletteBucket(treeDepth);
   const collectionBorderHex = COLLECTION_TREE_LEVEL_BORDER_HEX[levelBorderIdx];
 
   const handleQuestionsClick = () => route(buildQuestionsRoutePath(collection.id, linkedTags));
