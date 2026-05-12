@@ -29,7 +29,9 @@ export function App() {
       <RoutePathContext.Provider value={path}>
         <Router
           onChange={() => {
-            setPath(readPathWithSearch());
+            queueMicrotask(() => {
+              setPath(readPathWithSearch());
+            });
           }}
         >
           <Route path="/" component={HomeView} />

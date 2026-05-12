@@ -154,11 +154,16 @@ export function parseCollectionParentChildEdgeId(
 export function collectionUiToCollectionNodeData(
   coll: CollectionUi,
   byId: Map<number, CollectionUi>,
+  currentUserId: number | null,
 ): CollectionNodeData {
+  const questionCount = coll.questions?.length ?? 0;
+  const isMine = currentUserId != null && coll.user_id === currentUserId;
   return {
     label: coll.nom,
     collectionId: coll.id,
     treeDepth: computeTreeDepth(coll, byId),
+    questionCount,
+    isMine,
     supercollections: (coll.collection_tags ?? []).map((tag) => ({
       id: String(tag.id),
       label: tag.nom,
@@ -174,6 +179,7 @@ export function collectionUiToCollectionNodeData(
 export function hydrateCollectionNodesTreeDepthFromCollections(
   nodes: AppNode[],
   collections: CollectionUi[],
+  currentUserId: number | null,
 ): AppNode[] {
   const byId = new Map(collections.map((c) => [c.id, c]));
   return nodes.map((n) => {
@@ -186,7 +192,7 @@ export function hydrateCollectionNodesTreeDepthFromCollections(
       ...n,
       data: {
         ...n.data,
-        ...collectionUiToCollectionNodeData(coll, byId),
+        ...collectionUiToCollectionNodeData(coll, byId, currentUserId),
       },
     };
   });
@@ -290,6 +296,7 @@ function assignBfsDepthLevels(
 export function buildCollectionSubtreeGraphElements(
   focusCollectionId: number,
   collections: CollectionUi[],
+  currentUserId: number | null,
 ): { nodes: AppNode[]; edges: AppEdge[] } {
   if (collections.length === 0) {
     return { nodes: [], edges: [] };
@@ -347,25 +354,11 @@ export function buildCollectionSubtreeGraphElements(
     const c = byId.get(id);
     const pos = positions.get(id);
     if (c == null || pos == null) continue;
-    const treeDepth = computeTreeDepth(c, byId);
     nodes.push({
       id: treeCollectionReactFlowNodeId(id),
       type: "collectionNode",
       position: pos,
-      data: {
-        label: c.nom,
-        collectionId: c.id,
-        treeDepth,
-        supercollections: (c.collection_tags ?? []).map((tag) => ({
-          id: String(tag.id),
-          label: tag.nom,
-        })),
-        creators: (c.personnalites ?? []).map((p) => ({
-          id: String(p.id),
-          name: `${p.prenom} ${p.nom}`.trim(),
-          importanceType: p.importance_type ?? null,
-        })),
-      },
+      data: collectionUiToCollectionNodeData(c, byId, currentUserId),
     });
   }
 

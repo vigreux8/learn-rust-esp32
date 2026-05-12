@@ -16,6 +16,11 @@ export const COLLECTION_NODE_STYLES = {
   /** Bandeau connexion entrée — discret, teinte flow comme le reste de l’app. */
   topStrip: "relative h-0.5 w-full shrink-0 rounded-full bg-flow/25",
   mainBar: cn("relative flex w-full items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3", cardLike),
+  /** Boutons Questions / Suite logique sous la barre d’icônes (hors drag du canvas). */
+  actionsRow: cn(
+    "nodrag nowheel mt-1.5 flex w-full flex-wrap items-center justify-center gap-2 px-2 pb-1.5 pt-0.5",
+    cardLike,
+  ),
   panel: cn(
     "nodrag flex flex-1 flex-col gap-2 overflow-y-auto rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/90 p-2.5 shadow-sm backdrop-blur-sm",
     "nowheel",
@@ -61,8 +66,8 @@ export const COLLECTION_NODE_STYLES = {
 export const COLLECTION_NODE_LAYOUT_MAX_WIDTH_PX = 448; /** ≈ Tailwind `max-w-md` (28rem). */
 export const COLLECTION_NODE_LAYOUT_EXPANDED_PANELS_HEIGHT_PX = 160; /** `h-40` région `#` + influenceurs. */
 export const COLLECTION_NODE_LAYOUT_FLOATING_GAP_PX = 8; /** `mb-2` sous les panneaux flottants. */
-/** Bandeau connexion haut (~2px) + `mainBar` (~56–60px avec py-3) + bandeau bas (~8px avec mt-1.5). */
-export const COLLECTION_NODE_LAYOUT_MAIN_CHROME_HEIGHT_PX = 70;
+/** Bandeau haut + `mainBar` + rangée actions + bandeau bas (voir `actionsRow`). */
+export const COLLECTION_NODE_LAYOUT_MAIN_CHROME_HEIGHT_PX = 112;
 export const COLLECTION_NODE_LAYOUT_GRAPH_CLEARANCE_PX = 40; /** air entre deux boîtes (ombre / confort). */
 
 export function collectionNodeLayoutExpandedTotalHeightPx(): number {

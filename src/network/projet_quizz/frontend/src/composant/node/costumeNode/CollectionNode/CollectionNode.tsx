@@ -1,16 +1,34 @@
 import { Handle, Position } from "@xyflow/react";
-import { Hash, Play, User } from "lucide-preact";
+import { ListOrdered, ListTree, Play, User, Hash } from "lucide-preact";
+import { route } from "preact-router";
 import { cn } from "../../../../lib/cn";
 import { collectionTreeBorderHexForDepth } from "../../../../lib/collectionHierarchyVis";
+import { Button } from "../../../ui/atomes/Button/Button";
+import {
+  buildQuestionsRoutePath,
+  buildReflexionRoutePath,
+} from "../../../ui/molecules/CollectionCard/CollectionCard.metier";
+import type { CollectionTagRef } from "../../../ui/molecules/CollectionCard/CollectionCard.types";
 import { useCollectionNode } from "./CollectionNode.hook";
 import { COLLECTION_NODE_STYLES } from "./CollectionNode.styles";
-import type { CollectionNodeProps } from "./CollectionNode.types";
+import type { CollectionItem, CollectionNodeProps } from "./CollectionNode.types";
 import { CollectionPanel } from "./parts/CollectionPanel/CollectionPanel";
 import { CreatorPanel } from "./parts/CreatorPanel/CreatorPanel";
+
+function tagRefsFromSupercollections(items: CollectionItem[]): CollectionTagRef[] {
+  return items
+    .map((t) => {
+      const id = Number(t.id);
+      if (!Number.isFinite(id)) return null;
+      return { id, nom: t.label };
+    })
+    .filter((x): x is CollectionTagRef => x != null);
+}
 
 export function CollectionNode(props: CollectionNodeProps) {
   const { layout, content, actions, dnd } = useCollectionNode(props);
   const { isConnectable, data } = props;
+  const collectionApiId = typeof data.collectionId === "number" ? data.collectionId : null;
   const treeDepthAccentHex =
     data.treeDepth !== undefined && data.treeDepth !== null
       ? collectionTreeBorderHexForDepth(data.treeDepth)
@@ -77,6 +95,41 @@ export function CollectionNode(props: CollectionNodeProps) {
             </button>
           </div>
         </div>
+
+        {collectionApiId != null ? (
+          <div class={COLLECTION_NODE_STYLES.actionsRow}>
+            <Button
+              variant="outline"
+              class="btn-xs gap-1 sm:btn-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                route(
+                  buildQuestionsRoutePath(
+                    collectionApiId,
+                    tagRefsFromSupercollections(data.supercollections ?? []),
+                    { fromNode: true },
+                  ),
+                );
+              }}
+            >
+              <ListTree class="h-4 w-4" aria-hidden />
+              Questions
+            </Button>
+            {data.isMine === true && (data.questionCount ?? 0) > 0 ? (
+              <Button
+                variant="outline"
+                class="btn-xs gap-1 sm:btn-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  route(buildReflexionRoutePath(collectionApiId));
+                }}
+              >
+                <ListOrdered class="h-4 w-4" aria-hidden />
+                Suite logique
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
 
         <div class={COLLECTION_NODE_STYLES.bottomStrip} aria-hidden>
           <Handle

@@ -1,5 +1,6 @@
 export const QUESTIONS_VIEW_STYLES = {
   root: "flex min-h-dvh flex-col",
+  backToNodeRow: "mb-3 flex",
   operationError: "mb-6 rounded-box border border-error/20 bg-error/5 px-4 py-3 text-sm text-base-content",
   dismissLink: "link link-primary",
   filtersRow:

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "preact/hooks";
 import { route } from "preact-router";
 import {
   deleteImplicitQuestionRelation,
@@ -12,6 +12,7 @@ import {
   postAttachQuestionToSousCollection,
   postCreateQuestion,
 } from "../../../lib/api";
+import { useRoutePath } from "../../../lib/routePathContext";
 import { useUserSession } from "../../../lib/userSession";
 import type { PlayQtype } from "../../../lib/playOrder";
 import type { CollectionUi, QuizzQuestionDetail, QuizzQuestionRow, RefCategorieRow } from "../../../types/quizz";
@@ -23,12 +24,37 @@ import {
 import type { QuestionsViewProps } from "./QuestionsView.types";
 import type { QuestionCreateSavePayload } from "../../ui/organismes/QuestionEditModal/QuestionEditModal";
 
+function readFromNodeFromWindowLocation(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).get("from") === "node";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Liste / gestion des questions par collection : chargements multiples (collections, questions, refs),
  * filtres, modales CRUD, import JSON et rattachements sous-collection.
  */
 export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   const { userId } = useUserSession();
+  const routePath = useRoutePath();
+  const [fromNode, setFromNode] = useState(readFromNodeFromWindowLocation);
+
+  useLayoutEffect(() => {
+    setFromNode(readFromNodeFromWindowLocation());
+  }, [collectionId, routePath]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setFromNode(readFromNodeFromWindowLocation()), 0);
+    return () => window.clearTimeout(id);
+  }, [collectionId, routePath]);
+
+  const onBackToNode = useCallback(() => {
+    void route("/node");
+  }, []);
+
   const [collections, setCollections] = useState<CollectionUi[]>([]);
   const [collectionFilter, setCollectionFilter] = useState<string>(() => filterFromRouteParam(collectionId));
   const [importTargetTagCollectionId, setImportTargetTagCollectionId] = useState<number | null>(null);
@@ -100,14 +126,16 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
       setCollectionFilter(value);
       if (value === "" || value === "none") return void route("/questions");
       if (/^\d+$/.test(value)) {
-        const tagQ =
-          importTargetTagCollectionId != null
-            ? `?tagCollection=${importTargetTagCollectionId}`
-            : "";
-        route(`/questions/${value}${tagQ}`);
+        const params = new URLSearchParams();
+        if (importTargetTagCollectionId != null) {
+          params.set("tagCollection", String(importTargetTagCollectionId));
+        }
+        if (fromNode) params.set("from", "node");
+        const q = params.toString();
+        route(`/questions/${value}${q ? `?${q}` : ""}`);
       }
     },
-    [importTargetTagCollectionId],
+    [importTargetTagCollectionId, fromNode],
   );
 
   const closeQuestionModal = useCallback(() => {
@@ -354,6 +382,10 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   };
 
   return {
+    navigation: {
+      showBackToNode: fromNode,
+      onBackToNode,
+    },
     questionsActionBoutons,
     operationError,
     contextBar,

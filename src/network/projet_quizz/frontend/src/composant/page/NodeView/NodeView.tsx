@@ -33,7 +33,7 @@ function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
           isValidConnection={flow.isValidConnection}
           nodeTypes={flow.nodeTypes}
           edgeTypes={flow.edgeTypes}
-          fitView
+          fitView={flow.reactFlowFitView}
           proOptions={{ hideAttribution: true }}
         >
           <Background gap={16} />

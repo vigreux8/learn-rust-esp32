@@ -3,6 +3,40 @@ import { collectSubtreeCollectionIds } from "../../../../lib/collectionHierarchy
 import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
 import type { FlowSidebarOverlayProps, SidebarTab } from "./FlowSidebarOverlay.types";
 
+const FLOW_SIDEBAR_TAB_STORAGE_KEY = "quizz-node-flow-sidebar-active-tab";
+
+const SIDEBAR_TAB_IDS: Exclude<SidebarTab, null>[] = [
+  "collections",
+  "collectionSubtree",
+  "questions",
+  "personalities",
+  "create",
+];
+
+function readStoredSidebarTab(): SidebarTab {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(FLOW_SIDEBAR_TAB_STORAGE_KEY);
+    if (raw == null || raw === "") return null;
+    if ((SIDEBAR_TAB_IDS as readonly string[]).includes(raw)) {
+      return raw as Exclude<SidebarTab, null>;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function persistSidebarTab(tab: SidebarTab): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    if (tab === null) sessionStorage.removeItem(FLOW_SIDEBAR_TAB_STORAGE_KEY);
+    else sessionStorage.setItem(FLOW_SIDEBAR_TAB_STORAGE_KEY, tab);
+  } catch {
+    /* ignore */
+  }
+}
+
 type QuestionGroup = {
   collectionId: number;
   /** Même libellé que `FlowSidebarCollectionRow.label` (nom collection). */
@@ -16,7 +50,7 @@ type QuestionGroup = {
  */
 export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const { data, presentation } = props;
-  const [activeTab, setActiveTab] = useState<SidebarTab>(null);
+  const [activeTab, setActiveTab] = useState<SidebarTab>(() => readStoredSidebarTab());
   const [collectionSearch, setCollectionSearch] = useState("");
   const [collectionSubtreeSearch, setCollectionSubtreeSearch] = useState("");
   const [questionSearch, setQuestionSearch] = useState("");
@@ -28,6 +62,10 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const [personalityBranchRootCollectionId, setPersonalityBranchRootCollectionId] = useState<
     number | null
   >(null);
+
+  useEffect(() => {
+    persistSidebarTab(activeTab);
+  }, [activeTab]);
 
   const toggleTab = useCallback((tab: Exclude<SidebarTab, null>) => {
     setActiveTab((current) => (current === tab ? null : tab));

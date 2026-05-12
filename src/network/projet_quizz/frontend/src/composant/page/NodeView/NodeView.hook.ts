@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import {
   addEdge,
   applyEdgeChanges,
@@ -25,6 +25,7 @@ import { flowEdgeTypes, flowNodeTypes } from "../../node/config/flow.registry";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionNode";
 import { readReactFlowDnDFromEvent } from "../../../lib/reactFlowDnD";
+import { readStoredNodeViewGraph, writeStoredNodeViewGraph } from "../../../lib/nodeViewGraphSession";
 import type { CollectionUi } from "../../../types/quizz";
 import {
   buildCollectionSubtreeGraphElements,
@@ -46,11 +47,35 @@ import type { NodeViewProps } from "./NodeView.types";
 export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const onNodeCreate = page.actions?.onNodeCreate;
   const { userId } = useUserSession();
-  const { screenToFlowPosition, fitView, getNode } = useReactFlow<AppNode, AppEdge>();
+  const { screenToFlowPosition, fitView, getNode, getViewport, setViewport } = useReactFlow<AppNode, AppEdge>();
+
+  const graphBootstrap = useMemo(() => readStoredNodeViewGraph(), []);
+  const shouldRestoreGraph = Boolean(graphBootstrap?.nodes?.length);
+
+  const defaultDemoNodes = useMemo<AppNode[]>(
+    () => [
+      {
+        id: "collection-default",
+        type: "collectionNode",
+        position: { x: 48, y: 48 },
+        data: DEFAULT_COLLECTION_NODE_DATA,
+      },
+    ],
+    [],
+  );
+
+  const initialNodesForCanvas =
+    shouldRestoreGraph && graphBootstrap != null ? graphBootstrap.nodes : defaultDemoNodes;
+  const initialEdgesForCanvas =
+    shouldRestoreGraph && graphBootstrap != null ? graphBootstrap.edges : [];
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodesForCanvas);
+  const [edges, setEdges] = useEdgesState<AppEdge>(initialEdgesForCanvas);
 
   const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
-  const [questionsScopeCollectionId, setQuestionsScopeCollectionId] = useState<number | null>(null);
-
+  const [questionsScopeCollectionId, setQuestionsScopeCollectionId] = useState<number | null>(
+    () => graphBootstrap?.questionsScopeCollectionId ?? null,
+  );
   const [graphCreateNormaleOpen, setGraphCreateNormaleOpen] = useState(false);
   const [graphCreatePersoOpen, setGraphCreatePersoOpen] = useState(false);
   const [pendingGraphNodePosition, setPendingGraphNodePosition] = useState<{ x: number; y: number } | null>(
@@ -81,20 +106,76 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     [apiCollections],
   );
 
-  const initialNodes = useMemo<AppNode[]>(
-    () => [
-      {
-        id: "collection-default",
-        type: "collectionNode",
-        position: { x: 48, y: 48 },
-        data: DEFAULT_COLLECTION_NODE_DATA,
-      },
-    ],
-    [],
-  );
+  useEffect(() => {
+    if (apiCollections.length === 0) return;
+    setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, apiCollections, userId));
+  }, [apiCollections, setNodes, userId]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes);
-  const [edges, setEdges] = useEdgesState<AppEdge>([]);
+  useLayoutEffect(() => {
+    if (!shouldRestoreGraph) return;
+    const vp = graphBootstrap?.viewport;
+    const apply = () => {
+      if (vp != null) {
+        void setViewport(vp);
+      } else {
+        void fitView({ padding: 0.22, duration: 0 });
+      }
+    };
+    queueMicrotask(apply);
+    const raf = requestAnimationFrame(() => requestAnimationFrame(apply));
+    return () => cancelAnimationFrame(raf);
+  }, [fitView, graphBootstrap, setViewport, shouldRestoreGraph]);
+
+  useEffect(() => {
+    const pack = () => {
+      try {
+        writeStoredNodeViewGraph({
+          nodes,
+          edges,
+          viewport: getViewport(),
+          questionsScopeCollectionId,
+        });
+      } catch {
+        /* ignore quota / mode privé */
+      }
+    };
+    const t = window.setTimeout(pack, 120);
+    const onPageHide = () => pack();
+    const onVis = () => {
+      if (document.visibilityState === "hidden") pack();
+    };
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [nodes, edges, questionsScopeCollectionId, getViewport]);
+
+  const graphSessionFlushRef = useRef({
+    nodes,
+    edges,
+    questionsScopeCollectionId,
+    getViewport,
+  });
+  graphSessionFlushRef.current = { nodes, edges, questionsScopeCollectionId, getViewport };
+
+  useEffect(() => {
+    return () => {
+      const snap = graphSessionFlushRef.current;
+      try {
+        writeStoredNodeViewGraph({
+          nodes: snap.nodes,
+          edges: snap.edges,
+          viewport: snap.getViewport(),
+          questionsScopeCollectionId: snap.questionsScopeCollectionId,
+        });
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange<AppEdge>[]) => {
@@ -116,7 +197,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
               .then(async () => {
                 const list = await fetchCollections();
                 setApiCollections(list);
-                setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list));
+                setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
               })
               .catch((e: unknown) => {
                 window.alert(
@@ -152,7 +233,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           await linkCollectionParentCollection(childId, { userId, parentId });
           const list = await fetchCollections();
           setApiCollections(list);
-          setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list));
+          setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
           setEdges((eds) => {
             if (eds.some((eRow) => eRow.id === edgeId)) return eds;
             return addEdge(
@@ -230,7 +311,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           id: nodeId,
           type: "collectionNode",
           position: pos,
-          data: collectionUiToCollectionNodeData(ui, byId),
+          data: collectionUiToCollectionNodeData(ui, byId, userId),
         };
         setNodes((nds) => nds.concat(newNode));
         setGraphCreateNormaleOpen(false);
@@ -280,7 +361,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           id: nodeId,
           type: "collectionNode",
           position: pos,
-          data: collectionUiToCollectionNodeData(ui, byId),
+          data: collectionUiToCollectionNodeData(ui, byId, userId),
         };
         setNodes((nds) => nds.concat(newNode));
         setGraphCreatePersoOpen(false);
@@ -336,7 +417,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
                 id,
                 type: "collectionNode",
                 position,
-                data: collectionUiToCollectionNodeData(coll, collectionByIdForGraph),
+                data: collectionUiToCollectionNodeData(coll, collectionByIdForGraph, userId),
               }
             : {
                 id,
@@ -427,6 +508,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       const { nodes: nextNodes, edges: nextEdges } = buildCollectionSubtreeGraphElements(
         collectionId,
         apiCollections,
+        userId,
       );
       if (nextNodes.length === 0) return;
       setNodes(nextNodes);
@@ -439,7 +521,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         });
       });
     },
-    [apiCollections, fitView, setEdges, setNodes],
+    [apiCollections, fitView, setEdges, setNodes, userId],
   );
 
   const sidebarBase = useMemo(() => buildNodeViewSidebarData(apiCollections), [apiCollections]);
@@ -533,6 +615,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
                 : n,
             ),
             list,
+            userId,
           ),
         );
       } catch (e: unknown) {
@@ -561,6 +644,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       isValidConnection,
       nodeTypes: flowNodeTypes,
       edgeTypes: flowEdgeTypes,
+      reactFlowFitView: !shouldRestoreGraph,
     },
     sidebar: {
       data: sidebarData,

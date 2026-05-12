@@ -22,6 +22,10 @@ export type CollectionNodeData = {
   supercollections: CollectionItem[];
   creators: CreatorItem[];
   actions?: CollectionNodeActions;
+  /** Nombre de questions dans la collection (API) — pour afficher « Suite logique ». */
+  questionCount?: number;
+  /** Collection appartenant à l’utilisateur courant (aligné sur les cartes Collections). */
+  isMine?: boolean;
 };
 
 export type CollectionNodeType = Node<CollectionNodeData, "collectionNode">;
