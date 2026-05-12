@@ -5,6 +5,7 @@ import {
   formatSessionDraftCategorieResume,
   getSupportedQuestionCategories,
 } from "../../../lib/questionCategories";
+import { playSessionFromNodeFromSearch } from "../../../lib/playOrder";
 import type { QuizSessionLoadTrackers } from "./hooks/useQuizSessionSessionLoad/useQuizSessionSessionLoad.types";
 import type { QuizAnnotationSyncPack } from "./hooks/useQuizSessionQuestionAnnotations/useQuizSessionQuestionAnnotations.types";
 import { useQuizSessionActionMessage } from "./hooks/useQuizSessionActionMessage";
@@ -102,7 +103,8 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
   const q = sessionSnap.questions[idx]!;
   const progressValue = navigate.status.pickedId != null ? idx + 1 : idx;
   const anecdote = (q.commentaire ?? "").trim();
-  const backTarget = sessionSnap.mode === "random" ? "/" : "/collections";
+  const fromNodeGraph = playSessionFromNodeFromSearch();
+  const backTarget = fromNodeGraph ? "/node" : sessionSnap.mode === "random" ? "/" : "/collections";
   const categoryPendingSync =
     annotations.drafts.categorieParentId !== q.categorie_id ||
     (annotations.drafts.categorieEnfantId ?? null) !== (q.categorie_e_id ?? null);

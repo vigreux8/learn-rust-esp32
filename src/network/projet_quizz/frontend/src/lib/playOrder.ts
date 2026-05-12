@@ -94,6 +94,8 @@ export type PlaySessionQueryOpts = {
   familyQuotaMax?: number;
   /** Fiches personnalités liées à la carte, query `persoFiches`. */
   includePersonnaliteFiches?: boolean;
+  /** Origine graphe `/node` : query `from=node` pour le bouton Retour de la session. */
+  fromNode?: boolean;
 };
 
 export function playOrdersFromSearch(): PlayOrder[] {
@@ -287,8 +289,16 @@ export function buildPlaySessionQuery(opts: PlaySessionQueryOpts): string {
   if (opts.includePersonnaliteFiches === true) {
     p.set("persoFiches", "1");
   }
+  if (opts.fromNode === true) {
+    p.set("from", "node");
+  }
   const s = p.toString();
   return s ? `?${s}` : "";
+}
+
+export function playSessionFromNodeFromSearch(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("from") === "node";
 }
 
 export function shuffleQuestions(questions: QuestionUi[]): QuestionUi[] {

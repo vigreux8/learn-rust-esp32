@@ -7,6 +7,7 @@ import {
   postQuizKpi,
 } from "../../../../../lib/api";
 import { saveLastQuizResult } from "../../../../../lib/lastQuizResult";
+import { playSessionFromNodeFromSearch } from "../../../../../lib/playOrder";
 import type { QuestionUi } from "../../../../../types/quizz";
 import {
   buildQuestionCopyJson,
@@ -300,7 +301,13 @@ export function useQuizSessionPlayState(opts: UseQuizSessionPlayStateOptions): U
       const filtered = snap.questions.filter((xItem) => xItem.id !== current.id);
       if (filtered.length === 0) {
         feedback.setMessage("Dernière question supprimée.");
-        route(snap.mode === "random" ? "/" : "/collections");
+        route(
+          snap.mode === "random"
+            ? "/"
+            : playSessionFromNodeFromSearch()
+              ? "/node"
+              : "/collections",
+        );
         return;
       }
       let newIndexVal = idx;

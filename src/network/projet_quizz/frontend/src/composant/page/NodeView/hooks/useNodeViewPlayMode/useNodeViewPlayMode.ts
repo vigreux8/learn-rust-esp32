@@ -83,6 +83,7 @@ export function useNodeViewPlayMode(opts: UseNodeViewPlayModeOptions): UseNodeVi
               ? playMode.familyQuotaMax
               : undefined,
           includePersonnaliteFiches: playMode.includePersonnaliteFiches === true ? true : undefined,
+          fromNode: true,
         })}`,
       );
     },
