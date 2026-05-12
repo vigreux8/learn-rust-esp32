@@ -1,8 +1,9 @@
 import { Handle, Position } from "@xyflow/react";
-import { ListOrdered, ListTree, Play, User, Hash } from "lucide-preact";
+import { FileJson, ListOrdered, ListTree, Play, User, Hash } from "lucide-preact";
 import { route } from "preact-router";
 import { cn } from "../../../../lib/cn";
 import { collectionTreeBorderHexForDepth } from "../../../../lib/collectionHierarchyVis";
+import { useNodeViewGraphActions } from "../../../../lib/nodeViewGraphActionsContext";
 import { Button } from "../../../ui/atomes/Button/Button";
 import {
   buildQuestionsRoutePath,
@@ -28,6 +29,7 @@ function tagRefsFromSupercollections(items: CollectionItem[]): CollectionTagRef[
 export function CollectionNode(props: CollectionNodeProps) {
   const { layout, content, actions, dnd } = useCollectionNode(props);
   const { isConnectable, data } = props;
+  const graphActions = useNodeViewGraphActions();
   const collectionApiId = typeof data.collectionId === "number" ? data.collectionId : null;
   const treeDepthAccentHex =
     data.treeDepth !== undefined && data.treeDepth !== null
@@ -128,6 +130,17 @@ export function CollectionNode(props: CollectionNodeProps) {
                 Suite logique
               </Button>
             ) : null}
+            <Button
+              variant="learn"
+              class="btn-xs gap-1 sm:btn-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                graphActions?.openLlmImportForCollection(collectionApiId);
+              }}
+            >
+              <FileJson class="h-4 w-4" aria-hidden />
+              Import LLM
+            </Button>
           </div>
         ) : null}
 

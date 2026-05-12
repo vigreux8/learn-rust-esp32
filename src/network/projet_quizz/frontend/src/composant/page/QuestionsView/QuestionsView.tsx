@@ -31,7 +31,11 @@ export function QuestionsView( props: QuestionsViewProps) {
             </Button>
           </div>
         ) : null}
-        <QuestionsActionBoutons data={questionsActionBoutons.data} actions={questionsActionBoutons.actions} />
+        <QuestionsActionBoutons
+          data={questionsActionBoutons.data}
+          actions={questionsActionBoutons.actions}
+          presentation={questionsActionBoutons.presentation}
+        />
 
         {operationError.visible ? (
           <QuestionsViewOperationErrorBanner message={operationError.message} onDismiss={operationError.onDismiss} />

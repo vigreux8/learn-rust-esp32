@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { importQuestionsJson } from "../../../../lib/api";
 import { normalizeAndValidateImportText } from "../../../../lib/llmImportNormalize";
 import {
@@ -23,13 +23,22 @@ import { getOptionValue } from "./QuestionsActionBoutons.utils";
  * Barre d’actions questions : panneau import LLM (options dynamiques, prompts, appel API) et workflow lié.
  */
 export function useQuestionsActionBoutons(props: QuestionsActionBoutonsProps) {
-  const { data, actions, llmImportExtras } = props;
+  const { data, actions, llmImportExtras, presentation } = props;
   const { targetCollectionNumeric, collections, importTargetTagCollectionId, questions } = data;
 
   const [importOpen, setImportOpen] = useState(false);
   const [options, setOptions] = useState<LlmImportOption[]>([]);
   const importLlmLastSyncedCollectionId = useRef<number | null>(null);
   const optionsRef = useRef<LlmImportOption[]>([]);
+  const importLlmOpenedFromPresentation = useRef(false);
+
+  useLayoutEffect(() => {
+    if (importLlmOpenedFromPresentation.current) return;
+    if (presentation?.openImportLlmOnMount === true) {
+      setImportOpen(true);
+      importLlmOpenedFromPresentation.current = true;
+    }
+  }, [presentation?.openImportLlmOnMount]);
 
   useEffect(() => {
     optionsRef.current = options;

@@ -33,6 +33,15 @@ function readFromNodeFromWindowLocation(): boolean {
   }
 }
 
+function readImportLlmFromWindowLocation(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).get("importLlm") === "1";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Liste / gestion des questions par collection : chargements multiples (collections, questions, refs),
  * filtres, modales CRUD, import JSON et rattachements sous-collection.
@@ -41,13 +50,18 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   const { userId } = useUserSession();
   const routePath = useRoutePath();
   const [fromNode, setFromNode] = useState(readFromNodeFromWindowLocation);
+  const [importLlmFromUrl, setImportLlmFromUrl] = useState(readImportLlmFromWindowLocation);
 
   useLayoutEffect(() => {
     setFromNode(readFromNodeFromWindowLocation());
+    setImportLlmFromUrl(readImportLlmFromWindowLocation());
   }, [collectionId, routePath]);
 
   useEffect(() => {
-    const id = window.setTimeout(() => setFromNode(readFromNodeFromWindowLocation()), 0);
+    const id = window.setTimeout(() => {
+      setFromNode(readFromNodeFromWindowLocation());
+      setImportLlmFromUrl(readImportLlmFromWindowLocation());
+    }, 0);
     return () => window.clearTimeout(id);
   }, [collectionId, routePath]);
 
@@ -96,7 +110,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     const m = new URLSearchParams(window.location.search).get("tagCollection");
     if (m && /^\d+$/.test(m)) setImportTargetTagCollectionId(Number(m));
     else setImportTargetTagCollectionId(null);
-  }, [collectionId]);
+  }, [collectionId, routePath]);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -131,11 +145,12 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
           params.set("tagCollection", String(importTargetTagCollectionId));
         }
         if (fromNode) params.set("from", "node");
+        if (importLlmFromUrl) params.set("importLlm", "1");
         const q = params.toString();
         route(`/questions/${value}${q ? `?${q}` : ""}`);
       }
     },
-    [importTargetTagCollectionId, fromNode],
+    [importTargetTagCollectionId, fromNode, importLlmFromUrl],
   );
 
   const closeQuestionModal = useCallback(() => {
@@ -298,6 +313,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     actions: {
       onImportSuccess,
     },
+    presentation: importLlmFromUrl ? { openImportLlmOnMount: true } : undefined,
   };
 
   const operationErrorBannerMessage =

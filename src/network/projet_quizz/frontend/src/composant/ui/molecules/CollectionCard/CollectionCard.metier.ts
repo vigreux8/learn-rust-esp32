@@ -3,6 +3,8 @@ import type { CollectionTagRef } from "./CollectionCard.types";
 export type BuildQuestionsRoutePathOptions = {
   /** Ajoute `from=node` pour afficher un retour vers `/node` et restaurer le panneau latéral sauvegardé. */
   fromNode?: boolean;
+  /** Ajoute `importLlm=1` pour ouvrir le panneau d’import LLM sur la page Questions. */
+  openImportLlm?: boolean;
 };
 
 export function buildQuestionsRoutePath(
@@ -14,6 +16,7 @@ export function buildQuestionsRoutePath(
   const first = linkedTags[0];
   if (first != null) params.set("tagCollection", String(first.id));
   if (options?.fromNode === true) params.set("from", "node");
+  if (options?.openImportLlm === true) params.set("importLlm", "1");
   const q = params.toString();
   return `/questions/${collectionId}${q ? `?${q}` : ""}`;
 }

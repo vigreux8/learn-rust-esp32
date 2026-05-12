@@ -5,6 +5,7 @@ import { PageMain } from "../../ui/atomes/PageMain/PageMain";
 import { FlowSidebarOverlay } from "../../ui/organismes/FlowSidebarOverlay";
 import { CreatePersonnaliteModal } from "../CollectionsView/parts/CreatePersonnaliteModal";
 import { GraphCreateNormaleCollectionModal } from "./parts/GraphCreateNormaleCollectionModal";
+import { NodeViewLlmImportModal } from "./parts/NodeViewLlmImportModal/NodeViewLlmImportModal";
 import { useNodeViewFlow } from "./NodeView.hook";
 import { NODE_VIEW_STYLES } from "./NodeView.styles";
 import type { NodeViewProps } from "./NodeView.types";
@@ -13,7 +14,7 @@ import type { NodeViewProps } from "./NodeView.types";
  * Zone graphe + sidebar : doit vivre sous `ReactFlowProvider` pour `useReactFlow` dans le hook.
  */
 function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
-  const { flow, sidebar, graphModals, graphActions } = useNodeViewFlow({ actions: props.actions });
+  const { flow, sidebar, graphModals, graphActions, llmImportModal } = useNodeViewFlow({ actions: props.actions });
 
   return (
     <NodeViewGraphActionsContext.Provider value={graphActions}>
@@ -59,6 +60,16 @@ function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
           tagOptions={graphModals.personnalite.tagOptions}
           onClose={graphModals.personnalite.onClose}
           onSubmit={graphModals.personnalite.onSubmit}
+        />
+        <NodeViewLlmImportModal
+          open={llmImportModal.open}
+          collectionId={llmImportModal.collectionId}
+          collections={llmImportModal.collections}
+          questions={llmImportModal.questions}
+          questionsLoading={llmImportModal.questionsLoading}
+          questionsError={llmImportModal.questionsError}
+          onClose={llmImportModal.onClose}
+          onImportSuccess={llmImportModal.onImportSuccess}
         />
       </div>
     </div>

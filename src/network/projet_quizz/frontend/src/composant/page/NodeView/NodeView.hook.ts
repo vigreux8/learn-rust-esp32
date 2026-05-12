@@ -15,6 +15,7 @@ import {
   createPersonaliteCollection,
   fetchCollections,
   fetchPersonalitesPicker,
+  fetchQuestions,
   linkCollectionParentCollection,
   postMoveQuestionToCollection,
   unlinkCollectionParentCollection,
@@ -26,7 +27,7 @@ import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionNode";
 import { readReactFlowDnDFromEvent } from "../../../lib/reactFlowDnD";
 import { readStoredNodeViewGraph, writeStoredNodeViewGraph } from "../../../lib/nodeViewGraphSession";
-import type { CollectionUi } from "../../../types/quizz";
+import type { CollectionUi, QuizzQuestionRow } from "../../../types/quizz";
 import {
   buildCollectionSubtreeGraphElements,
   buildHierarchyQuestionSidebarRows,
@@ -86,6 +87,11 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const [graphNormaleError, setGraphNormaleError] = useState<string | null>(null);
   const [graphPersoError, setGraphPersoError] = useState<string | null>(null);
 
+  const [llmImportModalCollectionId, setLlmImportModalCollectionId] = useState<number | null>(null);
+  const [llmImportQuestions, setLlmImportQuestions] = useState<QuizzQuestionRow[]>([]);
+  const [llmImportQuestionsLoading, setLlmImportQuestionsLoading] = useState(false);
+  const [llmImportQuestionsError, setLlmImportQuestionsError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -100,6 +106,34 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       cancelled = true;
     };
   }, [userId]);
+
+  useEffect(() => {
+    if (llmImportModalCollectionId == null) {
+      setLlmImportQuestions([]);
+      setLlmImportQuestionsError(null);
+      setLlmImportQuestionsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLlmImportQuestionsLoading(true);
+    setLlmImportQuestionsError(null);
+    void fetchQuestions(llmImportModalCollectionId)
+      .then((rows) => {
+        if (!cancelled) {
+          setLlmImportQuestions(rows);
+          setLlmImportQuestionsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLlmImportQuestionsError("Impossible de charger les questions de la collection.");
+          setLlmImportQuestionsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [llmImportModalCollectionId]);
 
   const collectionByIdForGraph = useMemo(
     () => new Map(apiCollections.map((c) => [c.id, c])),
@@ -595,6 +629,29 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     [apiCollections],
   );
 
+  const closeLlmImportModal = useCallback(() => {
+    setLlmImportModalCollectionId(null);
+    setLlmImportQuestions([]);
+    setLlmImportQuestionsError(null);
+  }, []);
+
+  const openLlmImportForCollection = useCallback((collectionId: number) => {
+    setLlmImportModalCollectionId(collectionId);
+  }, []);
+
+  const handleLlmImportModalImportSuccess = useCallback(() => {
+    void (async () => {
+      try {
+        const list = await fetchCollections();
+        setApiCollections(list);
+        setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
+      } catch {
+        /* ignore */
+      }
+      closeLlmImportModal();
+    })();
+  }, [closeLlmImportModal, setNodes, userId]);
+
   const moveQuestionToCollection = useCallback(
     async (args: { questionId: number; fromCollectionId: number; toCollectionId: number }) => {
       const { questionId, fromCollectionId, toCollectionId } = args;
@@ -626,8 +683,8 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   );
 
   const graphActions = useMemo<NodeViewGraphActionsValue>(
-    () => ({ moveQuestionToCollection }),
-    [moveQuestionToCollection],
+    () => ({ moveQuestionToCollection, openLlmImportForCollection }),
+    [moveQuestionToCollection, openLlmImportForCollection],
   );
 
   return {
@@ -660,6 +717,16 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       },
     },
     graphActions,
+    llmImportModal: {
+      open: llmImportModalCollectionId != null,
+      collectionId: llmImportModalCollectionId,
+      collections: apiCollections,
+      questions: llmImportQuestions,
+      questionsLoading: llmImportQuestionsLoading,
+      questionsError: llmImportQuestionsError,
+      onClose: closeLlmImportModal,
+      onImportSuccess: handleLlmImportModalImportSuccess,
+    },
     graphModals: {
       normale: {
         open: graphCreateNormaleOpen,

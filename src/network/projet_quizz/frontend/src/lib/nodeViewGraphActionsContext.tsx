@@ -10,6 +10,8 @@ export type NodeViewGraphMoveQuestionArgs = {
 
 export type NodeViewGraphActionsValue = {
   moveQuestionToCollection: (args: NodeViewGraphMoveQuestionArgs) => Promise<void>;
+  /** Ouvre le panneau d’import LLM (même flux que la page Questions) pour une collection du graphe. */
+  openLlmImportForCollection: (collectionId: number) => void;
 };
 
 export const NodeViewGraphActionsContext = createContext<NodeViewGraphActionsValue | null>(null);
