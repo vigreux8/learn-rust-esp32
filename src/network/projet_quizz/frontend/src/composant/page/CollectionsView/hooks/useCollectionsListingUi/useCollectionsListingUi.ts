@@ -4,9 +4,8 @@ import {
   computeTreeDepth,
   orderCollectionsHierarchy,
 } from "../../../../../lib/collectionHierarchyVis";
-import type { PlayQtype } from "../../../../../lib/playOrder";
+import { useGraphSessionSyncedPlayOptions } from "../../../../../lib/useGraphSessionSyncedPlayOptions";
 import type { CollectionUi } from "../../../../../types/quizz";
-import type { PlayModeSettings } from "../../../../ui/atomes/PlayModePicker/PlayModePicker.types";
 import { applyTagFilter, filterCollections } from "../../CollectionsView.metier";
 import type { CollectionFilter } from "../../CollectionsView.types";
 import type { UseCollectionsListingUiOptions, UseCollectionsListingUiResult } from "./useCollectionsListingUi.types";
@@ -24,22 +23,14 @@ export function useCollectionsListingUi({
 
   const [filter, setFilter] = useState<CollectionFilter>("all");
   const [tagFilter, setTagFilter] = useState<number | "all">("all");
-  const [playMode, setPlayMode] = useState<PlayModeSettings>({
-    neverAnswered: false,
-    wrongAnswered: false,
-    sortBase: "none",
-    errorPriority: false,
-    shuffleExtra: false,
-    includeReflexion: false,
-    reflexionSharePercent: 25,
-    includeChildCollections: false,
-    childCollectionsMix: "famille",
-    familyQuotaPercent: 100,
-    familyQuotaMax: 0,
-    includePersonnaliteFiches: false,
-  });
-  const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
-  const [playInfinite, setPlayInfinite] = useState(false);
+  const {
+    playMode,
+    setPlayMode,
+    playQtype,
+    setPlayQtype,
+    playInfinite,
+    setPlayInfinite,
+  } = useGraphSessionSyncedPlayOptions({ syncPanelExpanded: false });
   const [hierarchySubtreeRootId, setHierarchySubtreeRootId] = useState<number | null>(null);
   const [hierarchySubtreeSearch, setHierarchySubtreeSearch] = useState("");
   const [hierarchySuggestFocused, setHierarchySuggestFocused] = useState(false);

@@ -159,6 +159,20 @@ export function readStoredNodeViewGraph(): NodeViewGraphSessionPayload | null {
 }
 
 /**
+ * Lit les options « Mode jeu » depuis la session graphe, ou valeurs par défaut.
+ */
+export function readStoredPlayUiSnapshot(): NodeViewGraphPlayUiSnapshot {
+  const g = readStoredNodeViewGraph();
+  if (g?.playUi != null) return g.playUi;
+  return {
+    playMode: defaultPlayModeSettings(),
+    playQtype: "melanger",
+    playInfinite: false,
+    panelExpanded: false,
+  };
+}
+
+/**
  * Fusionne les options « Mode jeu » dans la session (même clé que le graphe).
  * Si aucune session graphe n’existe encore, crée une entrée minimale (nœuds vides) pour ne perdre que les options.
  */

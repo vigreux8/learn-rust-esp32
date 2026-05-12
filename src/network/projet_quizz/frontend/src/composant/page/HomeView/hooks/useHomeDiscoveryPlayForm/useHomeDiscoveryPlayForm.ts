@@ -1,11 +1,10 @@
-import { useState } from "preact/hooks";
 import { route } from "preact-router";
 import {
   buildPlayOrdersFromPicker,
   buildPlaySessionQuery,
   playOrdersRequireUserId,
-  type PlayQtype,
 } from "../../../../../lib/playOrder";
+import { useGraphSessionSyncedPlayOptions } from "../../../../../lib/useGraphSessionSyncedPlayOptions";
 import type { PlayModeSettings } from "../../../../ui/atomes/PlayModePicker/PlayModePicker.types";
 import type { UseHomeDiscoveryPlayFormProps } from "./useHomeDiscoveryPlayForm.types";
 
@@ -14,22 +13,8 @@ import type { UseHomeDiscoveryPlayFormProps } from "./useHomeDiscoveryPlayForm.t
  * et navigation vers la route quiz avec la query attendue.
  */
 export function useHomeDiscoveryPlayForm({ identity }: UseHomeDiscoveryPlayFormProps) {
-  const [playMode, setPlayMode] = useState<PlayModeSettings>({
-    neverAnswered: false,
-    wrongAnswered: false,
-    sortBase: "none",
-    errorPriority: false,
-    shuffleExtra: false,
-    includeReflexion: false,
-    reflexionSharePercent: 25,
-    includeChildCollections: false,
-    childCollectionsMix: "famille",
-    familyQuotaPercent: 100,
-    familyQuotaMax: 0,
-    includePersonnaliteFiches: false,
-  });
-  const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
-  const [playInfinite, setPlayInfinite] = useState(false);
+  const { playMode, setPlayMode, playQtype, setPlayQtype, playInfinite, setPlayInfinite } =
+    useGraphSessionSyncedPlayOptions({ syncPanelExpanded: false });
 
   const goPlay = () => {
     const orders = buildPlayOrdersFromPicker(playMode);
