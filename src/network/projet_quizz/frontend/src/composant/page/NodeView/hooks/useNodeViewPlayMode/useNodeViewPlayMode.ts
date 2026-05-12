@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { route } from "preact-router";
 
 import {
@@ -7,34 +7,68 @@ import {
   playOrdersRequireUserId,
   type PlayQtype,
 } from "../../../../../lib/playOrder";
+import {
+  defaultPlayModeSettings,
+  readStoredNodeViewGraph,
+  writeStoredNodeViewGraphMergePlayUi,
+  type NodeViewGraphPlayUiSnapshot,
+} from "../../../../../lib/nodeViewGraphSession";
 import { useClosePanelOnDocumentClickOutside } from "../../../../../lib/useClosePanelOnDocumentClickOutside";
 import type { PlayModeSettings } from "../../../../ui/atomes/PlayModePicker/PlayModePicker.types";
 import type { UseNodeViewPlayModeOptions, UseNodeViewPlayModeResult } from "./useNodeViewPlayMode.types";
 
-const defaultPlayMode = (): PlayModeSettings => ({
-  neverAnswered: false,
-  wrongAnswered: false,
-  sortBase: "none",
-  errorPriority: false,
-  shuffleExtra: false,
-  includeReflexion: false,
-  reflexionSharePercent: 25,
-  includeChildCollections: false,
-  childCollectionsMix: "famille",
-  familyQuotaPercent: 100,
-  familyQuotaMax: 0,
-  includePersonnaliteFiches: false,
-});
+function readPlayBootstrap(): NodeViewGraphPlayUiSnapshot {
+  const g = readStoredNodeViewGraph();
+  if (g?.playUi != null) return g.playUi;
+  return {
+    playMode: defaultPlayModeSettings(),
+    playQtype: "melanger",
+    playInfinite: false,
+    panelExpanded: false,
+  };
+}
 
 /**
  * État du mode de jeu sur `/node` et navigation vers une session `/play/:id` alignée sur `CollectionCard`.
  */
 export function useNodeViewPlayMode(opts: UseNodeViewPlayModeOptions): UseNodeViewPlayModeResult {
   const { userId, getGraphPlayIncludedCollectionIds } = opts;
-  const [panelExpanded, setPanelExpanded] = useState(false);
-  const [playMode, setPlayMode] = useState<PlayModeSettings>(defaultPlayMode);
-  const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
-  const [playInfinite, setPlayInfinite] = useState(false);
+  const bootRef = useRef<NodeViewGraphPlayUiSnapshot | null>(null);
+  if (bootRef.current === null) {
+    bootRef.current = readPlayBootstrap();
+  }
+  const boot = bootRef.current;
+  const [panelExpanded, setPanelExpanded] = useState(boot.panelExpanded);
+  const [playMode, setPlayMode] = useState<PlayModeSettings>(boot.playMode);
+  const [playQtype, setPlayQtype] = useState<PlayQtype>(boot.playQtype);
+  const [playInfinite, setPlayInfinite] = useState(boot.playInfinite);
+
+  useEffect(() => {
+    const pack = (): void => {
+      try {
+        writeStoredNodeViewGraphMergePlayUi({
+          playMode,
+          playQtype,
+          playInfinite,
+          panelExpanded,
+        });
+      } catch {
+        /* sessionStorage indisponible ou quota */
+      }
+    };
+    const t = window.setTimeout(pack, 120);
+    const onVisibility = (): void => {
+      if (document.visibilityState === "hidden") pack();
+    };
+    window.addEventListener("pagehide", pack);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("pagehide", pack);
+      document.removeEventListener("visibilitychange", onVisibility);
+      pack();
+    };
+  }, [panelExpanded, playInfinite, playMode, playQtype]);
 
   const panelRootRef = useRef<HTMLDivElement>(null);
   const closePanel = useCallback(() => {
