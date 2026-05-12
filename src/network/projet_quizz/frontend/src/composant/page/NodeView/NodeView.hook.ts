@@ -471,7 +471,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
 
   const questionsPanelHint = useMemo(() => {
     const base =
-      "Toutes les questions des collections ; ordre des blocs = hiérarchie collections, couleurs = profondeur d’arbre. Blocs repliés par défaut. Glisser une ligne sur un nœud collection déplace le lien (API).";
+      "Toutes les questions des collections ; ordre des blocs = hiérarchie collections, couleurs = profondeur d’arbre. Blocs repliés par défaut. Glisse une question sur l’en-tête d’une autre collection ci-dessous, ou sur un nœud collection du graphe.";
     if (questionsScopeCollectionId == null) return `${base} Sélectionne un nœud collection pour ouvrir sa branche.`;
     const coll = apiCollections.find((c) => c.id === questionsScopeCollectionId);
     return coll != null
@@ -538,6 +538,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       actions: {
         ...page.actions,
         onShowCollectionSubtreeOnGraph,
+        onMoveQuestionToCollection: moveQuestionToCollection,
       },
       presentation: {
         questionsPanelHint,

@@ -1,7 +1,9 @@
-import type { FlowSidebarQuestionRow } from "../../FlowSidebarOverlay.types";
+import type { FlowSidebarMoveQuestionArgs, FlowSidebarQuestionRow } from "../../FlowSidebarOverlay.types";
 
 export type QuestionListGroup = {
+  collectionId: number;
   category: string;
+  treeDepth: number;
   items: FlowSidebarQuestionRow[];
 };
 
@@ -15,5 +17,6 @@ export type QuestionListPanelProps = {
   actions: {
     setSearch: (value: string) => void;
     onDragStart: (event: DragEvent, nodeType: string, payload: unknown) => void;
+    onMoveQuestionToCollection?: (args: FlowSidebarMoveQuestionArgs) => Promise<void>;
   };
 };

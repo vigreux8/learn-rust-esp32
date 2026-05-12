@@ -4,7 +4,10 @@ import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME } from "./FlowSide
 import type { FlowSidebarOverlayProps, SidebarTab } from "./FlowSidebarOverlay.types";
 
 type QuestionGroup = {
+  collectionId: number;
+  /** Même libellé que `FlowSidebarCollectionRow.label` (nom collection). */
   category: string;
+  treeDepth: number;
   items: FlowSidebarOverlayProps["data"]["questions"];
 };
 
@@ -12,7 +15,7 @@ type QuestionGroup = {
  * Orchestre onglets sidebar, filtres collections / questions / personnalités et drag HTML5 vers React Flow.
  */
 export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
-  const { data } = props;
+  const { data, presentation } = props;
   const [activeTab, setActiveTab] = useState<SidebarTab>(null);
   const [collectionSearch, setCollectionSearch] = useState("");
   const [collectionSubtreeSearch, setCollectionSubtreeSearch] = useState("");
@@ -112,7 +115,7 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
 
   const questionGroups = useMemo(() => {
     const query = questionSearch.trim().toLowerCase();
-    const questions =
+    const questionsFiltered =
       query.length > 0
         ? data.questions.filter(
             (item) =>
@@ -120,22 +123,46 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
               item.category.toLowerCase().includes(query),
           )
         : data.questions;
-    const map = new Map<string, FlowSidebarOverlayProps["data"]["questions"]>();
-    const categoryOrder: string[] = [];
-    for (const item of questions) {
-      const key = item.category.trim().length > 0 ? item.category : "Sans catégorie";
-      if (!map.has(key)) {
-        map.set(key, []);
-        categoryOrder.push(key);
-      }
-      map.get(key)!.push(item);
+
+    const byCollectionId = new Map<number, FlowSidebarOverlayProps["data"]["questions"]>();
+    for (const item of questionsFiltered) {
+      const list = byCollectionId.get(item.collectionId);
+      if (list) list.push(item);
+      else byCollectionId.set(item.collectionId, [item]);
     }
-    const groups: QuestionGroup[] = categoryOrder.map((category) => ({
-      category,
-      items: map.get(category)!,
-    }));
+
+    const hierarchy = data.collectionHierarchy ?? [];
+    let rowsOrdered = data.collections;
+    const scopeRootId = presentation?.questionsDetailsExpandCollectionId ?? null;
+    if (scopeRootId != null && hierarchy.length > 0) {
+      const scopeSet = collectSubtreeCollectionIds(scopeRootId, hierarchy);
+      rowsOrdered = data.collections.filter((row) => scopeSet.has(row.collectionId));
+    }
+
+    const groups: QuestionGroup[] = [];
+    for (const row of rowsOrdered) {
+      const rawItems = byCollectionId.get(row.collectionId) ?? [];
+      const items = [...rawItems].sort((a, b) => Number(a.id) - Number(b.id));
+      if (query.length > 0) {
+        const labelMatches = row.label.toLowerCase().includes(query);
+        if (!labelMatches && items.length === 0) continue;
+      }
+      groups.push({
+        collectionId: row.collectionId,
+        category: row.label,
+        treeDepth: row.treeDepth,
+        items,
+      });
+    }
+
     return groups;
-  }, [data.questions, questionSearch]);
+  }, [
+    data.collectionHierarchy,
+    data.collections,
+    data.questions,
+    presentation?.questionsDetailsExpandCollectionId,
+    questionSearch,
+  ]);
 
   const onDragStart = useCallback((event: DragEvent, nodeType: string, payload: unknown) => {
     if (!event.dataTransfer) return;

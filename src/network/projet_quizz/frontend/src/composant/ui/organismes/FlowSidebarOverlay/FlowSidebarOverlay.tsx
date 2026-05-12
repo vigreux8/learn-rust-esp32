@@ -99,7 +99,11 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                   groups: questions.groups,
                   detailsExpandCollectionId: presentation?.questionsDetailsExpandCollectionId ?? null,
                 }}
-                actions={{ setSearch: questions.setSearch, onDragStart: drag.onDragStart }}
+                actions={{
+                  setSearch: questions.setSearch,
+                  onDragStart: drag.onDragStart,
+                  onMoveQuestionToCollection: actions?.onMoveQuestionToCollection,
+                }}
               />
             ) : null}
 

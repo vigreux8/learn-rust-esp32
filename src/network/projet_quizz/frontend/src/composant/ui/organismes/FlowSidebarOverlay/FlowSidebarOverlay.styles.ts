@@ -31,8 +31,17 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
    * Accordéon natif (`<details>`) : évite le `collapse` Daisy + checkbox, fragile avec overflow / grilles internes.
    */
   questionCollectionDetails: "group mb-1.5 overflow-hidden rounded-lg bg-base-200",
+  /**
+   * Même lecture que les lignes « Filtrer collections » : bord gauche colorée par `treeDepth`
+   * (`borderLeftColor` inline sur le `<details>`).
+   */
+  questionListCollectionDepthStripe:
+    "border-l-[4px] border-solid border-y border-y-base-content/[0.12] border-r border-r-base-content/[0.12]",
   questionCollectionSummary:
     "flex cursor-pointer list-none items-center gap-2 px-2 py-2 text-sm font-bold outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-primary/30",
+  /** Cible de dépôt : surbrillance quand une question est glissée au-dessus du nom de collection. */
+  questionCollectionSummaryDropOver:
+    "border border-dashed border-primary/60 bg-primary/10 ring-2 ring-primary/25",
   /**
    * Défilement des questions : plafond de hauteur pour ne pas masquer les autres collections.
    */

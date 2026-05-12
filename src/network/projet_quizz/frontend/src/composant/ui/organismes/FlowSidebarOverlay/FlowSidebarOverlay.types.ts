@@ -44,6 +44,13 @@ export type FlowSidebarCollectionHierarchyRef = {
   parent_collection_id: number | null;
 };
 
+/** Déplacement persisté (`question_collection`) — ex. `/node`. */
+export type FlowSidebarMoveQuestionArgs = {
+  questionId: number;
+  fromCollectionId: number;
+  toCollectionId: number;
+};
+
 export type FlowSidebarOverlayProps = {
   data: {
     collections: FlowSidebarCollectionRow[];
@@ -55,6 +62,8 @@ export type FlowSidebarOverlayProps = {
     onNodeCreate?: (type: string, position: { x: number; y: number }, data: unknown) => void;
     /** Affiche ancêtres + sous-arbre de la collection sur le canvas graphe (`/node`). */
     onShowCollectionSubtreeOnGraph?: (collectionId: number) => void;
+    /** Dépôt d’une question sur l’en-tête d’une autre collection dans le panneau Questions. */
+    onMoveQuestionToCollection?: (args: FlowSidebarMoveQuestionArgs) => Promise<void>;
   };
   presentation?: {
     /** Affiché sous le titre du panneau Questions lorsque la liste est restreinte au graphe. */
