@@ -40,6 +40,7 @@ import {
   parseCollectionParentChildEdgeId,
   resolveQuestionsScopeCollectionIdFromSelection,
 } from "./NodeView.metier";
+import { useNodeViewPlayMode } from "./hooks/useNodeViewPlayMode";
 import type { NodeViewProps } from "./NodeView.types";
 
 /**
@@ -652,6 +653,8 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     })();
   }, [closeLlmImportModal, setNodes, userId]);
 
+  const playModeUi = useNodeViewPlayMode({ userId });
+
   const moveQuestionToCollection = useCallback(
     async (args: { questionId: number; fromCollectionId: number; toCollectionId: number }) => {
       const { questionId, fromCollectionId, toCollectionId } = args;
@@ -683,8 +686,12 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   );
 
   const graphActions = useMemo<NodeViewGraphActionsValue>(
-    () => ({ moveQuestionToCollection, openLlmImportForCollection }),
-    [moveQuestionToCollection, openLlmImportForCollection],
+    () => ({
+      moveQuestionToCollection,
+      openLlmImportForCollection,
+      navigateToPlayForCollection: playModeUi.play.navigateToPlayForCollection,
+    }),
+    [moveQuestionToCollection, openLlmImportForCollection, playModeUi.play.navigateToPlayForCollection],
   );
 
   return {
@@ -727,6 +734,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       onClose: closeLlmImportModal,
       onImportSuccess: handleLlmImportModalImportSuccess,
     },
+    playModePanel: playModeUi,
     graphModals: {
       normale: {
         open: graphCreateNormaleOpen,

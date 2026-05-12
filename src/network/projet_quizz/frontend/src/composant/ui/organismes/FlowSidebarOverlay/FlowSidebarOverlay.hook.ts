@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { collectSubtreeCollectionIds } from "../../../../lib/collectionHierarchyVis";
+import { useClosePanelOnDocumentClickOutside } from "../../../../lib/useClosePanelOnDocumentClickOutside";
 import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
 import type { FlowSidebarOverlayProps, SidebarTab } from "./FlowSidebarOverlay.types";
 
@@ -77,21 +78,11 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
 
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (activeTab === null) return;
-    /** Fermeture au clic complet (relâchement), pas au seul `pointerdown` / maintien du bouton. */
-    const onClickCapture = (event: MouseEvent) => {
-      if (event.button !== 0) return;
-      const root = overlayRef.current;
-      if (root == null) return;
-      const target = event.target as Node | null;
-      if (target == null) return;
-      if (root.contains(target)) return;
-      closePanel();
-    };
-    document.addEventListener("click", onClickCapture, true);
-    return () => document.removeEventListener("click", onClickCapture, true);
-  }, [activeTab, closePanel]);
+  useClosePanelOnDocumentClickOutside({
+    open: activeTab !== null,
+    containerRef: overlayRef,
+    onClose: closePanel,
+  });
 
   const togglePaletteBucket = useCallback((bucket: number) => {
     setPaletteBucketFilters((prev) =>

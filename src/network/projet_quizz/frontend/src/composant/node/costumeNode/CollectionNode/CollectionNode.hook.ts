@@ -23,8 +23,19 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
   }, []);
 
   const onPlay = useCallback(() => {
+    const cid = typeof data.collectionId === "number" ? data.collectionId : null;
+    if (cid != null && graphActions?.navigateToPlayForCollection != null) {
+      graphActions.navigateToPlayForCollection(cid);
+      return;
+    }
+    if (cid == null) {
+      window.alert(
+        "Ce nœud n’est pas relié à une collection en base : dépose une collection depuis la barre latérale ou recharge une branche.",
+      );
+      return;
+    }
     data.actions?.onPlay?.(id);
-  }, [data.actions, id]);
+  }, [data.actions, data.collectionId, graphActions, id]);
 
   const onNodeDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();

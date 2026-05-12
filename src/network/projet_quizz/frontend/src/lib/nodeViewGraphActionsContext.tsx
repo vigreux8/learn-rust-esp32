@@ -12,12 +12,14 @@ export type NodeViewGraphActionsValue = {
   moveQuestionToCollection: (args: NodeViewGraphMoveQuestionArgs) => Promise<void>;
   /** Ouvre le panneau d’import LLM (même flux que la page Questions) pour une collection du graphe. */
   openLlmImportForCollection: (collectionId: number) => void;
+  /** Lance `/play/:collectionId` avec les options du panneau « Mode de jeu » du canvas. */
+  navigateToPlayForCollection: (collectionId: number) => void;
 };
 
 export const NodeViewGraphActionsContext = createContext<NodeViewGraphActionsValue | null>(null);
 
 /**
- * Actions exposées depuis `NodeView` pour les nœuds du graphe (ex. dépôt question → collection).
+ * Actions exposées depuis `NodeView` pour les nœuds du graphe (déplacement question, import LLM, lancement partie).
  */
 export function useNodeViewGraphActions(): NodeViewGraphActionsValue | null {
   return useContext(NodeViewGraphActionsContext);
