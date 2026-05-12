@@ -232,6 +232,20 @@ export class AttachQuestionToSousCollectionBodyDto {
   question_id!: number;
 }
 
+export class MoveQuestionCollectionBodyDto {
+  @IsInt()
+  @Min(1)
+  user_id!: number;
+
+  @IsInt()
+  @Min(1)
+  from_collection_id!: number;
+
+  @IsInt()
+  @Min(1)
+  to_collection_id!: number;
+}
+
 export class CreatePersonaliteCollectionDto {
   @IsInt()
   @Min(1)

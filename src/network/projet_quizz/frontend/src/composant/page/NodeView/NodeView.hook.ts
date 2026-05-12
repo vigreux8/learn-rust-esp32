@@ -16,8 +16,10 @@ import {
   fetchCollections,
   fetchPersonalitesPicker,
   linkCollectionParentCollection,
+  postMoveQuestionToCollection,
   unlinkCollectionParentCollection,
 } from "../../../lib/api";
+import type { NodeViewGraphActionsValue } from "../../../lib/nodeViewGraphActionsContext";
 import { useUserSession } from "../../../lib/userSession";
 import { flowEdgeTypes, flowNodeTypes } from "../../node/config/flow.registry";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
@@ -28,6 +30,7 @@ import {
   buildCollectionSubtreeGraphElements,
   buildHierarchyQuestionSidebarRows,
   buildNodeViewSidebarData,
+  filterQuestionRowsForCollectionSubtree,
   collectionParentChildEdgeId,
   collectionUiToCollectionNodeData,
   hydrateCollectionNodesTreeDepthFromCollections,
@@ -456,7 +459,11 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     }
     return {
       collections: merged.collections,
-      questions: merged.questions.filter((q) => q.collectionId === questionsScopeCollectionId),
+      questions: filterQuestionRowsForCollectionSubtree(
+        merged.questions,
+        questionsScopeCollectionId,
+        merged.collectionHierarchy,
+      ),
       personalities: merged.personalities,
       collectionHierarchy: merged.collectionHierarchy,
     };
@@ -464,17 +471,51 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
 
   const questionsPanelHint = useMemo(() => {
     const base =
-      "Toutes les questions des collections ; ordre des blocs = hiérarchie collections, couleurs = profondeur d’arbre.";
-    if (questionsScopeCollectionId == null) return base;
+      "Toutes les questions des collections ; ordre des blocs = hiérarchie collections, couleurs = profondeur d’arbre. Blocs repliés par défaut. Glisser une ligne sur un nœud collection déplace le lien (API).";
+    if (questionsScopeCollectionId == null) return `${base} Sélectionne un nœud collection pour ouvrir sa branche.`;
     const coll = apiCollections.find((c) => c.id === questionsScopeCollectionId);
     return coll != null
-      ? `${base} Affichage restreint à « ${coll.nom} » (sélection sur le graphe).`
-      : `${base} Affichage restreint à la sélection.`;
+      ? `${base} Branche « ${coll.nom} » : ce bloc est déplié, les collections enfants restent repliées jusqu’au clic.`
+      : `${base} Branche de la sélection : bloc racine déplié, enfants repliés par défaut.`;
   }, [apiCollections, questionsScopeCollectionId]);
 
   const graphTagPickerOptions = useMemo(
     () => apiCollections.map((c) => ({ id: c.id, nom: c.nom })),
     [apiCollections],
+  );
+
+  const moveQuestionToCollection = useCallback(
+    async (args: { questionId: number; fromCollectionId: number; toCollectionId: number }) => {
+      const { questionId, fromCollectionId, toCollectionId } = args;
+      if (fromCollectionId === toCollectionId) return;
+      try {
+        await postMoveQuestionToCollection(questionId, {
+          user_id: userId,
+          from_collection_id: fromCollectionId,
+          to_collection_id: toCollectionId,
+        });
+        const list = await fetchCollections();
+        setApiCollections(list);
+        setNodes((nds) =>
+          hydrateCollectionNodesTreeDepthFromCollections(
+            nds.map((n) =>
+              n.type === "questionNode" && n.data.questionId === questionId
+                ? { ...n, data: { ...n.data, collectionId: toCollectionId } }
+                : n,
+            ),
+            list,
+          ),
+        );
+      } catch (e: unknown) {
+        window.alert(e instanceof Error ? e.message : "Impossible de déplacer la question.");
+      }
+    },
+    [setNodes, userId],
+  );
+
+  const graphActions = useMemo<NodeViewGraphActionsValue>(
+    () => ({ moveQuestionToCollection }),
+    [moveQuestionToCollection],
   );
 
   return {
@@ -500,8 +541,10 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       },
       presentation: {
         questionsPanelHint,
+        questionsDetailsExpandCollectionId: questionsScopeCollectionId,
       },
     },
+    graphActions,
     graphModals: {
       normale: {
         open: graphCreateNormaleOpen,

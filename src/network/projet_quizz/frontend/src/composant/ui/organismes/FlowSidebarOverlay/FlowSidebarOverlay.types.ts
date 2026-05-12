@@ -59,5 +59,10 @@ export type FlowSidebarOverlayProps = {
   presentation?: {
     /** Affiché sous le titre du panneau Questions lorsque la liste est restreinte au graphe. */
     questionsPanelHint?: string | null;
+    /**
+     * Sélection graphe (`/node`) : id de la collection dont le bloc accordéon est ouvert par défaut.
+     * `null`/absent : tout replié jusqu’au clic. L’utilisateur peut toujours replier ou déplier d’autres blocs.
+     */
+    questionsDetailsExpandCollectionId?: number | null;
   };
 };

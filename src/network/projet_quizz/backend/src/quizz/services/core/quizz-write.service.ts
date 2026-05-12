@@ -872,6 +872,79 @@ export class QuizzWriteService {
   }
 
   /**
+   * Retire la question de la collection source et la rattache à la cible (`question_collection`).
+   */
+  async moveQuestionBetweenCollections(params: {
+    userId: number;
+    questionId: number;
+    fromCollectionId: number;
+    toCollectionId: number;
+  }): Promise<void> {
+    const { userId, questionId, fromCollectionId, toCollectionId } = params;
+    if (fromCollectionId === toCollectionId) {
+      return;
+    }
+
+    const question = await this.prisma.prisma.quizz_question.findUnique({
+      where: { id: questionId },
+    });
+    if (!question) {
+      throw new NotFoundException(`Question ${questionId} introuvable`);
+    }
+    if (question.user_id !== userId) {
+      throw new ForbiddenException(
+        `La question ${questionId} n’appartient pas à l’utilisateur ${userId}.`,
+      );
+    }
+
+    const fromCol = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: fromCollectionId },
+    });
+    const toCol = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: toCollectionId },
+    });
+    if (!fromCol || !toCol) {
+      throw new NotFoundException(`Collection introuvable (source ou cible)`);
+    }
+    if (fromCol.user_id !== userId || toCol.user_id !== userId) {
+      throw new ForbiddenException(`Accès refusé pour l’une des collections.`);
+    }
+
+    const fromLink = await this.prisma.prisma.question_collection.findFirst({
+      where: { collection_id: fromCollectionId, question_id: questionId },
+    });
+    if (!fromLink) {
+      throw new BadRequestException(
+        `La question ${questionId} n’est pas liée à la collection ${fromCollectionId}.`,
+      );
+    }
+
+    const toLink = await this.prisma.prisma.question_collection.findFirst({
+      where: { collection_id: toCollectionId, question_id: questionId },
+    });
+
+    const t = nowIso();
+    await this.prisma.prisma.$transaction(async (tx) => {
+      await tx.question_collection.deleteMany({
+        where: { collection_id: fromCollectionId, question_id: questionId },
+      });
+      if (toLink == null) {
+        await tx.question_collection.create({
+          data: { collection_id: toCollectionId, question_id: questionId },
+        });
+      }
+      await tx.quizz_collection.update({
+        where: { id: fromCollectionId },
+        data: { update_at: t },
+      });
+      await tx.quizz_collection.update({
+        where: { id: toCollectionId },
+        data: { update_at: t },
+      });
+    });
+  }
+
+  /**
    * Crée une collection dont le nom est « Prénom Nom » et la fiche `personalite` associée.
    */
   async createPersonaliteCollection(body: {

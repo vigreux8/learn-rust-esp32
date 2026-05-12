@@ -94,7 +94,11 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
 
             {panneau.activeTab === "questions" ? (
               <QuestionListPanel
-                data={{ search: questions.search, groups: questions.groups }}
+                data={{
+                  search: questions.search,
+                  groups: questions.groups,
+                  detailsExpandCollectionId: presentation?.questionsDetailsExpandCollectionId ?? null,
+                }}
                 actions={{ setSearch: questions.setSearch, onDragStart: drag.onDragStart }}
               />
             ) : null}

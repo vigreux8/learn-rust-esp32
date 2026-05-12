@@ -1,5 +1,6 @@
 import { useCallback, useState } from "preact/hooks";
 import { useReactFlow } from "@xyflow/react";
+import { useNodeViewGraphActions } from "../../../../lib/nodeViewGraphActionsContext";
 import { readReactFlowDnDFromEvent } from "../../../../lib/reactFlowDnD";
 import type { AppEdge, AppNode } from "../../config/flow.types";
 import {
@@ -15,6 +16,7 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
   const { data, id } = props;
   const [isExpanded, setIsExpanded] = useState(false);
   const { setNodes } = useReactFlow<AppNode, AppEdge>();
+  const graphActions = useNodeViewGraphActions();
 
   const toggle = useCallback(() => {
     setIsExpanded((prev) => !prev);
@@ -62,9 +64,39 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
             return { ...node, data: { ...node.data, creators: merged } };
           }),
         );
+        return;
+      }
+
+      if (parsed.type === "questionNode") {
+        const toCollectionId = data.collectionId;
+        if (typeof toCollectionId !== "number") {
+          window.alert("Dépose sur un nœud collection relié à l’API (pas le gabarit vide).");
+          return;
+        }
+        const patch = (parsed.data ?? {}) as {
+          collectionId?: unknown;
+          questionId?: unknown;
+        };
+        const questionId = typeof patch.questionId === "number" ? patch.questionId : null;
+        const fromCollectionId = typeof patch.collectionId === "number" ? patch.collectionId : null;
+        if (questionId == null || fromCollectionId == null) {
+          window.alert(
+            "Seules les questions déjà liées à une collection (liste ou nœud avec poignée) peuvent être déplacées.",
+          );
+          return;
+        }
+        if (fromCollectionId === toCollectionId) {
+          return;
+        }
+        const moveQuestionToCollection = graphActions?.moveQuestionToCollection;
+        if (moveQuestionToCollection == null) {
+          window.alert("Action de déplacement non disponible sur ce graphe.");
+          return;
+        }
+        void moveQuestionToCollection({ questionId, fromCollectionId, toCollectionId });
       }
     },
-    [id, setNodes],
+    [data.collectionId, graphActions, id, setNodes],
   );
 
   return {

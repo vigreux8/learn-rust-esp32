@@ -1,4 +1,5 @@
 import {
+  collectSubtreeCollectionIds,
   computeTreeDepth,
   orderCollectionsHierarchy,
 } from "../../../lib/collectionHierarchyVis";
@@ -118,6 +119,23 @@ export function buildHierarchyQuestionSidebarRows(collections: CollectionUi[]): 
   }
 
   return rows;
+}
+
+/**
+ * Filtre les lignes Questions sidebar pour une branche racine graphe (`focusId` et descendants).
+ * Conserve l’ordre d’origine (déjà hiérarchique).
+ */
+export function filterQuestionRowsForCollectionSubtree(
+  rows: FlowSidebarQuestionRow[],
+  focusCollectionId: number,
+  hierarchy: FlowSidebarCollectionHierarchyRef[],
+): FlowSidebarQuestionRow[] {
+  if (rows.length === 0) return rows;
+  if (hierarchy.length === 0) {
+    return rows.filter((r) => r.collectionId === focusCollectionId);
+  }
+  const subtree = collectSubtreeCollectionIds(focusCollectionId, hierarchy);
+  return rows.filter((r) => subtree.has(r.collectionId));
 }
 
 /** Arête parent → enfant (aligné sur le layout branche : `ce-{parent}-{child}`). */

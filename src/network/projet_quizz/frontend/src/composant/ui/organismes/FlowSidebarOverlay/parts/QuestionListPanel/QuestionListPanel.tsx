@@ -1,13 +1,26 @@
 import { ChevronDown, GripVertical, Search } from "lucide-preact";
+import { useEffect, useState } from "preact/hooks";
 import { collectionTreeBorderHexForDepth } from "../../../../../../lib/collectionHierarchyVis";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import type { QuestionListPanelProps } from "./QuestionListPanel.types";
+
+function defaultDetailsOpenForCollection(collectionId: number, expandId: number | null): boolean {
+  if (expandId == null) return false;
+  return collectionId === expandId;
+}
 
 /**
  * Panneau : recherche et accordéons par collection (`category`) avec questions draggables.
  */
 export function QuestionListPanel(props: QuestionListPanelProps) {
   const { data, actions } = props;
+  const [detailsOpenOverride, setDetailsOpenOverride] = useState<Partial<Record<number, boolean>>>(
+    {},
+  );
+
+  useEffect(() => {
+    setDetailsOpenOverride({});
+  }, [data.detailsExpandCollectionId]);
 
   return (
     <div class="flex min-h-0 flex-1 flex-col gap-2">
@@ -30,19 +43,26 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
           </p>
         ) : null}
         {data.groups.map((group) => {
-          const depth = group.items[0]?.treeDepth;
+          const first = group.items[0];
+          const depth = first?.treeDepth;
           const accentHex = depth != null ? collectionTreeBorderHexForDepth(depth) : null;
-          const sectionKey = String(group.items[0]?.collectionId ?? group.category);
+          const collectionId = first?.collectionId;
+          const sectionKey = String(collectionId ?? group.category);
+          const isOpen =
+            typeof collectionId === "number"
+              ? (detailsOpenOverride[collectionId] ??
+                defaultDetailsOpenForCollection(collectionId, data.detailsExpandCollectionId))
+              : false;
           return (
             <details
               key={sectionKey}
               class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCollectionDetails}
-              ref={(el: HTMLDetailsElement | null) => {
-                if (el == null) return;
-                /** Ouvre par défaut une seule fois par nœud (évite `open` en JSX qui bloque le repli en Preact). */
-                if (el.dataset.projetQuizzDefaultOpened === '1') return;
-                el.open = true;
-                el.dataset.projetQuizzDefaultOpened = '1';
+              open={isOpen}
+              onToggle={(event) => {
+                const target = event.currentTarget as HTMLDetailsElement;
+                const id = group.items[0]?.collectionId;
+                if (typeof id !== "number") return;
+                setDetailsOpenOverride((prev) => ({ ...prev, [id]: target.open }));
               }}
             >
               <summary class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCollectionSummary}>

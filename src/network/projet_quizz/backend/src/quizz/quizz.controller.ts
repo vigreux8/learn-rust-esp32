@@ -19,6 +19,7 @@ import {
   AssignCollectionTagDto,
   AssignPersonaliteToCollectionDto,
   AttachQuestionToSousCollectionBodyDto,
+  MoveQuestionCollectionBodyDto,
   CreateCollectionUnderTagDto,
   CreateGroupeQuestionsBodyDto,
   CreatePersonaliteCollectionDto,
@@ -643,6 +644,20 @@ export class QuizzController {
     };
     const collectionId = parseOptInt('collectionId', collectionIdStr);
     return this.quizz.importAppCollectionQuestionsJson(body, { collectionId });
+  }
+
+  /** Déplace le lien question ↔ collection (retrait source + rattachement cible). */
+  @Post('questions/:questionId/move-collection')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  moveQuestionBetweenCollections(
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Body() body: MoveQuestionCollectionBodyDto,
+  ): Promise<void> {
+    return this.quizz.moveQuestionBetweenCollections(questionId, {
+      user_id: body.user_id,
+      from_collection_id: body.from_collection_id,
+      to_collection_id: body.to_collection_id,
+    });
   }
 
   @Patch('questions/:id')

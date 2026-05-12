@@ -1,4 +1,5 @@
 import { Background, Controls, ReactFlow, ReactFlowProvider } from "@xyflow/react";
+import { NodeViewGraphActionsContext } from "../../../lib/nodeViewGraphActionsContext";
 import { AppHeader } from "../../ui/atomes/AppHeader/AppHeader";
 import { PageMain } from "../../ui/atomes/PageMain/PageMain";
 import { FlowSidebarOverlay } from "../../ui/organismes/FlowSidebarOverlay";
@@ -12,9 +13,10 @@ import type { NodeViewProps } from "./NodeView.types";
  * Zone graphe + sidebar : doit vivre sous `ReactFlowProvider` pour `useReactFlow` dans le hook.
  */
 function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
-  const { flow, sidebar, graphModals } = useNodeViewFlow({ actions: props.actions });
+  const { flow, sidebar, graphModals, graphActions } = useNodeViewFlow({ actions: props.actions });
 
   return (
+    <NodeViewGraphActionsContext.Provider value={graphActions}>
     <div class={NODE_VIEW_STYLES.flowShell}>
       <div class={`${NODE_VIEW_STYLES.canvasInner} relative`}>
         <ReactFlow
@@ -60,6 +62,7 @@ function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
         />
       </div>
     </div>
+    </NodeViewGraphActionsContext.Provider>
   );
 }
 

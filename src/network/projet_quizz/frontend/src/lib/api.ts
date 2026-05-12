@@ -458,6 +458,18 @@ export async function patchQuestion(
   return res.json() as Promise<QuizzQuestionRow>;
 }
 
+export async function postMoveQuestionToCollection(
+  questionId: number,
+  body: { user_id: number; from_collection_id: number; to_collection_id: number },
+): Promise<void> {
+  const res = await fetch(apiUrl(`/quizz/questions/${questionId}/move-collection`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+}
+
 export type CreateQuestionBody = {
   user_id: number;
   categorie_id: number;

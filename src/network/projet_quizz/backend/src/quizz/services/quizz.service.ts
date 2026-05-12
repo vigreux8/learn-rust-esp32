@@ -210,6 +210,18 @@ export class QuizzService {
     return this.write.deleteImplicitQuestionRelation(relationId);
   }
 
+  moveQuestionBetweenCollections(
+    questionId: number,
+    body: { user_id: number; from_collection_id: number; to_collection_id: number },
+  ): Promise<void> {
+    return this.write.moveQuestionBetweenCollections({
+      userId: body.user_id,
+      questionId,
+      fromCollectionId: body.from_collection_id,
+      toCollectionId: body.to_collection_id,
+    });
+  }
+
   createQuestion(body: {
     user_id: number;
     categorie_id: number;
