@@ -1,5 +1,7 @@
 import { Handle, Position } from "@xyflow/react";
 import { Hash, Play, User } from "lucide-preact";
+import { cn } from "../../../../lib/cn";
+import { collectionTreeBorderHexForDepth } from "../../../../lib/collectionHierarchyVis";
 import { useCollectionNode } from "./CollectionNode.hook";
 import { COLLECTION_NODE_STYLES } from "./CollectionNode.styles";
 import type { CollectionNodeProps } from "./CollectionNode.types";
@@ -8,7 +10,11 @@ import { CreatorPanel } from "./parts/CreatorPanel/CreatorPanel";
 
 export function CollectionNode(props: CollectionNodeProps) {
   const { layout, content, actions, dnd } = useCollectionNode(props);
-  const { isConnectable } = props;
+  const { isConnectable, data } = props;
+  const treeDepthAccentHex =
+    data.treeDepth !== undefined && data.treeDepth !== null
+      ? collectionTreeBorderHexForDepth(data.treeDepth)
+      : null;
 
   return (
     <div
@@ -42,7 +48,10 @@ export function CollectionNode(props: CollectionNodeProps) {
           />
         </div>
 
-        <div class={COLLECTION_NODE_STYLES.mainBar}>
+        <div
+          class={cn(COLLECTION_NODE_STYLES.mainBar, treeDepthAccentHex ? "border-2" : undefined)}
+          style={treeDepthAccentHex ? { borderColor: treeDepthAccentHex } : undefined}
+        >
           <button
             type="button"
             class={COLLECTION_NODE_STYLES.buttonIconCollections}

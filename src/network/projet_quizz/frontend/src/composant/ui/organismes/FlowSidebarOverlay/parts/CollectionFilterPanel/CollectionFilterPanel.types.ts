@@ -10,5 +10,7 @@ export type CollectionFilterPanelProps = {
     setSearch: (value: string) => void;
     togglePaletteBucket: (bucket: number) => void;
     onDragStart: (event: DragEvent, nodeType: string, payload: unknown) => void;
+    /** Présente sur le panneau recherche graphe ; place la branche sur le canvas sans drag. */
+    onShowCollectionOnGraph?: (row: FlowSidebarCollectionRow) => void;
   };
 };

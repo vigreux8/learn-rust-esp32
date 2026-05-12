@@ -1,4 +1,4 @@
-import { Database, MessageSquare, Plus, UserRound } from "lucide-preact";
+import { Database, MessageSquare, Plus, Search, UserRound } from "lucide-preact";
 import { cn } from "../../../../../../lib/cn";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import type { SidebarRailProps } from "./SidebarRail.types";
@@ -12,6 +12,7 @@ export function SidebarRail(props: SidebarRailProps) {
   const questionsActive = data.activeTab === "questions";
   const personalitiesActive = data.activeTab === "personalities";
   const createActive = data.activeTab === "create";
+  const subtreeActive = data.activeTab === "collectionSubtree";
 
   return (
     <nav class={FLOW_SIDEBAR_OVERLAY_STYLES.rail} aria-label="Outils du graphe">
@@ -26,6 +27,18 @@ export function SidebarRail(props: SidebarRailProps) {
         onClick={() => actions.toggleTab("collections")}
       >
         <Database size={20} aria-hidden />
+      </button>
+      <button
+        type="button"
+        class={cn(
+          FLOW_SIDEBAR_OVERLAY_STYLES.railButton,
+          subtreeActive && FLOW_SIDEBAR_OVERLAY_STYLES.railButtonActiveCollectionSubtree,
+        )}
+        aria-pressed={subtreeActive}
+        aria-label="Rechercher une collection et afficher sa branche sur le graphe"
+        onClick={() => actions.toggleTab("collectionSubtree")}
+      >
+        <Search size={20} aria-hidden />
       </button>
       <button
         type="button"

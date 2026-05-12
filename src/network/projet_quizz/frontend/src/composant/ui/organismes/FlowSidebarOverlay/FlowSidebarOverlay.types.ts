@@ -1,4 +1,10 @@
-export type SidebarTab = "collections" | "questions" | "personalities" | "create" | null;
+export type SidebarTab =
+  | "collections"
+  | "collectionSubtree"
+  | "questions"
+  | "personalities"
+  | "create"
+  | null;
 
 export type FlowSidebarCollectionRow = {
   id: string;
@@ -45,6 +51,8 @@ export type FlowSidebarOverlayProps = {
   };
   actions: {
     onNodeCreate?: (type: string, position: { x: number; y: number }, data: unknown) => void;
+    /** Affiche ancêtres + sous-arbre de la collection sur le canvas graphe (`/node`). */
+    onShowCollectionSubtreeOnGraph?: (collectionId: number) => void;
   };
   presentation?: {
     /** Affiché sous le titre du panneau Questions lorsque la liste est restreinte au graphe. */

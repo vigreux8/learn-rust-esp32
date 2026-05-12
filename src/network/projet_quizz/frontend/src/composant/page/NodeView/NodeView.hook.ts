@@ -15,6 +15,7 @@ import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionN
 import { readReactFlowDnDFromEvent } from "../../../lib/reactFlowDnD";
 import type { CollectionUi } from "../../../types/quizz";
 import {
+  buildCollectionSubtreeGraphElements,
   buildNodeViewSidebarData,
   resolveQuestionsScopeCollectionIdFromSelection,
 } from "./NodeView.metier";
@@ -26,7 +27,7 @@ import type { NodeViewProps } from "./NodeView.types";
 export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const onNodeCreate = page.actions?.onNodeCreate;
   const { userId } = useUserSession();
-  const { screenToFlowPosition } = useReactFlow<AppNode, AppEdge>();
+  const { screenToFlowPosition, fitView } = useReactFlow<AppNode, AppEdge>();
 
   const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
   const [questionsScopeCollectionId, setQuestionsScopeCollectionId] = useState<number | null>(null);
@@ -129,6 +130,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
                   creators: (coll.personnalites ?? []).map((p) => ({
                     id: String(p.id),
                     name: `${p.prenom} ${p.nom}`.trim(),
+                    importanceType: p.importance_type ?? null,
                   })),
                 },
               }
@@ -216,6 +218,26 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     [apiCollections, onNodeCreate, screenToFlowPosition, setNodes],
   );
 
+  const onShowCollectionSubtreeOnGraph = useCallback(
+    (collectionId: number) => {
+      const { nodes: nextNodes, edges: nextEdges } = buildCollectionSubtreeGraphElements(
+        collectionId,
+        apiCollections,
+      );
+      if (nextNodes.length === 0) return;
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      queueMicrotask(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            void fitView({ padding: 0.22, duration: 280 });
+          });
+        });
+      });
+    },
+    [apiCollections, fitView, setEdges, setNodes],
+  );
+
   const sidebarBase = useMemo(() => buildNodeViewSidebarData(apiCollections), [apiCollections]);
 
   const sidebarData = useMemo(() => {
@@ -253,7 +275,8 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     sidebar: {
       data: sidebarData,
       actions: {
-        onNodeCreate,
+        ...page.actions,
+        onShowCollectionSubtreeOnGraph,
       },
       presentation: {
         questionsPanelHint,

@@ -1,4 +1,4 @@
-import { GripVertical, Search } from "lucide-preact";
+import { GitBranch, GripVertical, Search } from "lucide-preact";
 import { COLLECTION_TREE_LEVEL_BORDER_HEX } from "../../../../../../lib/collectionHierarchyVis";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import {
@@ -64,6 +64,16 @@ export function CollectionFilterPanel(props: CollectionFilterPanelProps) {
               key={row.id}
               class={`${FLOW_SIDEBAR_OVERLAY_STYLES.dragItem} ${COLLECTION_FILTER_PANEL_STYLES.rowLeftAccent}`}
               style={{ borderLeftColor: accentHex }}
+              onClick={
+                actions.onShowCollectionOnGraph != null
+                  ? () => actions.onShowCollectionOnGraph?.(row)
+                  : undefined
+              }
+              title={
+                actions.onShowCollectionOnGraph != null
+                  ? "Cliquer ou bouton branche pour afficher la hiérarchie ; glisser pour poser un nœud sur le graphe."
+                  : undefined
+              }
               draggable
               onDragStart={(event) =>
                 actions.onDragStart(event as unknown as DragEvent, "collectionNode", {
@@ -80,6 +90,21 @@ export function CollectionFilterPanel(props: CollectionFilterPanelProps) {
               >
                 prof. {row.treeDepth}
               </span>
+              {actions.onShowCollectionOnGraph != null ? (
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs shrink-0 nodrag"
+                  aria-label={`Afficher la branche « ${row.label} » sur le graphe`}
+                  title="Afficher ancêtres et sous-arbre sur le graphe"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    actions.onShowCollectionOnGraph?.(row);
+                  }}
+                >
+                  <GitBranch class="h-4 w-4" aria-hidden />
+                </button>
+              ) : null}
             </div>
           );
         })}

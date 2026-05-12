@@ -1,7 +1,8 @@
 import type { Node, NodeProps } from "@xyflow/react";
 
 export type CollectionItem = { id: string; label: string };
-export type CreatorItem = { id: string; name: string };
+/** `importanceType` = rôle (`ref_importance_personalite.type` : pionnier, important, secondaire, ou absent). */
+export type CreatorItem = { id: string; name: string; importanceType?: string | null };
 
 export type CollectionNodeActions = {
   onPlay?: (nodeId: string) => void;
@@ -10,6 +11,8 @@ export type CollectionNodeActions = {
 
 export type CollectionNodeData = {
   label: string;
+  /** Profondeur dans l’arbre parent → enfants (même logique que les cartes Collections). */
+  treeDepth?: number;
   /** Si renseigné, aligné sur l’API collections (filtre sidebar Questions au clic sur ce nœud). */
   collectionId?: number | null;
   /**

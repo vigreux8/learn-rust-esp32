@@ -25,7 +25,8 @@ export const COLLECTION_NODE_STYLES = {
   badge: cn(
     "inline-flex items-center rounded-full border border-flow/25 bg-flow/10 px-2.5 py-0.5 text-xs font-medium text-flow",
   ),
-  creatorRow: "flex items-center justify-between border-b border-base-content/5 py-0.5 text-sm text-base-content",
+  creatorRow:
+    "flex items-center justify-between gap-1 border-b border-base-content/5 border-l-4 py-0.5 pl-1.5 text-sm text-base-content",
   creatorChevron: "h-3 w-3 shrink-0 text-base-content/40",
   footerHint: "mt-auto text-center text-[10px] text-base-content/45",
   buttonIconCollections: cn(
@@ -52,3 +53,32 @@ export const COLLECTION_NODE_STYLES = {
     "!opacity-0 hover:!bg-flow/15 hover:!opacity-100",
   ),
 } as const;
+
+/**
+ * Cotes graphe : alignées sur les classes du nœud (panneaux # / personnalités dépliés = `h-40` + mb-2, corps = bandeaux + barre).
+ * Si ces classes bougent, mettre à jour ces valeurs pour garder les nœuds non chevauchants lorsque les panneaux sont ouverts.
+ */
+export const COLLECTION_NODE_LAYOUT_MAX_WIDTH_PX = 448; /** ≈ Tailwind `max-w-md` (28rem). */
+export const COLLECTION_NODE_LAYOUT_EXPANDED_PANELS_HEIGHT_PX = 160; /** `h-40` région `#` + influenceurs. */
+export const COLLECTION_NODE_LAYOUT_FLOATING_GAP_PX = 8; /** `mb-2` sous les panneaux flottants. */
+/** Bandeau connexion haut (~2px) + `mainBar` (~56–60px avec py-3) + bandeau bas (~8px avec mt-1.5). */
+export const COLLECTION_NODE_LAYOUT_MAIN_CHROME_HEIGHT_PX = 70;
+export const COLLECTION_NODE_LAYOUT_GRAPH_CLEARANCE_PX = 40; /** air entre deux boîtes (ombre / confort). */
+
+export function collectionNodeLayoutExpandedTotalHeightPx(): number {
+  return (
+    COLLECTION_NODE_LAYOUT_EXPANDED_PANELS_HEIGHT_PX +
+    COLLECTION_NODE_LAYOUT_FLOATING_GAP_PX +
+    COLLECTION_NODE_LAYOUT_MAIN_CHROME_HEIGHT_PX
+  );
+}
+
+/** Pas horizontal entre positions (coin haut-gauche) : largeur max + marge pour panneaux latéraux dépliés. */
+export function collectionNodeGraphHorizontalStepPx(): number {
+  return COLLECTION_NODE_LAYOUT_MAX_WIDTH_PX + COLLECTION_NODE_LAYOUT_GRAPH_CLEARANCE_PX;
+}
+
+/** Pas vertical entre niveaux : hauteur totale dépliée + marge. */
+export function collectionNodeGraphVerticalStepPx(): number {
+  return collectionNodeLayoutExpandedTotalHeightPx() + COLLECTION_NODE_LAYOUT_GRAPH_CLEARANCE_PX;
+}

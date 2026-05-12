@@ -31,7 +31,13 @@ export function mergeInfluenceurFromSidebarPayload(
   const pid = record.personaliteId;
   if (typeof pid !== "number") return null;
   const name = typeof record.label === "string" ? record.label : `Personnalité ${pid}`;
-  const item: CreatorItem = { id: String(pid), name };
+  const importanceType =
+    record.importanceType === null || record.importanceType === undefined
+      ? null
+      : typeof record.importanceType === "string"
+        ? record.importanceType
+        : null;
+  const item: CreatorItem = { id: String(pid), name, importanceType };
   if (current.some((c) => c.id === item.id)) return current;
   return [...current, item];
 }
@@ -44,7 +50,7 @@ export const DEFAULT_COLLECTION_NODE_DATA: CollectionNodeData = {
     { id: "t2", label: "Étiquette démo B" },
   ],
   creators: [
-    { id: "u1", name: "Alice" },
-    { id: "u2", name: "Bob" },
+    { id: "u1", name: "Alice", importanceType: "pionnier" },
+    { id: "u2", name: "Bob", importanceType: "secondaire" },
   ],
 };

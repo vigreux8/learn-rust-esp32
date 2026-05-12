@@ -1,11 +1,11 @@
 import {
   COLLECTION_TREE_LEVEL_BORDER_HEX,
-  collectionTreePaletteBucket,
+  collectionTreeBorderHexForDepth,
 } from "../../../../../../lib/collectionHierarchyVis";
 
+/** Voie compatible : même résultat que `collectionTreeBorderHexForDepth` (`lib/collectionHierarchyVis`). */
 export function flowCollectionPaletteHexForDepth(treeDepth: number): string {
-  const bucket = collectionTreePaletteBucket(treeDepth);
-  return COLLECTION_TREE_LEVEL_BORDER_HEX[bucket];
+  return collectionTreeBorderHexForDepth(treeDepth);
 }
 
 export const FLOW_COLLECTION_PALETTE_BUCKET_INDICES = COLLECTION_TREE_LEVEL_BORDER_HEX.map(

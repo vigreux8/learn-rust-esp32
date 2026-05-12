@@ -14,7 +14,10 @@ export function PersonalityNode(props: PersonalityNodeProps) {
   return (
     <div
       class={`${PERSONALITY_NODE_STYLES.wrapper} border-l-4`}
-      style={{ borderLeftColor: accent }}
+      style={{
+        borderLeftColor: accent,
+        backgroundColor: `color-mix(in srgb, ${accent} 14%, transparent)`,
+      }}
     >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} />
       <div class="flex items-start gap-2">

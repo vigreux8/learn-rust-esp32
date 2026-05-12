@@ -15,6 +15,14 @@ export function collectionTreePaletteBucket(treeDepth: number): number {
   return Math.min(Math.max(treeDepth, 0), COLLECTION_TREE_LEVEL_BORDER_HEX.length - 1);
 }
 
+/**
+ * Couleur de bord carte collections / nœud graphe pour une profondeur d’arbre
+ * (alias des cartes Collections et du filtre graphe).
+ */
+export function collectionTreeBorderHexForDepth(treeDepth: number): string {
+  return COLLECTION_TREE_LEVEL_BORDER_HEX[collectionTreePaletteBucket(treeDepth)];
+}
+
 /** Contours des bandeaux personnalité (auteur vs secondaire). */
 export const COLLECTION_PERSONNALITE_BORDER = {
   auteur: "#38D19F",

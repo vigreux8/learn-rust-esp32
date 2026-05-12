@@ -1,9 +1,6 @@
 import { useCallback, useMemo, useState } from "preact/hooks";
-import {
-  collectSubtreeCollectionIds,
-  collectionTreePaletteBucket,
-} from "../../../../lib/collectionHierarchyVis";
-import { REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
+import { collectSubtreeCollectionIds } from "../../../../lib/collectionHierarchyVis";
+import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
 import type { FlowSidebarOverlayProps, SidebarTab } from "./FlowSidebarOverlay.types";
 
 type QuestionGroup = {
@@ -18,9 +15,11 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const { data } = props;
   const [activeTab, setActiveTab] = useState<SidebarTab>(null);
   const [collectionSearch, setCollectionSearch] = useState("");
+  const [collectionSubtreeSearch, setCollectionSubtreeSearch] = useState("");
   const [questionSearch, setQuestionSearch] = useState("");
   /** Indices de palette (0…dernier) : même regroupement visuel que les bords de carte collections. */
   const [paletteBucketFilters, setPaletteBucketFilters] = useState<number[]>([]);
+  const [subtreePaletteBucketFilters, setSubtreePaletteBucketFilters] = useState<number[]>([]);
   const [personalitySearch, setPersonalitySearch] = useState("");
   /** Collection racine : personnalités liées à cette collection ou à une collection enfant. `null` = tout. */
   const [personalityBranchRootCollectionId, setPersonalityBranchRootCollectionId] = useState<
@@ -41,11 +40,22 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     );
   }, []);
 
+  const toggleSubtreePaletteBucket = useCallback((bucket: number) => {
+    setSubtreePaletteBucketFilters((prev) =>
+      prev.includes(bucket) ? prev.filter((value) => value !== bucket) : [...prev, bucket],
+    );
+  }, []);
+
   const isPaletteBucketActive = useCallback(
     (bucket: number) => {
       return paletteBucketFilters.includes(bucket);
     },
     [paletteBucketFilters],
+  );
+
+  const isSubtreePaletteBucketActive = useCallback(
+    (bucket: number) => subtreePaletteBucketFilters.includes(bucket),
+    [subtreePaletteBucketFilters],
   );
 
   const personalitiesSource = data.personalities ?? [];
@@ -85,19 +95,20 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     personalitiesSource,
   ]);
 
-  const filteredCollections = useMemo(() => {
-    let rows = data.collections;
-    if (paletteBucketFilters.length > 0) {
-      rows = rows.filter((row) =>
-        paletteBucketFilters.includes(collectionTreePaletteBucket(row.treeDepth)),
-      );
-    }
-    const query = collectionSearch.trim().toLowerCase();
-    if (query.length > 0) {
-      rows = rows.filter((row) => row.label.toLowerCase().includes(query));
-    }
-    return rows;
-  }, [collectionSearch, data.collections, paletteBucketFilters]);
+  const filteredCollections = useMemo(
+    () => filterFlowSidebarCollectionRows(data.collections, paletteBucketFilters, collectionSearch),
+    [collectionSearch, data.collections, paletteBucketFilters],
+  );
+
+  const filteredCollectionSubtreeRows = useMemo(
+    () =>
+      filterFlowSidebarCollectionRows(
+        data.collections,
+        subtreePaletteBucketFilters,
+        collectionSubtreeSearch,
+      ),
+    [collectionSubtreeSearch, data.collections, subtreePaletteBucketFilters],
+  );
 
   const questionGroups = useMemo(() => {
     const query = questionSearch.trim().toLowerCase();
@@ -138,6 +149,13 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       rows: filteredCollections,
       togglePaletteBucket,
       isPaletteBucketActive,
+    },
+    collectionSubtree: {
+      search: collectionSubtreeSearch,
+      setSearch: setCollectionSubtreeSearch,
+      rows: filteredCollectionSubtreeRows,
+      togglePaletteBucket: toggleSubtreePaletteBucket,
+      isPaletteBucketActive: isSubtreePaletteBucketActive,
     },
     questions: {
       search: questionSearch,

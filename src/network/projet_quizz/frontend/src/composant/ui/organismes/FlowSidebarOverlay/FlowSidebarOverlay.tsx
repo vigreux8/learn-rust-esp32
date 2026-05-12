@@ -1,7 +1,7 @@
 import { X } from "lucide-preact";
 import { useFlowSidebarOverlay } from "./FlowSidebarOverlay.hook";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "./FlowSidebarOverlay.styles";
-import type { FlowSidebarOverlayProps } from "./FlowSidebarOverlay.types";
+import type { FlowSidebarCollectionRow, FlowSidebarOverlayProps } from "./FlowSidebarOverlay.types";
 import { CollectionFilterPanel } from "./parts/CollectionFilterPanel";
 import { CreationShortcutsPanel } from "./parts/CreationShortcutsPanel";
 import { PersonalityFilterPanel } from "./parts/PersonalityFilterPanel";
@@ -9,22 +9,31 @@ import { QuestionListPanel } from "./parts/QuestionListPanel";
 import { SidebarRail } from "./parts/SidebarRail";
 
 /**
- * Overlay flottant : rail d’icônes + panneau filtre collections ou liste questions / collection.
+ * Overlay flottant : rail d’icônes + panneaux filtre collections, recherche branche, questions, personnalités, création.
  */
 export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
-  const { presentation } = props;
-  const { rail, panneau, collections, questions, personalities, drag } = useFlowSidebarOverlay(props);
+  const { presentation, actions } = props;
+  const { rail, panneau, collections, collectionSubtree, questions, personalities, drag } =
+    useFlowSidebarOverlay(props);
   const panelOpen = panneau.activeTab !== null;
+  const onShowCollectionSubtreeRow =
+    actions?.onShowCollectionSubtreeOnGraph != null
+      ? (row: FlowSidebarCollectionRow) => {
+          actions.onShowCollectionSubtreeOnGraph?.(row.collectionId);
+        }
+      : undefined;
   const panelTitle =
     panneau.activeTab === "collections"
       ? "Filtrer collections"
-      : panneau.activeTab === "questions"
-        ? "Questions par collection"
-        : panneau.activeTab === "personalities"
-          ? "Personnalités"
-          : panneau.activeTab === "create"
-            ? "Créer sur le graphe"
-            : "";
+      : panneau.activeTab === "collectionSubtree"
+        ? "Recherche branches collections"
+        : panneau.activeTab === "questions"
+          ? "Questions par collection"
+          : panneau.activeTab === "personalities"
+            ? "Personnalités"
+            : panneau.activeTab === "create"
+              ? "Créer sur le graphe"
+              : "";
 
   return (
     <div class={FLOW_SIDEBAR_OVERLAY_STYLES.overlayWrapper}>
@@ -63,6 +72,22 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                   setSearch: collections.setSearch,
                   togglePaletteBucket: collections.togglePaletteBucket,
                   onDragStart: drag.onDragStart,
+                }}
+              />
+            ) : null}
+
+            {panneau.activeTab === "collectionSubtree" ? (
+              <CollectionFilterPanel
+                data={{
+                  search: collectionSubtree.search,
+                  rows: collectionSubtree.rows,
+                  isPaletteBucketActive: collectionSubtree.isPaletteBucketActive,
+                }}
+                actions={{
+                  setSearch: collectionSubtree.setSearch,
+                  togglePaletteBucket: collectionSubtree.togglePaletteBucket,
+                  onDragStart: drag.onDragStart,
+                  onShowCollectionOnGraph: onShowCollectionSubtreeRow,
                 }}
               />
             ) : null}
