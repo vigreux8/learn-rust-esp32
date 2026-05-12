@@ -96,6 +96,11 @@ export type PlaySessionQueryOpts = {
   includePersonnaliteFiches?: boolean;
   /** Origine graphe `/node` : query `from=node` pour le bouton Retour de la session. */
   fromNode?: boolean;
+  /**
+   * Collections dont les questions sont conservées après chargement (nœuds cochés sur le graphe `/node`).
+   * Query `graphIncludeIds=id1,id2`.
+   */
+  graphIncludeIds?: number[];
 };
 
 export function playOrdersFromSearch(): PlayOrder[] {
@@ -181,6 +186,18 @@ function parseIncludePersoFichesFromSearch(search: URLSearchParams): boolean {
   return v === "1" || v === "true" || v === "yes";
 }
 
+function parseGraphIncludeIdsFromSearch(search: URLSearchParams): number[] | undefined {
+  const raw = search.get("graphIncludeIds");
+  if (raw == null || raw.trim() === "") return undefined;
+  const ids = new Set<number>();
+  for (const part of raw.split(",")) {
+    const n = Number(part.trim());
+    if (Number.isInteger(n) && n >= 1) ids.add(n);
+  }
+  if (ids.size === 0) return undefined;
+  return [...ids];
+}
+
 export function playFetchParamsFromSearch(): {
   orders: PlayOrder[];
   qtype: PlayQtype;
@@ -196,6 +213,7 @@ export function playFetchParamsFromSearch(): {
   familyQuotaPercent: number;
   familyQuotaMax: number;
   includePersonnaliteFiches: boolean;
+  graphIncludeIds?: number[];
 } {
   if (typeof window === "undefined") {
     return {
@@ -212,6 +230,7 @@ export function playFetchParamsFromSearch(): {
       familyQuotaPercent: 100,
       familyQuotaMax: 0,
       includePersonnaliteFiches: false,
+      graphIncludeIds: undefined,
     };
   }
   const s = new URLSearchParams(window.location.search);
@@ -228,7 +247,9 @@ export function playFetchParamsFromSearch(): {
     s.has("childrenMix") ||
     s.has("familyQuota") ||
     s.has("familyMax") ||
-    s.has("persoFiches");
+    s.has("persoFiches") ||
+    s.has("from") ||
+    s.has("graphIncludeIds");
   const userIdRaw = s.get("userId");
   const userIdParsed = userIdRaw != null && userIdRaw !== "" ? Number(userIdRaw) : NaN;
   return {
@@ -246,6 +267,7 @@ export function playFetchParamsFromSearch(): {
     familyQuotaPercent: parseFamilyQuotaFromSearch(s),
     familyQuotaMax: parseFamilyMaxFromSearch(s),
     includePersonnaliteFiches: parseIncludePersoFichesFromSearch(s),
+    graphIncludeIds: parseGraphIncludeIdsFromSearch(s),
   };
 }
 
@@ -291,6 +313,9 @@ export function buildPlaySessionQuery(opts: PlaySessionQueryOpts): string {
   }
   if (opts.fromNode === true) {
     p.set("from", "node");
+  }
+  if (opts.graphIncludeIds != null && opts.graphIncludeIds.length > 0) {
+    p.set("graphIncludeIds", opts.graphIncludeIds.join(","));
   }
   const s = p.toString();
   return s ? `?${s}` : "";

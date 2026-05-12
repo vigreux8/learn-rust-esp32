@@ -11,6 +11,7 @@ import { playSessionFromNodeFromSearch } from "../../../../../lib/playOrder";
 import type { QuestionUi } from "../../../../../types/quizz";
 import {
   buildQuestionCopyJson,
+  filterQuestionsByPlayGraphIncludeIds,
   isPickedCorrect,
   mapQuestionsQuizUiCategories,
   shuffleQuestionsAnswers,
@@ -163,7 +164,19 @@ export function useQuizSessionPlayState(opts: UseQuizSessionPlayStateOptions): U
                         ...persoInf,
                       })
                     ).questions;
-              const nextQuestions = mapQuestionsQuizUiCategories(shuffleQuestionsAnswers(nextQuestionsRaw));
+              const nextQuestionsMapped = mapQuestionsQuizUiCategories(
+                shuffleQuestionsAnswers(nextQuestionsRaw),
+              );
+              const nextQuestions =
+                snap.playGraphIncludeIds != null &&
+                snap.playGraphIncludeIds.length > 0 &&
+                snap.collectionId != null
+                  ? filterQuestionsByPlayGraphIncludeIds(
+                      nextQuestionsMapped,
+                      snap.collectionId,
+                      snap.playGraphIncludeIds,
+                    )
+                  : nextQuestionsMapped;
 
               playedTowardResultsRef.current += 1;
               if (nextQuestions.length === 0) {

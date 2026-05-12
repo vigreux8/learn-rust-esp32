@@ -43,6 +43,8 @@ export type SessionData = {
   playFamilyQuotaPercent?: number;
   playFamilyQuotaMax?: number;
   playIncludePersonnaliteFiches?: boolean;
+  /** Filtre client : ids des collections cochées sur le graphe `/node` (`graphIncludeIds` dans l’URL). */
+  playGraphIncludeIds?: number[] | null;
 };
 
 export type QuizSessionHeaderProps = {

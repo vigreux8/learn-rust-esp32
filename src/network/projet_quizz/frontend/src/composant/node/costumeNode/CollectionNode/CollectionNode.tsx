@@ -27,7 +27,7 @@ function tagRefsFromSupercollections(items: CollectionItem[]): CollectionTagRef[
 }
 
 export function CollectionNode(props: CollectionNodeProps) {
-  const { layout, content, actions, dnd } = useCollectionNode(props);
+  const { layout, content, actions, dnd, graphPlay } = useCollectionNode(props);
   const { isConnectable, data } = props;
   const graphActions = useNodeViewGraphActions();
   const collectionApiId = typeof data.collectionId === "number" ? data.collectionId : null;
@@ -72,16 +72,32 @@ export function CollectionNode(props: CollectionNodeProps) {
           class={cn(COLLECTION_NODE_STYLES.mainBar, treeDepthAccentHex ? "border-2" : undefined)}
           style={treeDepthAccentHex ? { borderColor: treeDepthAccentHex } : undefined}
         >
-          <button
-            type="button"
-            class={COLLECTION_NODE_STYLES.buttonIconCollections}
-            onClick={layout.toggle}
-            aria-label="Basculer panneau supercollections (collections étiquette)"
-          >
-            <Hash class="h-4 w-4" aria-hidden />
-          </button>
+          <div class="flex min-w-0 flex-1 items-center gap-2">
+            {graphPlay.showToggle ? (
+              <label
+                class={COLLECTION_NODE_STYLES.playIncludeToggle}
+                title="Inclure les questions de cette collection dans le paquet quand tu lances une partie depuis le graphe (avec ou sans collections enfant côté mode de jeu)."
+              >
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-primary checkbox-xs nodrag"
+                  checked={graphPlay.included}
+                  onChange={graphPlay.onToggleIncluded}
+                  aria-label="Inclure les questions de cette collection au jeu depuis le graphe"
+                />
+              </label>
+            ) : null}
+            <button
+              type="button"
+              class={COLLECTION_NODE_STYLES.buttonIconCollections}
+              onClick={layout.toggle}
+              aria-label="Basculer panneau supercollections (collections étiquette)"
+            >
+              <Hash class="h-4 w-4" aria-hidden />
+            </button>
 
-          <h3 class={COLLECTION_NODE_STYLES.title}>{content.title}</h3>
+            <h3 class={COLLECTION_NODE_STYLES.title}>{content.title}</h3>
+          </div>
 
           <div class="flex shrink-0 items-center gap-2">
             <button

@@ -35,6 +35,7 @@ import {
   filterQuestionRowsForCollectionSubtree,
   collectionParentChildEdgeId,
   collectionUiToCollectionNodeData,
+  collectGraphPlayIncludedCollectionIds,
   hydrateCollectionNodesTreeDepthFromCollections,
   isHierarchyCollectionConnectionValid,
   parseCollectionParentChildEdgeId,
@@ -73,6 +74,9 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodesForCanvas);
   const [edges, setEdges] = useEdgesState<AppEdge>(initialEdgesForCanvas);
+
+  const nodesPlayScopeRef = useRef(nodes);
+  nodesPlayScopeRef.current = nodes;
 
   const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
   const [questionsScopeCollectionId, setQuestionsScopeCollectionId] = useState<number | null>(
@@ -653,7 +657,12 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     })();
   }, [closeLlmImportModal, setNodes, userId]);
 
-  const playModeUi = useNodeViewPlayMode({ userId });
+  const getGraphPlayIncludedCollectionIds = useCallback(
+    () => collectGraphPlayIncludedCollectionIds(nodesPlayScopeRef.current),
+    [],
+  );
+
+  const playModeUi = useNodeViewPlayMode({ userId, getGraphPlayIncludedCollectionIds });
 
   const moveQuestionToCollection = useCallback(
     async (args: { questionId: number; fromCollectionId: number; toCollectionId: number }) => {

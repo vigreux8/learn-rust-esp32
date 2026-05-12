@@ -2,6 +2,20 @@ import { cn } from "../../../lib/cn";
 import { shuffleQuestionAnswers } from "../../../lib/playOrder";
 import type { QuestionUi, QuizzQuestionRow, RefQuestionScaleRow } from "../../../types/quizz";
 
+/**
+ * Filtre les questions dont la collection d’origine (`source_collection_id`, ou la racine de session)
+ * figure dans `graphIncludeIds` (nœuds cochés sur le graphe `/node`).
+ */
+export function filterQuestionsByPlayGraphIncludeIds(
+  questions: QuestionUi[],
+  rootCollectionId: number,
+  graphIncludeIds: number[] | undefined,
+): QuestionUi[] {
+  if (graphIncludeIds == null || graphIncludeIds.length === 0) return questions;
+  const allow = new Set(graphIncludeIds);
+  return questions.filter((q) => allow.has(q.source_collection_id ?? rootCollectionId));
+}
+
 export function isPickedCorrect(
   questions: QuestionUi[],
   qIndex: number,

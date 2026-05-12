@@ -15,7 +15,9 @@ export const COLLECTION_NODE_STYLES = {
   ),
   /** Bandeau connexion entrée — discret, teinte flow comme le reste de l’app. */
   topStrip: "relative h-0.5 w-full shrink-0 rounded-full bg-flow/25",
-  mainBar: cn("relative flex w-full items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3", cardLike),
+  mainBar: cn("relative flex w-full items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3", cardLike),
+  /** Case « inclure au jeu » à gauche du bandeau (hors drag du canvas). */
+  playIncludeToggle: "nodrag flex shrink-0 cursor-pointer items-center leading-none",
   /** Boutons Questions / Suite logique sous la barre d’icônes (hors drag du canvas). */
   actionsRow: cn(
     "nodrag nowheel mt-1.5 flex w-full flex-wrap items-center justify-end gap-2 px-2 pb-1.5 pt-0.5",

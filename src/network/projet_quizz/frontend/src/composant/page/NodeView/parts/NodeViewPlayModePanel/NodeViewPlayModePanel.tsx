@@ -30,7 +30,9 @@ export function NodeViewPlayModePanel(props: NodeViewPlayModePanelProps) {
             <div class={NODE_VIEW_PLAY_MODE_PANEL_STYLES.panelBody}>
               <p class="mb-2 text-[11px] leading-snug text-base-content/55">
                 Les boutons lecture des nœuds collection utilisent ces réglages pour ouvrir{" "}
-                <span class="font-mono text-[10px]">/play/:id</span>.
+                <span class="font-mono text-[10px]">/play/:id</span>. Sur le graphe, coche à gauche de
+                chaque carte les collections dont tu veux tirer des questions (décochée = exclue du
+                paquet, y compris avec « collections enfant »).
               </p>
               <div class={NODE_VIEW_PLAY_MODE_PANEL_STYLES.pickerShell}>
                 <PlayModePicker

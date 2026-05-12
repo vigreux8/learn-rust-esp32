@@ -378,3 +378,19 @@ export function buildCollectionSubtreeGraphElements(
 
   return { nodes, edges };
 }
+
+/**
+ * Ids des collections dont les questions comptent pour une partie lancée depuis `/node` :
+ * nœuds `collectionNode` avec id API et `playIncluded !== false` (défaut : coché).
+ */
+export function collectGraphPlayIncludedCollectionIds(nodes: AppNode[]): number[] {
+  const out: number[] = [];
+  for (const n of nodes) {
+    if (n.type !== "collectionNode") continue;
+    const cid = n.data.collectionId;
+    if (typeof cid !== "number") continue;
+    if (n.data.playIncluded === false) continue;
+    out.push(cid);
+  }
+  return out;
+}

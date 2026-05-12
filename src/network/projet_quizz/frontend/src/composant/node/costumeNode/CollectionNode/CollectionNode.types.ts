@@ -21,6 +21,8 @@ export type CollectionNodeData = {
    */
   supercollections: CollectionItem[];
   creators: CreatorItem[];
+  /** Si `false`, les questions de cette collection sont exclues du paquet quand une partie est lancée depuis le graphe. */
+  playIncluded?: boolean;
   actions?: CollectionNodeActions;
   /** Nombre de questions dans la collection (API) — pour afficher « Suite logique ». */
   questionCount?: number;
@@ -50,6 +52,11 @@ export type CollectionNodeViewStates = {
       onDragOverCapture: (event: DragEvent) => void;
       onDrop: (event: DragEvent) => void;
     };
+  };
+  graphPlay: {
+    showToggle: boolean;
+    included: boolean;
+    onToggleIncluded: (e: Event) => void;
   };
   actions: {
     onPlay: () => void;

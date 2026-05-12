@@ -14,6 +14,7 @@ import { buildReflexionMixedPlaylist } from "../../../../../lib/playSessionRefle
 import {
   mapQuestionsQuizUiCategories,
   shuffleQuestionsAnswers,
+  filterQuestionsByPlayGraphIncludeIds,
 } from "../../QuizSessionView.metier";
 import type { UseQuizSessionSessionLoadOptions, UseQuizSessionSessionLoadResult } from "./useQuizSessionSessionLoad.types";
 
@@ -157,6 +158,16 @@ export function useQuizSessionSessionLoad({
           }
         }
 
+        questionsList = filterQuestionsByPlayGraphIncludeIds(
+          questionsList,
+          cid,
+          pf.graphIncludeIds,
+        );
+        if (questionsList.length === 0) {
+          setLoadError("empty");
+          return;
+        }
+
         trackersRef.current?.onDeckPrepared({
           infinite: pf.infinite,
           initialServedQuestionIds: pf.infinite ? questionsList.map((qi) => qi.id) : [],
@@ -181,6 +192,7 @@ export function useQuizSessionSessionLoad({
           playFamilyQuotaPercent: pf.familyQuotaPercent,
           playFamilyQuotaMax: pf.familyQuotaMax,
           playIncludePersonnaliteFiches: pf.includePersonnaliteFiches,
+          playGraphIncludeIds: pf.graphIncludeIds ?? null,
         });
       } catch (e) {
         if (!cancelled) {

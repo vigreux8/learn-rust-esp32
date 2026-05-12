@@ -30,7 +30,7 @@ const defaultPlayMode = (): PlayModeSettings => ({
  * État du mode de jeu sur `/node` et navigation vers une session `/play/:id` alignée sur `CollectionCard`.
  */
 export function useNodeViewPlayMode(opts: UseNodeViewPlayModeOptions): UseNodeViewPlayModeResult {
-  const { userId } = opts;
+  const { userId, getGraphPlayIncludedCollectionIds } = opts;
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [playMode, setPlayMode] = useState<PlayModeSettings>(defaultPlayMode);
   const [playQtype, setPlayQtype] = useState<PlayQtype>("melanger");
@@ -57,6 +57,13 @@ export function useNodeViewPlayMode(opts: UseNodeViewPlayModeOptions): UseNodeVi
 
   const navigateToPlayForCollection = useCallback(
     (collectionId: number) => {
+      const graphIds = getGraphPlayIncludedCollectionIds();
+      if (graphIds.length === 0) {
+        window.alert(
+          "Aucune collection du graphe n’est cochée pour le jeu. Coche au moins une carte (case à gauche du titre).",
+        );
+        return;
+      }
       const orders = buildPlayOrdersFromPicker(playMode);
       route(
         `/play/${collectionId}${buildPlaySessionQuery({
@@ -84,10 +91,11 @@ export function useNodeViewPlayMode(opts: UseNodeViewPlayModeOptions): UseNodeVi
               : undefined,
           includePersonnaliteFiches: playMode.includePersonnaliteFiches === true ? true : undefined,
           fromNode: true,
+          graphIncludeIds: graphIds,
         })}`,
       );
     },
-    [playInfinite, playMode, playQtype, userId],
+    [getGraphPlayIncludedCollectionIds, playInfinite, playMode, playQtype, userId],
   );
 
   return useMemo(
@@ -105,6 +113,7 @@ export function useNodeViewPlayMode(opts: UseNodeViewPlayModeOptions): UseNodeVi
     }),
     [
       navigateToPlayForCollection,
+      getGraphPlayIncludedCollectionIds,
       onPatchMode,
       panelExpanded,
       playInfinite,

@@ -22,6 +22,21 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     setIsExpanded((prev) => !prev);
   }, []);
 
+  const onTogglePlayIncluded = useCallback(
+    (e: Event) => {
+      e.stopPropagation();
+      if (typeof data.collectionId !== "number") return;
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id !== id || node.type !== "collectionNode") return node;
+          const cur = node.data.playIncluded !== false;
+          return { ...node, data: { ...node.data, playIncluded: !cur } };
+        }),
+      );
+    },
+    [data.collectionId, id, setNodes],
+  );
+
   const onPlay = useCallback(() => {
     const cid = typeof data.collectionId === "number" ? data.collectionId : null;
     if (cid != null && graphActions?.navigateToPlayForCollection != null) {
@@ -110,6 +125,9 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     [data.collectionId, graphActions, id, setNodes],
   );
 
+  const collectionApiId = typeof data.collectionId === "number" ? data.collectionId : null;
+  const playIncluded = data.playIncluded !== false;
+
   return {
     layout: { isExpanded, toggle },
     content: {
@@ -124,6 +142,11 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
         onDragOverCapture: onNodeDragOver,
         onDrop: onNodeDrop,
       },
+    },
+    graphPlay: {
+      showToggle: collectionApiId != null,
+      included: playIncluded,
+      onToggleIncluded: onTogglePlayIncluded,
     },
     actions: { onPlay },
   };

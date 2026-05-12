@@ -4,6 +4,8 @@ import type { PlayModeSettings } from "../../../../ui/atomes/PlayModePicker/Play
 
 export type UseNodeViewPlayModeOptions = {
   userId: number | null;
+  /** Collections cochées sur le graphe pour le paramètre `graphIncludeIds` au lancement `/play`. */
+  getGraphPlayIncludedCollectionIds: () => number[];
 };
 
 export type UseNodeViewPlayModeResult = {
