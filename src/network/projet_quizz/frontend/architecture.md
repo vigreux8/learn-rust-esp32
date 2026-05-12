@@ -2,16 +2,16 @@
 
 ## Technologies
 
-| Couche                  | Choix                                                |
-| ----------------------- | ---------------------------------------------------- |
-| Framework UI            | **Preact** 10 (API React-compatible, bundle léger)   |
-| Routage                 | **preact-router** 4                                  |
-| Build                   | **Vite** 8, preset **@preact/preset-vite**           |
-| Langage                 | **TypeScript** 5.9                                   |
-| Styles                  | **Tailwind CSS** 4 (plugin Vite `@tailwindcss/vite`) |
-| Composants UI           | **DaisyUI** 5 (thème, formulaires, cartes, onglets)  |
-| Icônes                  | **lucide-preact**                                    |
-| Classes conditionnelles | **clsx** + **tailwind-merge** (helper `lib/cn.ts`)   |
+| Couche                  | Choix                                                                        |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| Framework UI            | **Preact** 10 (API React-compatible, bundle léger)                           |
+| Routage                 | **preact-router** 4                                                          |
+| Build                   | **Vite** 8, preset **@preact/preset-vite**                                   |
+| Langage                 | **TypeScript** 5.9                                                           |
+| Styles                  | **Tailwind CSS** 4 (plugin Vite `@tailwindcss/vite`)                         |
+| Composants UI           | **DaisyUI** 5 (thème, formulaires, cartes, onglets)                          |
+| Icônes                  | **lucide-preact**                                                            |
+| Classes conditionnelles | **clsx** + **tailwind-merge** (helper `lib/cn.ts`)                           |
 | Graphes (vue `/node`)   | **@xyflow/react** (React Flow 12) ; styles globaux importés dans `index.css` |
 
 ## Bibliothèques clés
@@ -37,28 +37,42 @@ frontend/
 ├── doc/                         # notes produit / wireframes (hors runtime)
 │   ├── userstory.md
 │   └── wireframe.md
+├── architecture.md              # ce document (racine frontend `projet_quizz/frontend/`)
 └── src/
-    ├── main.tsx                 # montage Preact sur le DOM
-    ├── app.tsx                  # Router + garde d’auth appareil
-    ├── index.css                # styles globaux + couches Tailwind/DaisyUI
+    ├── main.tsx                   # montage Preact sur le DOM
+    ├── app.tsx                    # Router + garde d’auth appareil
+    ├── index.css                  # styles globaux + couches Tailwind/DaisyUI + XYFlow
     ├── vite-env.d.ts
-    ├── assets/                  # images / svg statiques
+    ├── assets/                    # images / svg statiques
     ├── types/
-    │   └── quizz.ts             # types TS alignés sur l’API quizz
-    ├── lib/                     # logique non-UI (API, session, import LLM, etc.)
+    │   └── quizz.ts               # types TS alignés sur l’API quizz
+    ├── lib/                       # logique non-UI (API, session, import LLM, DnD graphe…) — tableau détaillé § `lib/`
     └── composant/
-        ├── node/                  # XYFlow (hors `ui/`) — registry, types, nœuds / arêtes / handles
+        ├── node/                  # XYFlow (hors `ui/`) — registry, types, nœuds / arêtes / handles (`regle-implementation.md`)
         │   ├── regle-implementation.md
         │   ├── config/
-        │   │   ├── flow.registry.ts      # `flowNodeTypes`, `flowEdgeTypes`
-        │   │   └── flow.types.ts         # `AppNode`, `AppEdge`
+        │   │   ├── flow.registry.ts        # `flowNodeTypes`, `flowEdgeTypes`
+        │   │   └── flow.types.ts           # `AppNode`, `AppEdge`
         │   ├── costumeNode/
-        │   │   └── CollectionNode/       # nœud custom + `parts/` (CollectionPanel, CreatorPanel)
+        │   │   ├── CollectionNode/         # drop sidebar, lien parent→enfant, `parts/` CollectionPanel · CreatorPanel
+        │   │   ├── QuestionNode/           # nœud question (poignée drag vers collection)
+        │   │   └── PersonalityNode/
         │   ├── costumeEdge/
         │   └── costumeHandle/
-        ├── page/                  # écrans routés (`app.tsx`) : HomeView, CollectionsView, NodeView, etc.
-        └── ui/                    # périmètre UI : atomes, molécules, organismes (imports hors `ui/` : préfixe `composant/ui/...`)
-            ├── atomes/            # composants UI sans import d’un autre atome du projet (dossier par composant)
+        ├── page/                  # écrans routés (`app.tsx`) — conventions `.tsx` / `.hook.ts` / `parts/` / `hooks/`
+        │   ├── HomeView/                  # (+ `hooks/`)
+        │   ├── CollectionsView/           # (+ `hooks/`, `parts/`)
+        │   ├── QuestionsView/             # (+ `parts/`)
+        │   ├── SousCollectionsView/         # (+ `hooks/`, `parts/`)
+        │   ├── QuestionReflexionView/         # (+ `hooks/`, `parts/`)
+        │   ├── QuizSessionView/           # (+ `hooks/`, `parts/`)
+        │   ├── QuizResultsView/
+        │   ├── StatsDashboard/            # (+ `hooks/`, `parts/`)
+        │   ├── SessionDetailsView/
+        │   ├── DatabaseTransferView/      # (+ `hooks/`)
+        │   └── NodeView/                  # (+ `parts/` ex. GraphCreateNormaleCollectionModal) ; graphe + sidebar
+        └── ui/
+            ├── atomes/
             │   ├── AppFooter/
             │   ├── AppHeader/
             │   ├── Badge/
@@ -68,18 +82,26 @@ frontend/
             │   ├── PageMain/
             │   ├── PlayModePicker/
             │   └── QuestionsLlmImportOptionsPanel/
-            ├── molecules/         # blocs composés important au moins un atome local (dossier par composant) — liste exhaustive ci-dessous
+            ├── molecules/
             │   ├── ActionImportLlm/
-            │   ├── CollectionCard/               # `parts/SearchAssociateBlock/` + `CollectionCard.hook.ts`
+            │   ├── CollectionCard/              # `parts/SearchAssociateBlock/`
             │   ├── CollectionGroupEditModal/
-            │   ├── DeviceAuthGate/              # flux appareil : `DeviceAuthGate.hook.ts` + `parts/` (welcome, pseudot, erreur API, chargement)
+            │   ├── DeviceAuthGate/              # `DeviceAuthGate.hook.ts`, `parts/` (welcome, pseudot, erreur, chargement)
             │   ├── QuestionsLlmImportPanel/
             │   ├── QuestionsLlmImportPromptPanel/
-            │   ├── QuizzDndQuestionPanels/       # uniquement `QuizzDndQuestionPanels.styles.ts` (styles DnD partagés)
+            │   ├── QuizzDndQuestionPanels/      # styles DnD partagés uniquement (`*.styles.ts`)
             │   └── QuizzQuestionDndRow/
-            └── organismes/        # gros blocs hors route racine (modales, barres d’actions)
+            └── organismes/
+                ├── FlowSidebarOverlay/       # vue `/node` : rail latéral + panneaux (collections, sous-arbre, questions, persos, création)
+                │   └── parts/
+                │       ├── SidebarRail/
+                │       ├── CollectionFilterPanel/
+                │       ├── QuestionListPanel/
+                │       ├── PersonalityFilterPanel/
+                │       └── CreationShortcutsPanel/
                 ├── QuestionEditModal/
                 └── QuestionsActionBoutons/
+                    └── parts/                 # ex. `ActionExportCollectionJson/`
 ```
 
 ## Analogie avec `reglage_bouton/src`
@@ -90,7 +112,8 @@ Ici le pattern est le même, mais **découpé davantage** :
 
 - **`app.tsx`** : routage et enveloppe `DeviceAuthGate` + contexte de chemin.
 - **`lib/*`** : équivalent élargi du « store » et des utilitaires (session utilisateur/appareil, résultats de quiz, normalisation JSON d’import, etc.).
-- **`composant/node/*`** : briques **XYFlow** (registre, types de nœuds/arêtes) ; **`composant/page/NodeView/`** assemble le canvas plein écran sans importer `node` dans `ui/`.
+- **`composant/node/*`** : briques **XYFlow** (registre, types de nœuds/arêtes) ; **`composant/page/NodeView/`** assemble le canvas plein écran et **`composant/ui/organismes/FlowSidebarOverlay/`** (sans importer `node` depuis `ui/`).
+- **`lib/nodeViewGraphActionsContext.tsx`** : contexte Preact utilisé depuis les nœuds (ex. drop question → déplacement entre collections) tout en gardant les appels API dans la page **`NodeView`**.
 
 ## Rôle des dossiers et fichiers
 
@@ -133,46 +156,51 @@ Les morceaux **uniquement** utilisés par une page vivent sous `composant/page/<
 
 Écrans passés en `component={…}` sur une `Route` dans `app.tsx` : même conventions de fichiers que sous `ui/` (`.tsx`, `.types.ts`, `.hook.ts`, `parts/`, etc.). Importent `composant/ui/atomes|molecules|organismes` et `lib/`, **pas** l’inverse.
 
-| Dossier                   | Rôle                                                                                                                                                                                                                                                                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HomeView/`               | Accueil et navigation vers collections, jeu, stats.                                                                                                                                                                                                                                                                                   |
-| `CollectionsView/`        | Liste et gestion des collections (découpé en sections) ; sous-composants locaux dans `parts/`.                                                                                                                                                                                                                                       |
-| `QuestionsView/`          | Liste / édition des questions (filtrage par collection). Sous-composants locaux : `parts/QuestionsTable`, `parts/QuestionsCollectionContextBar`.                                                                                                                                                                                      |
-| `SousCollectionsView/`    | Sous-collections (schéma **v4**) : grille, modale, DnD (`dnd-kit`).                                                                                                                                                                                                                                                                    |
-| `QuizSessionView/`        | Déroulé d’une partie (questions, réponses, progression) ; `parts/` (réponse cliquable, barre de progression).                                                                                                                                                                                                                         |
-| `QuizResultsView/`        | Résumé à la fin d’un quiz.                                                                                                                                                                                                                                                                                                            |
-| `StatsDashboard/`         | Vue d’ensemble des statistiques / KPI.                                                                                                                                                                                                                                                                                                |
-| `SessionDetailsView/`     | Détail d’une session de jeu.                                                                                                                                                                                                                                                                                                          |
-| `DatabaseTransferView/`   | Écran d’import / export de données (admin côté UI).                                                                                                                                                                                                                                                                                   |
-| `QuestionReflexionView/`  | **Suite logique** (`/collections/:id/reflexion`) : chaîne ordonnée `question_reflexion`, DnD, import LLM, pastilles couleur (`COLLECTION_TREE_LEVEL_BORDER_HEX`, `groupe_questions.chain_color_levels`).                                                                                                                            |
-| `NodeView/`               | Route **`/node`** : canvas **XYFlow** plein écran (sous le header), `useNodesState` / `onConnect`, `nodeTypes` depuis `composant/node/config/flow.registry.ts`.                                                                                                                                                                        |
+| Dossier                  | Rôle                                                                                                                                                                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HomeView/`              | Accueil et navigation vers collections, jeu, stats.                                                                                                                                                                                                        |
+| `CollectionsView/`       | Liste et gestion des collections (découpé en sections) ; sous-composants locaux dans `parts/`.                                                                                                                                                             |
+| `QuestionsView/`         | Liste / édition des questions (filtrage par collection). Sous-composants locaux : `parts/QuestionsTable`, `parts/QuestionsCollectionContextBar`.                                                                                                           |
+| `SousCollectionsView/`   | Sous-collections (schéma **v4**) : grille, modale, DnD (`dnd-kit`).                                                                                                                                                                                        |
+| `QuizSessionView/`       | Déroulé d’une partie (questions, réponses, progression) ; `parts/` (réponse cliquable, barre de progression).                                                                                                                                              |
+| `QuizResultsView/`       | Résumé à la fin d’un quiz.                                                                                                                                                                                                                                 |
+| `StatsDashboard/`        | Vue d’ensemble des statistiques / KPI.                                                                                                                                                                                                                     |
+| `SessionDetailsView/`    | Détail d’une session de jeu.                                                                                                                                                                                                                               |
+| `DatabaseTransferView/`  | Écran d’import / export de données (admin côté UI).                                                                                                                                                                                                        |
+| `QuestionReflexionView/` | **Suite logique** (`/collections/:id/reflexion`) : chaîne ordonnée `question_reflexion`, DnD, import LLM, pastilles couleur (`COLLECTION_TREE_LEVEL_BORDER_HEX`, `groupe_questions.chain_color_levels`).                                                   |
+| `NodeView/`              | Route **`/node`** : canvas **XYFlow** + **`FlowSidebarOverlay`** (filtres collections, questions par branches présentes sur le graphe, DnD). État graphe dans `NodeView.hook.ts` ; `nodeTypes` / `edgeTypes` via `composant/node/config/flow.registry.ts`. |
 
 ### `composant/node/`
 
 Couche **graphe** : tout ce qui concerne `@xyflow/react` **sans** vivre dans `composant/ui/`. Règles détaillées : **`composant/node/regle-implementation.md`**.
 
-| Emplacement | Rôle |
-| ----------- | ---- |
-| `config/flow.registry.ts` | Objet **`flowNodeTypes`** (ex. `collectionNode` → `CollectionNode`) et **`flowEdgeTypes`** (arêtes customs ; vide tant qu’aucune clé). |
-| `config/flow.types.ts` | Alias **`AppNode`**, **`AppEdge`** alignés sur les données des nœuds enregistrés. |
-| `costumeNode/<Nom>/` | Composant de nœud custom (même discipline que le reste du frontend : `.tsx`, `.types.ts`, `.hook.ts`, `.styles.ts`, `.metier.ts`, `parts/` si besoin). |
-| `costumeNode/CollectionNode/` | Nœud démo : collections / créateurs, panneaux flottants, barres discrètes **target** (haut, deux demi-zones) et **source** (bas), style aligné sur `Card` / couleurs **flow** · **learn**. |
-| `costumeEdge/`, `costumeHandle/` | Réservés aux arêtes et handles réutilisables ; à remplir quand le graphe évolue. |
+| Emplacement                      | Rôle                                                                                                                                                   |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `config/flow.registry.ts`        | Objet **`flowNodeTypes`** (ex. `collectionNode` → `CollectionNode`) et **`flowEdgeTypes`** (arêtes customs ; vide tant qu’aucune clé).                 |
+| `config/flow.types.ts`           | Alias **`AppNode`**, **`AppEdge`** alignés sur les données des nœuds enregistrés.                                                                      |
+| `costumeNode/<Nom>/`             | Composant de nœud custom (même discipline que le reste du frontend : `.tsx`, `.types.ts`, `.hook.ts`, `.styles.ts`, `.metier.ts`, `parts/` si besoin). |
+| `costumeNode/CollectionNode/`    | Nœud collection : étiquettes / influenceurs (`parts/` CollectionPanel · CreatorPanel), lien parent ↔ enfant, drop sidebar (dont déplacement question). |
+| `costumeNode/QuestionNode/`      | Carte courte question ; poignée **drag** (même payload MIME que la sidebar) vers un **CollectionNode**.                                                |
+| `costumeNode/PersonalityNode/`   | Pastille influenceur pour le graphe `/node`.                                                                                                           |
+| `costumeEdge/`, `costumeHandle/` | Réservés aux arêtes et handles réutilisables (peu peuplés tant que pas d’arête custom persistée hors hiérarchie).                                      |
 
 ### `composant/ui/organismes/`
 
 Gros blocs **sans** route dédiée : modales et barres d’actions réutilisées par plusieurs pages.
 
-| Dossier                   | Rôle                                                                                                                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QuestionEditModal/`      | Modale d’édition ou de création d’une question (QCM).                                                                                                   |
-| `QuestionsActionBoutons/` | En-tête Questions : actions export / import LLM + panneau.                                                                                              |
+| Dossier                   | Rôle                                                                                                                                                                                                                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FlowSidebarOverlay/`     | Overlay `/node` : rail (`SidebarRail`) + panneaux **collections** (`CollectionFilterPanel`), **branche sous-arbre**, **Questions par collection** (`QuestionListPanel`), **personnalités** (`PersonalityFilterPanel`), **création** (`CreationShortcutsPanel`). `FlowSidebarOverlay.hook.ts`, `parts/`. |
+| `QuestionEditModal/`      | Modale d’édition ou de création d’une question (QCM).                                                                                                                                                                                                                                                   |
+| `QuestionsActionBoutons/` | En-tête Questions : import / export JSON, LLM (`parts/` ex. `ActionExportCollectionJson/`).                                                                                                                                                                                                             |
 
 ### `lib/`
 
 | Fichier                                                                      | Rôle                                                                                                                                                                 |
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `api.ts`                                                                     | Fonctions fetch vers le backend (collections, questions, stats, admin, devices).                                                                                     |
+| `api.ts`                                                                     | Fonctions fetch vers le backend (collections, questions, stats, admin, devices, déplacement question entre collections `/node`).                                     |
+| `reactFlowDnD.ts`                                                            | MIME `application/reactflow`, parsing charge utile HTML5 (**sidebar** ↔ **canvas** ↔ **drop sur nœud**).                                                             |
+| `nodeViewGraphActionsContext.tsx`                                            | Contexte **Preact** : callbacks exposés par **`NodeView`** pour les **`costumeNode/`** sans coupler `page` ↔ `node` en imports circulaires.                          |
 | `collectionHierarchyVis.ts`                                                  | Profondeur d’arbre collections, **palette hex** des bords de carte (`COLLECTION_TREE_LEVEL_BORDER_HEX`), réutilisée dans la vue réflexion pour taguer les vignettes. |
 | `reflexionChainColors.ts`                                                    | Identifiants DnD des cibles « déposer une couleur sur une vignette » (`reflexion-color-target-{questionId}`).                                                        |
 | `config.ts`                                                                  | URL d’API et constantes d’environnement côté client.                                                                                                                 |
@@ -341,6 +369,6 @@ export function UserProfile(props: UserProfileProps) {
 1. L’utilisateur ouvre l’app → **`DeviceAuthGate`** s’assure qu’un appareil connu existe (sinon flux d’enregistrement).
 2. **`HomeView`** ou les routes métier chargent les données via **`lib/api.ts`**.
 3. Un parcours **jouer** : `QuizSessionView` → enregistrement KPI côté API → `QuizResultsView` avec appui sur **`lastQuizResult`** si besoin hors-ligne d’affichage.
-4. Option **graphe** : route **`/node`** → **`NodeView`** + nœuds / edges définis via **`composant/node/config/`** et **`costumeNode/`** (données réelles ou mock selon évolution du produit).
+4. Option **graphe** : route **`/node`** → **`NodeView`** + **`FlowSidebarOverlay`** ; nœuds / arêtes via **`composant/node/config/`** et **`costumeNode/`** ; actions partagées (ex. déplacer une question vers une collection) via **`lib/nodeViewGraphActionsContext.tsx`** depuis les nœuds vers le hook **`NodeView`**.
 
 Pour la vue **matérielle / réseau globale** du dépôt, voir aussi [`architecture.md`](../../../architecture.md).

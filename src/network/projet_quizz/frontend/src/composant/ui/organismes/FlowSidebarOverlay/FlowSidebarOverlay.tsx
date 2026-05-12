@@ -13,7 +13,7 @@ import { SidebarRail } from "./parts/SidebarRail";
  */
 export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const { presentation, actions } = props;
-  const { rail, panneau, collections, collectionSubtree, questions, personalities, drag } =
+  const { shell, rail, panneau, collections, collectionSubtree, questions, personalities, drag } =
     useFlowSidebarOverlay(props);
   const panelOpen = panneau.activeTab !== null;
   const onShowCollectionSubtreeRow =
@@ -36,7 +36,7 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
               : "";
 
   return (
-    <div class={FLOW_SIDEBAR_OVERLAY_STYLES.overlayWrapper}>
+    <div ref={shell.overlayRef} class={FLOW_SIDEBAR_OVERLAY_STYLES.overlayWrapper}>
       <SidebarRail data={{ activeTab: rail.activeTab }} actions={{ toggleTab: rail.toggleTab }} />
 
       {panelOpen ? (

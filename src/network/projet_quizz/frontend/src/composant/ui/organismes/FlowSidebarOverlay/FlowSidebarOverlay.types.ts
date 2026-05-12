@@ -73,5 +73,11 @@ export type FlowSidebarOverlayProps = {
      * `null`/absent : tout replié jusqu’au clic. L’utilisateur peut toujours replier ou déplier d’autres blocs.
      */
     questionsDetailsExpandCollectionId?: number | null;
+    /**
+     * Si défini (ex. vue `/node`) : le panneau Questions ne liste que ces collections —
+     * celles représentées sur le graphe (ordre = hiérarchie API parmi ces ids).
+     * Tableau vide = aucune collection sur le graphe avec id API → liste vide.
+     */
+    questionsCanvasCollectionIds?: readonly number[];
   };
 };

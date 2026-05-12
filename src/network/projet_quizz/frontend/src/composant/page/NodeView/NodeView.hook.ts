@@ -449,10 +449,31 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     [apiCollections],
   );
 
+  /** Collections représentées sur le canvas (ids API uniquement — pas le gabarit démo). */
+  const questionsCanvasCollectionScope = useMemo(() => {
+    const idsOnCanvas = new Set<number>();
+    for (const n of nodes) {
+      if (n.type === "collectionNode") {
+        const cid = n.data.collectionId;
+        if (typeof cid === "number") idsOnCanvas.add(cid);
+      } else if (n.type === "questionNode") {
+        const cid = n.data.collectionId;
+        if (typeof cid === "number") idsOnCanvas.add(cid);
+      }
+    }
+    const orderedIds =
+      idsOnCanvas.size === 0
+        ? ([] as number[])
+        : sidebarBase.collections.map((r) => r.collectionId).filter((id) => idsOnCanvas.has(id));
+    return { idsOnCanvas, orderedIds };
+  }, [nodes, sidebarBase.collections]);
+
   const sidebarData = useMemo(() => {
     const merged = {
       ...sidebarBase,
-      questions: hierarchyQuestionRows,
+      questions: hierarchyQuestionRows.filter((row) =>
+        questionsCanvasCollectionScope.idsOnCanvas.has(row.collectionId),
+      ),
     };
     if (questionsScopeCollectionId == null) {
       return merged;
@@ -467,17 +488,25 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       personalities: merged.personalities,
       collectionHierarchy: merged.collectionHierarchy,
     };
-  }, [questionsScopeCollectionId, sidebarBase, hierarchyQuestionRows]);
+  }, [hierarchyQuestionRows, questionsCanvasCollectionScope, questionsScopeCollectionId, sidebarBase]);
 
   const questionsPanelHint = useMemo(() => {
-    const base =
-      "Toutes les questions des collections ; ordre des blocs = hiérarchie collections, couleurs = profondeur d’arbre. Blocs repliés par défaut. Glisse une question sur l’en-tête d’une autre collection ci-dessous, ou sur un nœud collection du graphe.";
-    if (questionsScopeCollectionId == null) return `${base} Sélectionne un nœud collection pour ouvrir sa branche.`;
+    const canvasIntro =
+      "Seules les collections présentes comme nœuds sur le graphe (collection ou question avec id API) : questions et blocs correspondent à cette vue. Ordre hiérarchique ; glisser-déposer pour changer de collection.";
+
+    if (questionsCanvasCollectionScope.orderedIds.length === 0) {
+      return `${canvasIntro} Aucune collection API sur le graphe : utilise « Filtrer collections » pour en déposer, ou recharge une branche.`;
+    }
+
+    if (questionsScopeCollectionId == null) {
+      return `${canvasIntro} Sélectionne un nœud collection pour ne voir que sa branche (sous-arbre parmi ces nœuds).`;
+    }
+
     const coll = apiCollections.find((c) => c.id === questionsScopeCollectionId);
     return coll != null
-      ? `${base} Branche « ${coll.nom} » : ce bloc est déplié, les collections enfants restent repliées jusqu’au clic.`
-      : `${base} Branche de la sélection : bloc racine déplié, enfants repliés par défaut.`;
-  }, [apiCollections, questionsScopeCollectionId]);
+      ? `${canvasIntro} Branche « ${coll.nom} » : bloc racine déplié par défaut, enfants repliés jusqu’au clic.`
+      : `${canvasIntro} Vue restreinte à la sous-branche de la sélection sur le graphe.`;
+  }, [apiCollections, questionsCanvasCollectionScope, questionsScopeCollectionId]);
 
   const graphTagPickerOptions = useMemo(
     () => apiCollections.map((c) => ({ id: c.id, nom: c.nom })),
@@ -543,6 +572,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       presentation: {
         questionsPanelHint,
         questionsDetailsExpandCollectionId: questionsScopeCollectionId,
+        questionsCanvasCollectionIds: questionsCanvasCollectionScope.orderedIds,
       },
     },
     graphActions,
