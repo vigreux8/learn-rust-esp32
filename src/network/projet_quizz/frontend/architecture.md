@@ -46,7 +46,28 @@ frontend/
     ├── assets/                    # images / svg statiques
     ├── types/
     │   └── quizz.ts               # types TS alignés sur l’API quizz
-    ├── lib/                       # logique non-UI (API, session, import LLM, DnD graphe…) — tableau détaillé § `lib/`
+    ├── lib/                       # logique non-UI — tableau détaillé § « lib/ »
+    │   ├── api.ts
+    │   ├── config.ts
+    │   ├── cn.ts
+    │   ├── routePathContext.tsx
+    │   ├── userSession.tsx
+    │   ├── lastQuizResult.ts
+    │   ├── playOrder.ts
+    │   ├── playSessionReflexionMix.ts
+    │   ├── nodeViewGraphSession.ts              # session `sessionStorage` graphe `/node` + bloc `playUi` (options jeu)
+    │   ├── useGraphSessionSyncedPlayOptions.ts  # hook : playMode / qtype / infini (et panneau si besoin) alignés sur `playUi`
+    │   ├── useClosePanelOnDocumentClickOutside.ts
+    │   ├── nodeViewGraphActionsContext.tsx
+    │   ├── reactFlowDnD.ts
+    │   ├── collectionHierarchyVis.ts
+    │   ├── reflexionChainColors.ts
+    │   ├── collectionAppJson.ts
+    │   ├── appCollectionImportNormalize.ts
+    │   ├── llmImportPrompts.ts
+    │   ├── llmImportNormalize.ts
+    │   ├── questionCreateLlmJson.ts
+    │   └── questionCategories.ts
     └── composant/
         ├── node/                  # XYFlow (hors `ui/`) — registry, types, nœuds / arêtes / handles (`regle-implementation.md`)
         │   ├── regle-implementation.md
@@ -60,8 +81,11 @@ frontend/
         │   ├── costumeEdge/
         │   └── costumeHandle/
         ├── page/                  # écrans routés (`app.tsx`) — conventions `.tsx` / `.hook.ts` / `parts/` / `hooks/`
-        │   ├── HomeView/                  # (+ `hooks/`)
-        │   ├── CollectionsView/           # (+ `hooks/`, `parts/`)
+        │   ├── HomeView/
+        │   │   └── hooks/useHomeDiscoveryPlayForm/
+        │   ├── CollectionsView/
+        │   │   ├── hooks/                 # useCollectionsBootstrap, useCollectionsListingUi, useCollectionsMutations, useCollectionsJsonImport
+        │   │   └── parts/                 # ex. PopUpInformation, CreatePersonnaliteModal
         │   ├── QuestionsView/             # (+ `parts/`)
         │   ├── SousCollectionsView/         # (+ `hooks/`, `parts/`)
         │   ├── QuestionReflexionView/         # (+ `hooks/`, `parts/`)
@@ -70,7 +94,12 @@ frontend/
         │   ├── StatsDashboard/            # (+ `hooks/`, `parts/`)
         │   ├── SessionDetailsView/
         │   ├── DatabaseTransferView/      # (+ `hooks/`)
-        │   └── NodeView/                  # (+ `parts/` ex. GraphCreateNormaleCollectionModal) ; graphe + sidebar
+        │   └── NodeView/                  # graphe XYFlow + sidebar ; session graphe + mode jeu
+        │       ├── hooks/useNodeViewPlayMode/
+        │       └── parts/
+        │           ├── NodeViewPlayModePanel/
+        │           ├── NodeViewLlmImportModal/
+        │           └── GraphCreateNormaleCollectionModal/
         └── ui/
             ├── atomes/
             │   ├── AppFooter/
@@ -111,7 +140,7 @@ Le frontend **réglage bouton** (`src/network/frontend/reglage_bouton/src/`) sui
 Ici le pattern est le même, mais **découpé davantage** :
 
 - **`app.tsx`** : routage et enveloppe `DeviceAuthGate` + contexte de chemin.
-- **`lib/*`** : équivalent élargi du « store » et des utilitaires (session utilisateur/appareil, résultats de quiz, normalisation JSON d’import, etc.).
+- **`lib/*`** : équivalent élargi du « store » et des utilitaires (session utilisateur/appareil, résultats de quiz, **session graphe `/node` + options jeu `playUi`**, normalisation JSON d’import, etc.).
 - **`composant/node/*`** : briques **XYFlow** (registre, types de nœuds/arêtes) ; **`composant/page/NodeView/`** assemble le canvas plein écran et **`composant/ui/organismes/FlowSidebarOverlay/`** (sans importer `node` depuis `ui/`).
 - **`lib/nodeViewGraphActionsContext.tsx`** : contexte Preact utilisé depuis les nœuds (ex. drop question → déplacement entre collections) tout en gardant les appels API dans la page **`NodeView`**.
 
@@ -131,7 +160,7 @@ Composants UI **sans import** d’un autre dossier `composant/ui/atomes/*` (feui
 | `Button/` / `Card/` / `Badge/`    | Briques de base (bouton, carte, pastille).                                                                                                              |
 | `AppHeader/` / `AppFooter/`       | En-tête et pied de page communs.                                                                                                                        |
 | `PageMain/`                       | Mise en page centrale des pages.                                                                                                                        |
-| `PlayModePicker/`                 | Choix du mode de lecture (filtres, tri, KPI, suites réflexion, inclusion des **collections enfant** `relation_collection` via query `includeChildren`). |
+| `PlayModePicker/`                 | Choix du mode de lecture (filtres, tri, KPI, suites réflexion, inclusion des **collections enfant** `relation_collection` via query `includeChildren`). État synchronisé côté pages via **`lib/useGraphSessionSyncedPlayOptions`** + **`nodeViewGraphSession`**. |
 | `MarkdownViewer/`                 | Rendu Markdown léger pour intitulés de questions, réponses, sessions (tables, quiz, modales).                                                           |
 | `QuestionsLlmImportOptionsPanel/` | Options de l’import LLM (sans atome projet dans ce dossier).                                                                                            |
 
@@ -158,8 +187,8 @@ Les morceaux **uniquement** utilisés par une page vivent sous `composant/page/<
 
 | Dossier                  | Rôle                                                                                                                                                                                                                                                       |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HomeView/`              | Accueil et navigation vers collections, jeu, stats.                                                                                                                                                                                                        |
-| `CollectionsView/`       | Liste et gestion des collections (découpé en sections) ; sous-composants locaux dans `parts/`.                                                                                                                                                             |
+| `HomeView/`              | Accueil et navigation ; formulaire « lancer une session » (`hooks/useHomeDiscoveryPlayForm/`) — options **`PlayModePicker`** alignées sur **`lib/useGraphSessionSyncedPlayOptions`** (même `playUi` que le graphe). |
+| `CollectionsView/`       | Liste et gestion des collections (`CollectionsView.sections.tsx`, `parts/`) ; listing UI (`hooks/useCollectionsListingUi/`) partage les mêmes options jeu via **`lib/useGraphSessionSyncedPlayOptions`**. |
 | `QuestionsView/`         | Liste / édition des questions (filtrage par collection). Sous-composants locaux : `parts/QuestionsTable`, `parts/QuestionsCollectionContextBar`.                                                                                                           |
 | `SousCollectionsView/`   | Sous-collections (schéma **v4**) : grille, modale, DnD (`dnd-kit`).                                                                                                                                                                                        |
 | `QuizSessionView/`       | Déroulé d’une partie (questions, réponses, progression) ; `parts/` (réponse cliquable, barre de progression).                                                                                                                                              |
@@ -168,7 +197,7 @@ Les morceaux **uniquement** utilisés par une page vivent sous `composant/page/<
 | `SessionDetailsView/`    | Détail d’une session de jeu.                                                                                                                                                                                                                               |
 | `DatabaseTransferView/`  | Écran d’import / export de données (admin côté UI).                                                                                                                                                                                                        |
 | `QuestionReflexionView/` | **Suite logique** (`/collections/:id/reflexion`) : chaîne ordonnée `question_reflexion`, DnD, import LLM, pastilles couleur (`COLLECTION_TREE_LEVEL_BORDER_HEX`, `groupe_questions.chain_color_levels`).                                                   |
-| `NodeView/`              | Route **`/node`** : canvas **XYFlow** + **`FlowSidebarOverlay`** (filtres collections, questions par branches présentes sur le graphe, DnD). État graphe dans `NodeView.hook.ts` ; `nodeTypes` / `edgeTypes` via `composant/node/config/flow.registry.ts`. |
+| `NodeView/`              | Route **`/node`** : canvas **XYFlow** + **`FlowSidebarOverlay`** ; état dans `NodeView.hook.ts` ; **`hooks/useNodeViewPlayMode/`** + **`parts/NodeViewPlayModePanel/`** ; persistance **`lib/nodeViewGraphSession.ts`** (`playUi` + nœuds / viewport). |
 
 ### `composant/node/`
 
@@ -199,6 +228,9 @@ Gros blocs **sans** route dédiée : modales et barres d’actions réutilisées
 | Fichier                                                                      | Rôle                                                                                                                                                                 |
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `api.ts`                                                                     | Fonctions fetch vers le backend (collections, questions, stats, admin, devices, déplacement question entre collections `/node`).                                     |
+| `nodeViewGraphSession.ts`                                                    | Lecture / écriture **`sessionStorage`** du graphe `/node` (nœuds, arêtes, viewport, périmètre questions) et bloc **`playUi`** (mode de jeu, type de questions, infini, panneau). |
+| `useGraphSessionSyncedPlayOptions.ts`                                        | Hook partagé : état **`playMode` / `playQtype` / `playInfinite`** (et panneau si `syncPanelExpanded`) persisté via `nodeViewGraphSession` — utilisé par accueil, collections, **`useNodeViewPlayMode`**. |
+| `useClosePanelOnDocumentClickOutside.ts`                                     | Fermeture au clic extérieur (sidebar `/node`, panneau mode jeu).                                                                                                      |
 | `reactFlowDnD.ts`                                                            | MIME `application/reactflow`, parsing charge utile HTML5 (**sidebar** ↔ **canvas** ↔ **drop sur nœud**).                                                             |
 | `nodeViewGraphActionsContext.tsx`                                            | Contexte **Preact** : callbacks exposés par **`NodeView`** pour les **`costumeNode/`** sans coupler `page` ↔ `node` en imports circulaires.                          |
 | `collectionHierarchyVis.ts`                                                  | Profondeur d’arbre collections, **palette hex** des bords de carte (`COLLECTION_TREE_LEVEL_BORDER_HEX`), réutilisée dans la vue réflexion pour taguer les vignettes. |
@@ -369,6 +401,7 @@ export function UserProfile(props: UserProfileProps) {
 1. L’utilisateur ouvre l’app → **`DeviceAuthGate`** s’assure qu’un appareil connu existe (sinon flux d’enregistrement).
 2. **`HomeView`** ou les routes métier chargent les données via **`lib/api.ts`**.
 3. Un parcours **jouer** : `QuizSessionView` → enregistrement KPI côté API → `QuizResultsView` avec appui sur **`lastQuizResult`** si besoin hors-ligne d’affichage.
-4. Option **graphe** : route **`/node`** → **`NodeView`** + **`FlowSidebarOverlay`** ; nœuds / arêtes via **`composant/node/config/`** et **`costumeNode/`** ; actions partagées (ex. déplacer une question vers une collection) via **`lib/nodeViewGraphActionsContext.tsx`** depuis les nœuds vers le hook **`NodeView`**.
+4. Option **graphe** : route **`/node`** → **`NodeView`** + **`FlowSidebarOverlay`** ; nœuds / arêtes via **`composant/node/config/`** et **`costumeNode/`** ; actions partagées (ex. déplacer une question vers une collection) via **`lib/nodeViewGraphActionsContext.tsx`** depuis les nœuds vers le hook **`NodeView`** ; état graphe + **`playUi`** dans **`lib/nodeViewGraphSession.ts`**.
+5. Options **mode de jeu** (filtres / tri, type de questions, infini) : **`lib/useGraphSessionSyncedPlayOptions`** les aligne entre **`HomeView`**, **`CollectionsView`** et le panneau **`NodeViewPlayModePanel`** (`/node`), via la même entrée **`sessionStorage`** que le graphe.
 
 Pour la vue **matérielle / réseau globale** du dépôt, voir aussi [`architecture.md`](../../../architecture.md).
