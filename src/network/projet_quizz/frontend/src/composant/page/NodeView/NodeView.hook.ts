@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import {
   addEdge,
+  applyEdgeChanges,
   useEdgesState,
   useNodesState,
   useReactFlow,
   type Connection,
+  type EdgeChange,
+  type IsValidConnection,
   type OnSelectionChangeFunc,
 } from "@xyflow/react";
-import { fetchCollections } from "../../../lib/api";
+import {
+  createEmptyCollection,
+  createPersonaliteCollection,
+  fetchCollections,
+  fetchPersonalitesPicker,
+  linkCollectionParentCollection,
+  unlinkCollectionParentCollection,
+} from "../../../lib/api";
 import { useUserSession } from "../../../lib/userSession";
 import { flowEdgeTypes, flowNodeTypes } from "../../node/config/flow.registry";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
@@ -16,7 +26,13 @@ import { readReactFlowDnDFromEvent } from "../../../lib/reactFlowDnD";
 import type { CollectionUi } from "../../../types/quizz";
 import {
   buildCollectionSubtreeGraphElements,
+  buildHierarchyQuestionSidebarRows,
   buildNodeViewSidebarData,
+  collectionParentChildEdgeId,
+  collectionUiToCollectionNodeData,
+  hydrateCollectionNodesTreeDepthFromCollections,
+  isHierarchyCollectionConnectionValid,
+  parseCollectionParentChildEdgeId,
   resolveQuestionsScopeCollectionIdFromSelection,
 } from "./NodeView.metier";
 import type { NodeViewProps } from "./NodeView.types";
@@ -27,10 +43,20 @@ import type { NodeViewProps } from "./NodeView.types";
 export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const onNodeCreate = page.actions?.onNodeCreate;
   const { userId } = useUserSession();
-  const { screenToFlowPosition, fitView } = useReactFlow<AppNode, AppEdge>();
+  const { screenToFlowPosition, fitView, getNode } = useReactFlow<AppNode, AppEdge>();
 
   const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
   const [questionsScopeCollectionId, setQuestionsScopeCollectionId] = useState<number | null>(null);
+
+  const [graphCreateNormaleOpen, setGraphCreateNormaleOpen] = useState(false);
+  const [graphCreatePersoOpen, setGraphCreatePersoOpen] = useState(false);
+  const [pendingGraphNodePosition, setPendingGraphNodePosition] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const [graphNormaleBusy, setGraphNormaleBusy] = useState(false);
+  const [graphPersoBusy, setGraphPersoBusy] = useState(false);
+  const [graphNormaleError, setGraphNormaleError] = useState<string | null>(null);
+  const [graphPersoError, setGraphPersoError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +73,11 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     };
   }, [userId]);
 
+  const collectionByIdForGraph = useMemo(
+    () => new Map(apiCollections.map((c) => [c.id, c])),
+    [apiCollections],
+  );
+
   const initialNodes = useMemo<AppNode[]>(
     () => [
       {
@@ -60,13 +91,85 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>([]);
+  const [edges, setEdges] = useEdgesState<AppEdge>([]);
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange<AppEdge>[]) => {
+      setEdges((eds) => {
+        const toUnlink: { childId: number; edge: AppEdge }[] = [];
+        for (const ch of changes) {
+          if (ch.type !== "remove") continue;
+          const edge = eds.find((e) => e.id === ch.id);
+          if (!edge) continue;
+          const parsed = parseCollectionParentChildEdgeId(edge.id);
+          if (parsed != null) {
+            toUnlink.push({ childId: parsed.childId, edge });
+          }
+        }
+        const next = applyEdgeChanges(changes, eds);
+        for (const item of toUnlink) {
+          queueMicrotask(() => {
+            void unlinkCollectionParentCollection(item.childId, userId)
+              .then(async () => {
+                const list = await fetchCollections();
+                setApiCollections(list);
+                setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list));
+              })
+              .catch((e: unknown) => {
+                window.alert(
+                  e instanceof Error ? e.message : "Impossible de retirer le lien parent / enfant.",
+                );
+                setEdges((cur) => (cur.some((eRow) => eRow.id === item.edge.id) ? cur : [...cur, item.edge]));
+              });
+          });
+        }
+        return next;
+      });
+    },
+    [setEdges, setNodes, userId],
+  );
+
+  const isValidConnection = useCallback<IsValidConnection<AppEdge>>(
+    (edgeOrConn) => isHierarchyCollectionConnectionValid(edgeOrConn, getNode),
+    [getNode],
+  );
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      setEdges((eds) => addEdge(connection, eds));
+      if (!isHierarchyCollectionConnectionValid(connection, getNode)) return;
+      const src = getNode(connection.source!);
+      const tgt = getNode(connection.target!);
+      if (src?.type !== "collectionNode" || tgt?.type !== "collectionNode") return;
+      const parentId = src.data.collectionId;
+      const childId = tgt.data.collectionId;
+      if (typeof parentId !== "number" || typeof childId !== "number") return;
+      const edgeId = collectionParentChildEdgeId(parentId, childId);
+      void (async () => {
+        try {
+          await linkCollectionParentCollection(childId, { userId, parentId });
+          const list = await fetchCollections();
+          setApiCollections(list);
+          setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list));
+          setEdges((eds) => {
+            if (eds.some((eRow) => eRow.id === edgeId)) return eds;
+            return addEdge(
+              {
+                ...connection,
+                id: edgeId,
+                source: connection.source!,
+                target: connection.target!,
+                sourceHandle: connection.sourceHandle ?? undefined,
+                targetHandle: connection.targetHandle ?? undefined,
+              },
+              eds,
+            );
+          });
+        } catch (e: unknown) {
+          window.alert(e instanceof Error ? e.message : "Lien parent → enfant refusé.");
+        }
+      })();
     },
-    [setEdges],
+    [getNode, setApiCollections, setEdges, setNodes, userId],
   );
 
   const onDragOver = useCallback((event: DragEvent) => {
@@ -76,15 +179,118 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     }
   }, []);
 
-  const onSelectionChange = useCallback<OnSelectionChangeFunc<AppNode, AppEdge>>(({ nodes }) => {
-    const flagged = nodes.filter((n) => n.selected);
-    const selected = flagged.length > 0 ? flagged : nodes;
+  const onSelectionChange = useCallback<OnSelectionChangeFunc<AppNode, AppEdge>>(({ nodes: selNodes }) => {
+    const flagged = selNodes.filter((n) => n.selected);
+    const selected = flagged.length > 0 ? flagged : selNodes;
     setQuestionsScopeCollectionId(resolveQuestionsScopeCollectionIdFromSelection(selected));
   }, []);
 
   const onPaneClick = useCallback(() => {
     setQuestionsScopeCollectionId(null);
   }, []);
+
+  const closeGraphNormaleModal = useCallback(() => {
+    if (graphNormaleBusy) return;
+    setGraphCreateNormaleOpen(false);
+    setPendingGraphNodePosition(null);
+    setGraphNormaleError(null);
+  }, [graphNormaleBusy]);
+
+  const closeGraphPersoModal = useCallback(() => {
+    if (graphPersoBusy) return;
+    setGraphCreatePersoOpen(false);
+    setPendingGraphNodePosition(null);
+    setGraphPersoError(null);
+  }, [graphPersoBusy]);
+
+  const submitGraphNormaleCollection = useCallback(
+    async (payload: { nom: string; tagCollectionId: number | "" }) => {
+      if (pendingGraphNodePosition == null) return;
+      const pos = pendingGraphNodePosition;
+      setGraphNormaleBusy(true);
+      setGraphNormaleError(null);
+      try {
+        const body: { userId: number; nom: string; tagCollectionId?: number } = {
+          userId,
+          nom: payload.nom,
+        };
+        if (payload.tagCollectionId !== "") body.tagCollectionId = Number(payload.tagCollectionId);
+        const ui = await createEmptyCollection(body);
+        const list = await fetchCollections();
+        setApiCollections(list);
+        const byId = new Map(list.map((c) => [c.id, c]));
+        const nodeId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `node_${Date.now()}`;
+        const newNode: AppNode = {
+          id: nodeId,
+          type: "collectionNode",
+          position: pos,
+          data: collectionUiToCollectionNodeData(ui, byId),
+        };
+        setNodes((nds) => nds.concat(newNode));
+        setGraphCreateNormaleOpen(false);
+        setPendingGraphNodePosition(null);
+        onNodeCreate?.("collectionNode", pos, newNode.data);
+      } catch (e: unknown) {
+        setGraphNormaleError(e instanceof Error ? e.message : "Création impossible.");
+      } finally {
+        setGraphNormaleBusy(false);
+      }
+    },
+    [onNodeCreate, pendingGraphNodePosition, setNodes, userId],
+  );
+
+  const submitGraphPersonnalite = useCallback(
+    async (payload: {
+      nom: string;
+      prenom: string;
+      naissance: number;
+      mort: number | null;
+      resumer: string;
+      tagCollectionId: number | "";
+    }) => {
+      if (pendingGraphNodePosition == null) return;
+      const pos = pendingGraphNodePosition;
+      setGraphPersoBusy(true);
+      setGraphPersoError(null);
+      try {
+        const ui = await createPersonaliteCollection({
+          userId,
+          nom: payload.nom,
+          prenom: payload.prenom,
+          naissance: payload.naissance,
+          mort: payload.mort,
+          resumer: payload.resumer,
+          ...(payload.tagCollectionId !== "" ? { tagCollectionId: Number(payload.tagCollectionId) } : {}),
+        });
+        const list = await fetchCollections();
+        setApiCollections(list);
+        void fetchPersonalitesPicker().catch(() => undefined);
+        const byId = new Map(list.map((c) => [c.id, c]));
+        const nodeId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `node_${Date.now()}`;
+        const newNode: AppNode = {
+          id: nodeId,
+          type: "collectionNode",
+          position: pos,
+          data: collectionUiToCollectionNodeData(ui, byId),
+        };
+        setNodes((nds) => nds.concat(newNode));
+        setGraphCreatePersoOpen(false);
+        setPendingGraphNodePosition(null);
+        onNodeCreate?.("collectionNode", pos, newNode.data);
+      } catch (e: unknown) {
+        setGraphPersoError(e instanceof Error ? e.message : "Création impossible.");
+      } finally {
+        setGraphPersoBusy(false);
+      }
+    },
+    [onNodeCreate, pendingGraphNodePosition, setNodes, userId],
+  );
 
   const onDrop = useCallback(
     (event: DragEvent) => {
@@ -114,60 +320,53 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         const cid = typeof patch.collectionId === "number" ? patch.collectionId : null;
         const coll = cid != null ? apiCollections.find((c) => c.id === cid) : undefined;
 
+        if (blankTemplate) {
+          setPendingGraphNodePosition(position);
+          setGraphNormaleError(null);
+          setGraphCreateNormaleOpen(true);
+          return;
+        }
+
         const newNode: AppNode =
           coll != null
             ? {
                 id,
                 type: "collectionNode",
                 position,
-                data: {
-                  label: coll.nom,
-                  collectionId: coll.id,
-                  supercollections: (coll.collection_tags ?? []).map((tag) => ({
-                    id: String(tag.id),
-                    label: tag.nom,
-                  })),
-                  creators: (coll.personnalites ?? []).map((p) => ({
-                    id: String(p.id),
-                    name: `${p.prenom} ${p.nom}`.trim(),
-                    importanceType: p.importance_type ?? null,
-                  })),
-                },
+                data: collectionUiToCollectionNodeData(coll, collectionByIdForGraph),
               }
-            : blankTemplate
-              ? {
-                  id,
-                  type: "collectionNode",
-                  position,
-                  data: {
-                    label: labelFallback,
-                    supercollections: [],
-                    creators: [],
-                  },
-                }
-              : {
-                  id,
-                  type: "collectionNode",
-                  position,
-                  data: {
-                    ...DEFAULT_COLLECTION_NODE_DATA,
-                    label: labelFallback,
-                  },
-                };
+            : {
+                id,
+                type: "collectionNode",
+                position,
+                data: {
+                  ...DEFAULT_COLLECTION_NODE_DATA,
+                  label: labelFallback,
+                },
+              };
         setNodes((nds) => nds.concat(newNode));
         onNodeCreate?.(parsed.type, position, newNode.data);
         return;
       }
 
       if (parsed.type === "questionNode") {
-        const patch = (parsed.data ?? {}) as { title?: unknown; collectionId?: unknown };
+        const patch = (parsed.data ?? {}) as {
+          title?: unknown;
+          collectionId?: unknown;
+          questionId?: unknown;
+        };
         const title = typeof patch.title === "string" ? patch.title : "Question";
         const collectionId = typeof patch.collectionId === "number" ? patch.collectionId : null;
+        const questionId = typeof patch.questionId === "number" ? patch.questionId : null;
         const newNode: AppNode = {
           id,
           type: "questionNode",
           position,
-          data: { title, collectionId },
+          data: {
+            title,
+            collectionId,
+            ...(questionId != null ? { questionId } : {}),
+          },
         };
         setNodes((nds) => nds.concat(newNode));
         onNodeCreate?.(parsed.type, position, newNode.data);
@@ -184,6 +383,12 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           blankTemplate?: unknown;
         };
         const blankTemplate = patch.blankTemplate === true;
+        if (blankTemplate) {
+          setPendingGraphNodePosition(position);
+          setGraphPersoError(null);
+          setGraphCreatePersoOpen(true);
+          return;
+        }
         const label = typeof patch.label === "string" ? patch.label : "Personnalité";
         const importanceType =
           patch.importanceType === null || patch.importanceType === undefined
@@ -191,14 +396,10 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
             : typeof patch.importanceType === "string"
               ? patch.importanceType
               : null;
-        const personaliteId =
-          blankTemplate || typeof patch.personaliteId !== "number" ? undefined : patch.personaliteId;
-        const collectionLabel =
-          blankTemplate || typeof patch.collectionLabel !== "string" ? undefined : patch.collectionLabel;
+        const personaliteId = typeof patch.personaliteId !== "number" ? undefined : patch.personaliteId;
+        const collectionLabel = typeof patch.collectionLabel !== "string" ? undefined : patch.collectionLabel;
         const ficheCollectionId =
-          blankTemplate || typeof patch.ficheCollectionId !== "number"
-            ? undefined
-            : patch.ficheCollectionId;
+          typeof patch.ficheCollectionId !== "number" ? undefined : patch.ficheCollectionId;
         const newNode: AppNode = {
           id,
           type: "personalityNode",
@@ -215,7 +416,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         onNodeCreate?.(parsed.type, position, newNode.data);
       }
     },
-    [apiCollections, onNodeCreate, screenToFlowPosition, setNodes],
+    [apiCollections, collectionByIdForGraph, onNodeCreate, screenToFlowPosition, setNodes],
   );
 
   const onShowCollectionSubtreeOnGraph = useCallback(
@@ -240,23 +441,41 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
 
   const sidebarBase = useMemo(() => buildNodeViewSidebarData(apiCollections), [apiCollections]);
 
+  const hierarchyQuestionRows = useMemo(
+    () => buildHierarchyQuestionSidebarRows(apiCollections),
+    [apiCollections],
+  );
+
   const sidebarData = useMemo(() => {
+    const merged = {
+      ...sidebarBase,
+      questions: hierarchyQuestionRows,
+    };
     if (questionsScopeCollectionId == null) {
-      return sidebarBase;
+      return merged;
     }
     return {
-      collections: sidebarBase.collections,
-      questions: sidebarBase.questions.filter((q) => q.collectionId === questionsScopeCollectionId),
-      personalities: sidebarBase.personalities,
-      collectionHierarchy: sidebarBase.collectionHierarchy,
+      collections: merged.collections,
+      questions: merged.questions.filter((q) => q.collectionId === questionsScopeCollectionId),
+      personalities: merged.personalities,
+      collectionHierarchy: merged.collectionHierarchy,
     };
-  }, [questionsScopeCollectionId, sidebarBase]);
+  }, [questionsScopeCollectionId, sidebarBase, hierarchyQuestionRows]);
 
   const questionsPanelHint = useMemo(() => {
-    if (questionsScopeCollectionId == null) return null;
+    const base =
+      "Toutes les questions des collections ; ordre des blocs = hiérarchie collections, couleurs = profondeur d’arbre.";
+    if (questionsScopeCollectionId == null) return base;
     const coll = apiCollections.find((c) => c.id === questionsScopeCollectionId);
-    return coll != null ? `Affichage limité à « ${coll.nom} »` : "Affichage limité à la sélection du graphe";
+    return coll != null
+      ? `${base} Affichage restreint à « ${coll.nom} » (sélection sur le graphe).`
+      : `${base} Affichage restreint à la sélection.`;
   }, [apiCollections, questionsScopeCollectionId]);
+
+  const graphTagPickerOptions = useMemo(
+    () => apiCollections.map((c) => ({ id: c.id, nom: c.nom })),
+    [apiCollections],
+  );
 
   return {
     flow: {
@@ -269,6 +488,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       onDragOver,
       onSelectionChange,
       onPaneClick,
+      isValidConnection,
       nodeTypes: flowNodeTypes,
       edgeTypes: flowEdgeTypes,
     },
@@ -280,6 +500,31 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       },
       presentation: {
         questionsPanelHint,
+      },
+    },
+    graphModals: {
+      normale: {
+        open: graphCreateNormaleOpen,
+        busy: graphNormaleBusy,
+        error: graphNormaleError,
+        tagOptions: graphTagPickerOptions,
+        onClose: closeGraphNormaleModal,
+        onSubmit: (p: { nom: string; tagCollectionId: number | "" }) => void submitGraphNormaleCollection(p),
+      },
+      personnalite: {
+        open: graphCreatePersoOpen,
+        busy: graphPersoBusy,
+        error: graphPersoError,
+        tagOptions: graphTagPickerOptions,
+        onClose: closeGraphPersoModal,
+        onSubmit: (payload: {
+          nom: string;
+          prenom: string;
+          naissance: number;
+          mort: number | null;
+          resumer: string;
+          tagCollectionId: number | "";
+        }) => void submitGraphPersonnalite(payload),
       },
     },
   };

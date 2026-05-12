@@ -18,8 +18,8 @@ export function PersonalityFilterPanel(props: PersonalityFilterPanelProps) {
   const { data, actions } = props;
 
   return (
-    <div class="flex min-h-0 flex-col gap-2">
-      <label class={FLOW_SIDEBAR_OVERLAY_STYLES.searchLabel}>
+    <div class="flex min-h-0 flex-1 flex-col gap-2">
+      <label class={`shrink-0 ${FLOW_SIDEBAR_OVERLAY_STYLES.searchLabel}`}>
         <Search size={14} aria-hidden />
         <input
           type="search"
@@ -30,7 +30,7 @@ export function PersonalityFilterPanel(props: PersonalityFilterPanelProps) {
         />
       </label>
 
-      <label class="flex flex-col gap-1">
+      <label class="flex shrink-0 flex-col gap-1">
         <span class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">
           Branche collection (cette collection + enfants)
         </span>
@@ -52,7 +52,7 @@ export function PersonalityFilterPanel(props: PersonalityFilterPanelProps) {
         </select>
       </label>
 
-      <div class="flex min-h-0 flex-col gap-2 overflow-y-auto">
+      <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain">
         {data.rows.length === 0 ? (
           <p class={PERSONALITY_FILTER_PANEL_STYLES.emptyState}>
             Aucune personnalité pour ce filtre. Associe des personnalités depuis l écran Collections.

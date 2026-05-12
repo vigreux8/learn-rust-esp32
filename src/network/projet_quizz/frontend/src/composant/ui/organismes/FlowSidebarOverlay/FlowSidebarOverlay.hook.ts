@@ -121,15 +121,19 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
           )
         : data.questions;
     const map = new Map<string, FlowSidebarOverlayProps["data"]["questions"]>();
+    const categoryOrder: string[] = [];
     for (const item of questions) {
       const key = item.category.trim().length > 0 ? item.category : "Sans catégorie";
-      const bucket = map.get(key) ?? [];
-      bucket.push(item);
-      map.set(key, bucket);
+      if (!map.has(key)) {
+        map.set(key, []);
+        categoryOrder.push(key);
+      }
+      map.get(key)!.push(item);
     }
-    const groups: QuestionGroup[] = Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b, "fr"))
-      .map(([category, items]) => ({ category, items }));
+    const groups: QuestionGroup[] = categoryOrder.map((category) => ({
+      category,
+      items: map.get(category)!,
+    }));
     return groups;
   }, [data.questions, questionSearch]);
 

@@ -4,6 +4,7 @@ import {
 } from "../../../lib/collectionHierarchyVis";
 import type { CollectionUi } from "../../../types/quizz";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
+import type { CollectionNodeData } from "../../node/costumeNode/CollectionNode/CollectionNode.types";
 import {
   collectionNodeGraphHorizontalStepPx,
   collectionNodeGraphVerticalStepPx,
@@ -90,6 +91,115 @@ export function resolveQuestionsScopeCollectionIdFromSelection(selectedNodes: Ap
     return typeof cid === "number" ? cid : null;
   }
   return null;
+}
+
+/**
+ * Lignes panneau Questions : toutes les questions des collections, ordre des blocs = hiérarchie
+ * (`orderCollectionsHierarchy`, comme le filtre collections), couleurs via `treeDepth`.
+ */
+export function buildHierarchyQuestionSidebarRows(collections: CollectionUi[]): FlowSidebarQuestionRow[] {
+  if (collections.length === 0) return [];
+  const byId = new Map(collections.map((c) => [c.id, c]));
+  const orderedCols = orderCollectionsHierarchy(collections);
+  const rows: FlowSidebarQuestionRow[] = [];
+
+  for (const coll of orderedCols) {
+    const treeDepth = computeTreeDepth(coll, byId);
+    const collQuestions = [...coll.questions].sort((a, b) => a.id - b.id);
+    for (const q of collQuestions) {
+      rows.push({
+        id: String(q.id),
+        title: q.question,
+        category: coll.nom,
+        collectionId: coll.id,
+        treeDepth,
+      });
+    }
+  }
+
+  return rows;
+}
+
+/** Arête parent → enfant (aligné sur le layout branche : `ce-{parent}-{child}`). */
+export function collectionParentChildEdgeId(parentCollectionId: number, childCollectionId: number): string {
+  return `ce-${parentCollectionId}-${childCollectionId}`;
+}
+
+export function parseCollectionParentChildEdgeId(
+  edgeId: string,
+): { parentId: number; childId: number } | null {
+  const m = /^ce-(\d+)-(\d+)$/.exec(edgeId);
+  if (!m) return null;
+  return { parentId: Number(m[1]), childId: Number(m[2]) };
+}
+
+export function collectionUiToCollectionNodeData(
+  coll: CollectionUi,
+  byId: Map<number, CollectionUi>,
+): CollectionNodeData {
+  return {
+    label: coll.nom,
+    collectionId: coll.id,
+    treeDepth: computeTreeDepth(coll, byId),
+    supercollections: (coll.collection_tags ?? []).map((tag) => ({
+      id: String(tag.id),
+      label: tag.nom,
+    })),
+    creators: (coll.personnalites ?? []).map((p) => ({
+      id: String(p.id),
+      name: `${p.prenom} ${p.nom}`.trim(),
+      importanceType: p.importance_type ?? null,
+    })),
+  };
+}
+
+export function hydrateCollectionNodesTreeDepthFromCollections(
+  nodes: AppNode[],
+  collections: CollectionUi[],
+): AppNode[] {
+  const byId = new Map(collections.map((c) => [c.id, c]));
+  return nodes.map((n) => {
+    if (n.type !== "collectionNode") return n;
+    const cid = n.data.collectionId;
+    if (typeof cid !== "number") return n;
+    const coll = byId.get(cid);
+    if (!coll) return n;
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        ...collectionUiToCollectionNodeData(coll, byId),
+      },
+    };
+  });
+}
+
+/** Forme minimale compatible `Connection | Edge` pour `isValidConnection` XYFlow. */
+export type HierarchyConnectionLike = {
+  source: string | null;
+  target: string | null;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+};
+
+/**
+ * Connexion valide : sortie **bas** du parent (`output`) → entrée **haut** enfant (`h-left`|`h-right`).
+ * Les deux nœuds ont un `collectionId` API.
+ */
+export function isHierarchyCollectionConnectionValid(
+  conn: HierarchyConnectionLike,
+  getNode: (id: string) => AppNode | undefined,
+): boolean {
+  if (conn.source == null || conn.target == null) return false;
+  if (conn.sourceHandle !== "output") return false;
+  if (conn.targetHandle !== "h-left" && conn.targetHandle !== "h-right") return false;
+  const src = getNode(conn.source);
+  const tgt = getNode(conn.target);
+  if (src?.type !== "collectionNode" || tgt?.type !== "collectionNode") return false;
+  const sid = src.data.collectionId;
+  const tid = tgt.data.collectionId;
+  if (typeof sid !== "number" || typeof tid !== "number" || sid === tid) return false;
+  return true;
 }
 
 /** Identifiant nœud React Flow stable pour une branche catalogue (distinct du drop aléatoire). */
@@ -247,7 +357,7 @@ export function buildCollectionSubtreeGraphElements(
     const pid = c.parent_collection_id ?? null;
     if (pid == null || !graphIds.has(pid)) continue;
     edges.push({
-      id: `ce-${pid}-${c.id}`,
+      id: collectionParentChildEdgeId(pid, c.id),
       source: treeCollectionReactFlowNodeId(pid),
       target: treeCollectionReactFlowNodeId(c.id),
       sourceHandle: "output",

@@ -15,8 +15,8 @@ export function CollectionFilterPanel(props: CollectionFilterPanelProps) {
   const { data, actions } = props;
 
   return (
-    <div class="flex min-h-0 flex-col gap-2">
-      <label class={FLOW_SIDEBAR_OVERLAY_STYLES.searchLabel}>
+    <div class="flex min-h-0 flex-1 flex-col gap-2">
+      <label class={`shrink-0 ${FLOW_SIDEBAR_OVERLAY_STYLES.searchLabel}`}>
         <Search size={14} aria-hidden />
         <input
           type="search"
@@ -27,7 +27,7 @@ export function CollectionFilterPanel(props: CollectionFilterPanelProps) {
         />
       </label>
 
-      <div class={FLOW_SIDEBAR_OVERLAY_STYLES.levelRow} role="group" aria-label="Filtrer par profondeur (couleur carte)">
+      <div class={`shrink-0 ${FLOW_SIDEBAR_OVERLAY_STYLES.levelRow}`} role="group" aria-label="Filtrer par profondeur (couleur carte)">
         {FLOW_COLLECTION_PALETTE_BUCKET_INDICES.map((bucket) => {
           const hex = COLLECTION_TREE_LEVEL_BORDER_HEX[bucket];
           return (
@@ -50,7 +50,7 @@ export function CollectionFilterPanel(props: CollectionFilterPanelProps) {
         })}
       </div>
 
-      <div class="flex min-h-0 flex-col gap-2 overflow-y-auto">
+      <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain">
         {data.rows.length === 0 ? (
           <p class={COLLECTION_FILTER_PANEL_STYLES.emptyState}>
             Aucune collection à afficher (chargement ou liste vide). Les données viennent de l’API comme sur la page

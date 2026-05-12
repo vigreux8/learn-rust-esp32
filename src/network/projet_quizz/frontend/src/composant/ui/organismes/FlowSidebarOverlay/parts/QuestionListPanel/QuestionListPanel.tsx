@@ -1,4 +1,5 @@
-import { GripVertical, Search } from "lucide-preact";
+import { ChevronDown, GripVertical, Search } from "lucide-preact";
+import { collectionTreeBorderHexForDepth } from "../../../../../../lib/collectionHierarchyVis";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import type { QuestionListPanelProps } from "./QuestionListPanel.types";
 
@@ -9,8 +10,8 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
   const { data, actions } = props;
 
   return (
-    <div class="flex min-h-0 flex-col gap-2">
-      <label class={FLOW_SIDEBAR_OVERLAY_STYLES.searchLabel}>
+    <div class="flex min-h-0 flex-1 flex-col gap-2">
+      <label class={`shrink-0 ${FLOW_SIDEBAR_OVERLAY_STYLES.searchLabel}`}>
         <Search size={14} aria-hidden />
         <input
           type="search"
@@ -21,38 +22,64 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
         />
       </label>
 
-      <div class="flex min-h-0 flex-col gap-2 overflow-y-auto">
+      <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain">
         {data.groups.length === 0 ? (
           <p class="rounded-lg border border-base-content/10 bg-base-200/40 px-3 py-6 text-center text-xs text-base-content/60">
-            Aucune question pour ce filtre. Clique sur le fond du graphe (hors nœud) ou désélectionne pour tout
-            afficher.
+            Aucune question correspondante à ta recherche ; essaie un autre mot-clé ou vérifie les filtres de la
+            sélection sur le graphe.
           </p>
         ) : null}
-        {data.groups.map((group) => (
-          <div key={group.category} class={FLOW_SIDEBAR_OVERLAY_STYLES.collapse}>
-            <input type="checkbox" defaultChecked aria-label={`Déplier ${group.category}`} />
-            <div class={FLOW_SIDEBAR_OVERLAY_STYLES.collapseTitle}>{group.category}</div>
-            <div class={FLOW_SIDEBAR_OVERLAY_STYLES.collapseContent}>
-              {group.items.map((item) => (
-                <div
-                  key={item.id}
-                  class={FLOW_SIDEBAR_OVERLAY_STYLES.dragItem}
-                  draggable
-                  onDragStart={(event) =>
-                    actions.onDragStart(event as unknown as DragEvent, "questionNode", {
-                      title: item.title,
-                      questionId: Number(item.id),
-                      collectionId: item.collectionId,
-                    })
-                  }
+        {data.groups.map((group) => {
+          const depth = group.items[0]?.treeDepth;
+          const accentHex = depth != null ? collectionTreeBorderHexForDepth(depth) : null;
+          const sectionKey = String(group.items[0]?.collectionId ?? group.category);
+          return (
+            <details
+              key={sectionKey}
+              class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCollectionDetails}
+              ref={(el: HTMLDetailsElement | null) => {
+                if (el == null) return;
+                /** Ouvre par défaut une seule fois par nœud (évite `open` en JSX qui bloque le repli en Preact). */
+                if (el.dataset.projetQuizzDefaultOpened === '1') return;
+                el.open = true;
+                el.dataset.projetQuizzDefaultOpened = '1';
+              }}
+            >
+              <summary class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCollectionSummary}>
+                <ChevronDown
+                  size={16}
+                  class="shrink-0 opacity-60 transition-transform duration-200 group-open:rotate-180"
+                  aria-hidden
+                />
+                <span
+                  class="min-w-0 flex-1 text-primary"
+                  style={accentHex ? { color: accentHex } : undefined}
                 >
-                  <GripVertical size={16} class={FLOW_SIDEBAR_OVERLAY_STYLES.grip} aria-hidden />
-                  <span class={FLOW_SIDEBAR_OVERLAY_STYLES.questionTitle}>{item.title}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+                  {group.category}
+                </span>
+              </summary>
+              <div class={FLOW_SIDEBAR_OVERLAY_STYLES.questionListScrollInner}>
+                {group.items.map((item) => (
+                  <div
+                    key={item.id}
+                    class={FLOW_SIDEBAR_OVERLAY_STYLES.dragItem}
+                    draggable
+                    onDragStart={(event) =>
+                      actions.onDragStart(event as unknown as DragEvent, "questionNode", {
+                        title: item.title,
+                        questionId: Number(item.id),
+                        collectionId: item.collectionId,
+                      })
+                    }
+                  >
+                    <GripVertical size={16} class={FLOW_SIDEBAR_OVERLAY_STYLES.grip} aria-hidden />
+                    <span class={FLOW_SIDEBAR_OVERLAY_STYLES.questionTitle}>{item.title}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          );
+        })}
       </div>
     </div>
   );

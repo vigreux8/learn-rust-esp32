@@ -505,6 +505,26 @@ export async function createEmptyCollection(body: {
   return res.json() as Promise<CollectionUi>;
 }
 
+export async function linkCollectionParentCollection(
+  childId: number,
+  body: { userId: number; parentId: number },
+): Promise<void> {
+  const res = await fetch(apiUrl(`/quizz/collections/${childId}/parent-collection`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+}
+
+export async function unlinkCollectionParentCollection(childId: number, userId: number): Promise<void> {
+  const q = new URLSearchParams({ userId: String(userId) });
+  const res = await fetch(apiUrl(`/quizz/collections/${childId}/parent-collection?${q.toString()}`), {
+    method: "DELETE",
+  });
+  await assertResponseOk(res);
+}
+
 export async function importQuestionsJson(
   body: LlmImportPayload,
   options?: {

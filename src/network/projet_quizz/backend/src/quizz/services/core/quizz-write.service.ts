@@ -526,6 +526,111 @@ export class QuizzWriteService {
     return rel?.p_collection ?? null;
   }
 
+  /** Collections atteignables en descendant uniquement depuis `rootParentId`. */
+  private async collectDescendantCollectionIdsBelow(rootParentId: number): Promise<Set<number>> {
+    const out = new Set<number>();
+    let frontier = [rootParentId];
+    while (frontier.length > 0) {
+      const rows = await this.prisma.prisma.relation_collection.findMany({
+        where: { p_collection: { in: frontier } },
+        select: { e_collection: true },
+      });
+      frontier = [];
+      for (const r of rows) {
+        if (!out.has(r.e_collection)) {
+          out.add(r.e_collection);
+          frontier.push(r.e_collection);
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Associe deux collections déjà créées comme parent → enfant (une seule parenté par enfant).
+   */
+  async linkExistingCollectionParent(
+    childId: number,
+    parentId: number,
+    userId: number,
+  ): Promise<void> {
+    if (childId === parentId) {
+      throw new BadRequestException('Une collection ne peut être parente d’elle-même.');
+    }
+    const existingParent = await this.findParentIdForChildCollection(childId);
+    if (existingParent != null) {
+      throw new BadRequestException(
+        `La collection enfant ${childId} est déjà rattachée à un parent (${existingParent}). Retirez ce lien depuis l’outil adapté avant d’en poser un autre.`,
+      );
+    }
+    const [child, parent] = await Promise.all([
+      this.prisma.prisma.quizz_collection.findUnique({ where: { id: childId } }),
+      this.prisma.prisma.quizz_collection.findUnique({ where: { id: parentId } }),
+    ]);
+    if (!child) {
+      throw new NotFoundException(`Collection enfant ${childId} introuvable`);
+    }
+    if (!parent) {
+      throw new NotFoundException(`Collection parent ${parentId} introuvable`);
+    }
+    if (child.user_id !== userId || parent.user_id !== userId) {
+      throw new ForbiddenException(
+        `Les collections ${parentId} et ${childId} doivent appartenir à l’utilisateur ${userId}.`,
+      );
+    }
+    const belowChild = await this.collectDescendantCollectionIdsBelow(childId);
+    if (belowChild.has(parentId)) {
+      throw new BadRequestException(
+        `Lien refusé : la collection parent ${parentId} est descendante de ${childId} dans l’arbre ; cela créerait un cycle.`,
+      );
+    }
+    const t = nowIso();
+    await this.prisma.prisma.$transaction(async (tx) => {
+      await tx.relation_collection.create({
+        data: { p_collection: parentId, e_collection: childId },
+      });
+      await tx.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      });
+      await tx.quizz_collection.update({
+        where: { id: childId },
+        data: { update_at: t },
+      });
+    });
+  }
+
+  /** Supprime la ligne parent → enfant sans supprimer les collections sous-jacentes. */
+  async unlinkCollectionParentRelation(childId: number, userId: number): Promise<void> {
+    const parentId = await this.findParentIdForChildCollection(childId);
+    if (parentId == null) {
+      throw new BadRequestException(`La collection ${childId} n’a pas de parent à retirer.`);
+    }
+    const child = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: childId },
+    });
+    if (!child) {
+      throw new NotFoundException(`Collection ${childId} introuvable`);
+    }
+    if (child.user_id !== userId) {
+      throw new ForbiddenException(`La collection ${childId} n’est pas la vôtre.`);
+    }
+    const t = nowIso();
+    await this.prisma.prisma.$transaction(async (tx) => {
+      await tx.relation_collection.deleteMany({
+        where: { e_collection: childId, p_collection: parentId },
+      });
+      await tx.quizz_collection.update({
+        where: { id: parentId },
+        data: { update_at: t },
+      });
+      await tx.quizz_collection.update({
+        where: { id: childId },
+        data: { update_at: t },
+      });
+    });
+  }
+
   /**
    * Crée une `quizz_collection` enfant et une ligne `relation-collection` vers le parent.
    */

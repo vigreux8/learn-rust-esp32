@@ -73,6 +73,14 @@ export class QuizzService {
     return this.write.deleteChildSousCollection(childId, userId);
   }
 
+  linkExistingCollectionParent(childId: number, parentId: number, userId: number): Promise<void> {
+    return this.write.linkExistingCollectionParent(childId, parentId, userId);
+  }
+
+  unlinkCollectionParentRelation(childId: number, userId: number): Promise<void> {
+    return this.write.unlinkCollectionParentRelation(childId, userId);
+  }
+
   attachQuestionToChildCollection(
     childId: number,
     body: { user_id: number; question_id: number },

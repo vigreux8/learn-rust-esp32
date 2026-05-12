@@ -182,6 +182,17 @@ export class CreateStandaloneCollectionDto {
   tagCollectionId?: number;
 }
 
+/** Lier une collection existante comme enfant d’un parent (`relation-collection`). */
+export class LinkCollectionParentBodyDto {
+  @IsInt()
+  @Min(1)
+  userId!: number;
+
+  @IsInt()
+  @Min(1)
+  parentId!: number;
+}
+
 /** Création d’une collection enfant (v4 : `quizz_collection` + `relation-collection`). */
 export class CreateSousCollectionBodyDto {
   @IsInt()

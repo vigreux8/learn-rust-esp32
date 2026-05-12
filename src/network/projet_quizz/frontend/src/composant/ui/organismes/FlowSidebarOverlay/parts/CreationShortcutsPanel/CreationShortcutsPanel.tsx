@@ -13,10 +13,11 @@ export function CreationShortcutsPanel(props: CreationShortcutsPanelProps) {
   const { actions } = props;
 
   return (
-    <div class="flex min-h-0 flex-col gap-3">
+    <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
       <p class="text-[11px] leading-snug text-base-content/65">
-        Glisse-dépose sur le graphe pour ajouter un nœud modèle (sans lien API tant que tu ne relies pas une vraie
-        collection ou personnalité).
+        Glisse-dépose une collection ou personnalité « vierge » : une fenêtre permet de créer la fiche comme sur la
+        page Collections, puis le nœud est posé avec les données API. Relie le bas vers le haut entre collections pour
+        poser une relation parent → enfant.
       </p>
       <div class="flex flex-col gap-2">
         <div

@@ -25,6 +25,7 @@ import {
   CreateQuestionDto,
   CreateSousCollectionBodyDto,
   CreateStandaloneCollectionDto,
+  LinkCollectionParentBodyDto,
   PatchGroupeQuestionsBodyDto,
   PatchSousCollectionBodyDto,
   PatchReflexionChainDto,
@@ -238,6 +239,24 @@ export class QuizzController {
       nom: body.nom,
       tagCollectionId: body.tagCollectionId,
     });
+  }
+
+  @Post('collections/:childId/parent-collection')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  linkCollectionParent(
+    @Param('childId', ParseIntPipe) childId: number,
+    @Body() body: LinkCollectionParentBodyDto,
+  ) {
+    return this.quizz.linkExistingCollectionParent(childId, body.parentId, body.userId);
+  }
+
+  @Delete('collections/:childId/parent-collection')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  unlinkCollectionParent(
+    @Param('childId', ParseIntPipe) childId: number,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.quizz.unlinkCollectionParentRelation(childId, userId);
   }
 
   @Get('collections/:id')

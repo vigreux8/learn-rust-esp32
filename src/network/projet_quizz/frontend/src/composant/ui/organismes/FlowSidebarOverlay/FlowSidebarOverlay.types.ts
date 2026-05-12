@@ -34,6 +34,8 @@ export type FlowSidebarQuestionRow = {
   category: string;
   /** Identifiant API de la collection parente de la question. */
   collectionId: number;
+  /** Profondeur d’arbre de la collection (`computeTreeDepth`) ; couleur comme les filtres collections. */
+  treeDepth?: number;
 };
 
 /** Hiérarchie plate pour filtre personnalités (parent → enfants). */
