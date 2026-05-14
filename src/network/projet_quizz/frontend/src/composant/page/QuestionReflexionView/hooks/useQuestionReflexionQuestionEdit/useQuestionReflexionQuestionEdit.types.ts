@@ -3,6 +3,7 @@ import type { CollectionUi, QuizzQuestionRow, RefCategorieHierarchyRow, RefCateg
 import type { ReflexionLocalPoolDraft } from "../../QuestionReflexionView.types";
 
 export type UseQuestionReflexionQuestionEditProps = {
+  identity: { userId: number };
   routing: { collectionIdNum: number | null };
   data: {
     collection: CollectionUi | null;

@@ -1,15 +1,24 @@
 import { useCallback, useState } from "preact/hooks";
-import { fetchCollection, fetchQuestionDetail, patchQuestion } from "../../../../../lib/api";
+import {
+  fetchCollection,
+  fetchQuestionDetail,
+  fetchSousCollections,
+  patchQuestion,
+  postAttachQuestionToSousCollection,
+  postCreateQuestion,
+} from "../../../../../lib/api";
 import type { QuizzQuestionDetail, QuizzQuestionRow } from "../../../../../types/quizz";
 import { buildCategorieFieldsForQuestionPatch } from "../../../../ui/organismes/QuestionEditModal/QuestionEditModal.metier";
+import type { QuestionCreateSavePayload } from "../../../../ui/organismes/QuestionEditModal/QuestionEditModal.types";
 import type { ReflexionLocalPoolDraft } from "../../QuestionReflexionView.types";
 import type { UseQuestionReflexionQuestionEditProps } from "./useQuestionReflexionQuestionEdit.types";
 
 /**
- * Modale d’édition d’une question dans le contexte réflexion : chargement détail API, brouillons locaux
- * (ids négatifs), champs et réponses éditables, sauvegarde et synchro avec les listes ordonnée / pool.
+ * Modale question dans le contexte « suite logique » : création (même flux que QuestionsView),
+ * édition avec chargement API ou brouillon local (ids négatifs), sauvegarde et synchro pool / chaîne.
  */
 export function useQuestionReflexionQuestionEdit({
+  identity,
   routing,
   data,
   refs,
@@ -19,6 +28,7 @@ export function useQuestionReflexionQuestionEdit({
   categoryTypeForId,
   status,
 }: UseQuestionReflexionQuestionEditProps) {
+  const { userId } = identity;
   const { collectionIdNum } = routing;
   const { setCollection } = data;
   const { localPoolDraftsRef, chainDirtyRef, selectedGroupeIdRef } = refs;
@@ -26,6 +36,11 @@ export function useQuestionReflexionQuestionEdit({
   const { setOperationError } = status;
 
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [questionModalVariant, setQuestionModalVariant] = useState<"edit" | "create">("edit");
+  const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<{ id: number; nom: string }[]>(
+    [],
+  );
+  const [draftSousCollectionId, setDraftSousCollectionId] = useState<number | null>(null);
   const [editModalLoading, setEditModalLoading] = useState(false);
   const [editModalError, setEditModalError] = useState<string | null>(null);
   const [editDetail, setEditDetail] = useState<QuizzQuestionDetail | null>(null);
@@ -37,13 +52,42 @@ export function useQuestionReflexionQuestionEdit({
 
   const closeQuestionModal = useCallback(() => {
     setQuestionModalOpen(false);
+    setQuestionModalVariant("edit");
     setEditModalLoading(false);
     setEditModalError(null);
     setEditDetail(null);
     setEditDraftCategorieEnfantId(null);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
   }, []);
 
+  const openCreateQuestionModal = useCallback(() => {
+    const firstCat = refCategories[0]?.id ?? null;
+    if (firstCat == null) {
+      setOperationError("Catégories indisponibles. Le formulaire de création ne peut pas s’ouvrir pour l’instant.");
+      return;
+    }
+    if (collectionIdNum == null) return;
+    setQuestionModalVariant("create");
+    setQuestionModalOpen(true);
+    setEditModalLoading(false);
+    setEditModalError(null);
+    setEditDetail(null);
+    setEditDraftQuestion("");
+    setEditDraftCommentaire("");
+    setEditDraftCategorieId(firstCat);
+    setEditDraftCategorieEnfantId(null);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
+    void fetchSousCollections(collectionIdNum).then((rows) => {
+      setSousCollectionsForCreateModal(rows.map((r) => ({ id: r.id, nom: r.nom })));
+    });
+  }, [collectionIdNum, refCategories, setOperationError]);
+
   const openEditModal = useCallback((q: QuizzQuestionRow) => {
+    setQuestionModalVariant("edit");
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
     if (q.id < 0) {
       const localDraft = localPoolDraftsRef.current.find((d) => d.id === q.id) ?? null;
       const draftReponses = (localDraft?.payload.reponses ?? []).map((r, idx) => ({
@@ -258,15 +302,66 @@ export function useQuestionReflexionQuestionEdit({
     [editDetail, setLocalPoolDrafts],
   );
 
+  const saveCreateModal = useCallback(
+    async (payload: QuestionCreateSavePayload) => {
+      if (collectionIdNum == null) return;
+      setSaving(true);
+      try {
+        const created = await postCreateQuestion({
+          user_id: userId,
+          categorie_id: payload.categorie_id,
+          question: payload.question,
+          commentaire: payload.commentaire,
+          reponses: payload.reponses,
+          collection_id: collectionIdNum,
+        });
+        if (payload.sous_collection_id != null) {
+          await postAttachQuestionToSousCollection(payload.sous_collection_id, {
+            user_id: userId,
+            question_id: created.id,
+          });
+        }
+        if (!chainDirtyRef.current) {
+          await loadChainFor(collectionIdNum, selectedGroupeIdRef.current);
+        } else {
+          setPool((rows) => {
+            if (rows.some((r) => r.id === created.id)) return rows;
+            return [created, ...rows];
+          });
+        }
+        void fetchCollection(collectionIdNum).then(setCollection).catch(() => {});
+        closeQuestionModal();
+      } catch {
+        setOperationError("Création de la question impossible.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      chainDirtyRef,
+      closeQuestionModal,
+      collectionIdNum,
+      loadChainFor,
+      selectedGroupeIdRef,
+      setCollection,
+      setOperationError,
+      setPool,
+      userId,
+    ],
+  );
+
   return {
     openEditModal,
+    openCreateQuestionModal,
+    createQuestionDisabled: refCategories.length === 0,
     closeQuestionModal,
     editDetail,
     editModal: {
       settings: {
         open: questionModalOpen,
         onClose: closeQuestionModal,
-        variant: "edit" as const,
+        variant: questionModalVariant,
+        modalTitle: questionModalVariant === "create" ? "Nouvelle question" : undefined,
       },
       actions: {
         onSave: () => void saveEditModal(),
@@ -274,19 +369,24 @@ export function useQuestionReflexionQuestionEdit({
         onDraftCommentaire: setEditDraftCommentaire,
         onDraftCategorieId: setEditDraftCategorieId,
         onDraftCategorieEnfantId: setEditDraftCategorieEnfantId,
+        onDraftSousCollectionId: setDraftSousCollectionId,
         onReponseUpdated: () => void refreshEditDetail(),
         onLocalDraftReponseSave: saveLocalDraftReponse,
+        onCreateSave: async (payload: QuestionCreateSavePayload) => saveCreateModal(payload),
       },
       data: {
         questionDetail: editDetail,
         categorieOptions: refCategories,
         categorieHierarchy: refCategoriesHierarchy,
+        sousCollectionsForCreate:
+          questionModalVariant === "create" ? sousCollectionsForCreateModal : undefined,
       },
       drafts: {
         question: editDraftQuestion,
         commentaire: editDraftCommentaire,
         categorieId: editDraftCategorieId,
         categorieEnfantId: editDraftCategorieEnfantId,
+        sousCollectionId: draftSousCollectionId ?? null,
       },
       status: {
         loading: editModalLoading,

@@ -1,5 +1,5 @@
 import { DragDropProvider } from "@dnd-kit/react";
-import { ArrowLeft } from "lucide-preact";
+import { ArrowLeft, Plus } from "lucide-preact";
 import { AppFooter } from "../../ui/atomes/AppFooter/AppFooter";
 import { AppHeader } from "../../ui/atomes/AppHeader/AppHeader";
 import { Button } from "../../ui/atomes/Button/Button";
@@ -161,6 +161,23 @@ export function QuestionReflexionView(router: QuestionReflexionRouterInject) {
             <p class="mt-1 text-sm text-base-content/60">Construis une chaîne de questions dans un ordre fixe pour le jeu.</p>
           </div>
           <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {status.isOwner ? (
+              <Button
+                variant="flow"
+                class="btn-sm gap-1 self-start"
+                disabled={actions.createQuestionDisabled}
+                title={
+                  actions.createQuestionDisabled
+                    ? "Référence des catégories indisponible"
+                    : "Créer une question (formulaire comme dans la session quiz)"
+                }
+                type="button"
+                onClick={() => actions.openCreateQuestion()}
+              >
+                <Plus class="h-4 w-4" aria-hidden />
+                Créer une question
+              </Button>
+            ) : null}
             <Button variant="outline" class="gap-2 self-start" onClick={() => actions.navigateAwayToCollections()}>
               <ArrowLeft class="h-4 w-4" aria-hidden />
               Collections

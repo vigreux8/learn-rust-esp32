@@ -95,6 +95,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
   });
 
   const questionEdit = useQuestionReflexionQuestionEdit({
+    identity: { userId: bootstrap.identity.userId },
     routing: { collectionIdNum: chain.routing.collectionIdNum },
     data: {
       collection: bootstrap.data.collection,
@@ -184,6 +185,8 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
     actions: {
       reload: chain.reloadAll,
       openEditModal: questionEdit.openEditModal,
+      openCreateQuestion: questionEdit.openCreateQuestionModal,
+      createQuestionDisabled: questionEdit.createQuestionDisabled,
       removeQuestion,
       saveChainDraft: chain.saveChainDraft,
       confirmLeaveIfNeeded: leave.confirmLeaveIfNeeded,
