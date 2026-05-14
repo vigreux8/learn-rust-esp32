@@ -27,6 +27,11 @@ export const COLLECTION_NODE_STYLES = {
     "nodrag flex flex-1 flex-col gap-2 overflow-y-auto rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/90 p-2.5 shadow-sm backdrop-blur-sm",
     "nowheel",
   ),
+  /** Panneau influenceurs : `overflow-visible` pour ne pas rogner le menu rôle en `fixed`. */
+  creatorPanelShell: cn(
+    "nodrag nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-visible rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/95 p-2.5 shadow-sm backdrop-blur-sm",
+  ),
+  creatorPanelBody: "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto",
   panelLegend: "text-[11px] font-medium uppercase tracking-wide text-base-content/45",
   title: "min-w-0 flex-1 truncate text-center text-base font-semibold tracking-tight text-base-content",
   badge: cn(

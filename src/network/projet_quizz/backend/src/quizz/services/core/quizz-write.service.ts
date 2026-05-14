@@ -1044,14 +1044,6 @@ export class QuizzWriteService {
         'Cette collection est déjà la fiche principale de cette personnalité.',
       );
     }
-    const dup = await this.prisma.prisma.personnalite_collection.findFirst({
-      where: { collection_id: collectionId, personalite_id: body.personaliteId },
-    });
-    if (dup != null) {
-      throw new BadRequestException(
-        'Cette personnalité est déjà associée à cette collection.',
-      );
-    }
     let importance_id: number | null = null;
     const it = body.importanceType?.trim();
     if (it != null && it !== '') {
@@ -1063,7 +1055,21 @@ export class QuizzWriteService {
       }
       importance_id = ref.id;
     }
+    const dup = await this.prisma.prisma.personnalite_collection.findFirst({
+      where: { collection_id: collectionId, personalite_id: body.personaliteId },
+    });
     const t = nowIso();
+    if (dup != null) {
+      await this.prisma.prisma.personnalite_collection.updateMany({
+        where: { collection_id: collectionId, personalite_id: body.personaliteId },
+        data: { importance_id },
+      });
+      await this.prisma.prisma.quizz_collection.update({
+        where: { id: collectionId },
+        data: { update_at: t },
+      });
+      return;
+    }
     await this.prisma.prisma.personnalite_collection.create({
       data: {
         personalite_id: body.personaliteId,

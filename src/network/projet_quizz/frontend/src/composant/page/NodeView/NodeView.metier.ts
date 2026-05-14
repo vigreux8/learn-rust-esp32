@@ -3,7 +3,7 @@ import {
   computeTreeDepth,
   orderCollectionsHierarchy,
 } from "../../../lib/collectionHierarchyVis";
-import type { CollectionUi, GroupeQuestionsUi } from "../../../types/quizz";
+import type { CollectionUi, GroupeQuestionsUi, PersonalitePickerRowUi } from "../../../types/quizz";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import type { CollectionNodeData } from "../../node/costumeNode/CollectionNode/CollectionNode.types";
 import {
@@ -17,17 +17,86 @@ import type {
   FlowSidebarQuestionRow,
 } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
 
+function buildNodeViewPersonalityRowsFromPickerAndLinks(
+  collections: readonly CollectionUi[],
+  picker: readonly PersonalitePickerRowUi[] | undefined,
+): FlowSidebarPersonalityRow[] {
+  const byCollId = new Map(collections.map((c) => [c.id, c]));
+  const linkedRows: FlowSidebarPersonalityRow[] = [];
+
+  for (const c of collections) {
+    for (const p of c.personnalites ?? []) {
+      linkedRows.push({
+        id: `${c.id}-${p.id}`,
+        personaliteId: p.id,
+        label: `${p.prenom} ${p.nom}`.trim(),
+        importanceType: p.importance_type ?? null,
+        collectionId: c.id,
+        collectionLabel: c.nom,
+        ficheCollectionId: p.fiche_collection_id,
+      });
+    }
+  }
+
+  if (picker == null || picker.length === 0) {
+    linkedRows.sort((a, b) => {
+      const byLabel = a.label.localeCompare(b.label, "fr");
+      return byLabel !== 0 ? byLabel : a.collectionLabel.localeCompare(b.collectionLabel, "fr");
+    });
+    return linkedRows;
+  }
+
+  const firstLinkedByPersoId = new Map<number, FlowSidebarPersonalityRow>();
+  for (const row of linkedRows) {
+    if (!firstLinkedByPersoId.has(row.personaliteId)) {
+      firstLinkedByPersoId.set(row.personaliteId, row);
+    }
+  }
+
+  const merged: FlowSidebarPersonalityRow[] = [];
+  for (const pr of picker) {
+    const linked = firstLinkedByPersoId.get(pr.id);
+    if (linked != null) {
+      merged.push(linked);
+    } else {
+      const ficheCid = pr.collection_id;
+      const ficheColl = byCollId.get(ficheCid);
+      merged.push({
+        id: `perso-${pr.id}`,
+        personaliteId: pr.id,
+        label: `${pr.prenom} ${pr.nom}`.trim(),
+        importanceType: null,
+        collectionId: ficheCid,
+        collectionLabel: ficheColl?.nom ?? "Fiche personnalité",
+        ficheCollectionId: ficheCid,
+      });
+    }
+  }
+
+  merged.sort((a, b) => {
+    const byLabel = a.label.localeCompare(b.label, "fr");
+    return byLabel !== 0 ? byLabel : a.collectionLabel.localeCompare(b.collectionLabel, "fr");
+  });
+  return merged;
+}
+
 /**
  * Projette les collections API (même source que la page Collections) vers les lignes sidebar + questions groupées.
+ * Les personnalités incluent toutes les fiches (`GET /quizz/personalites`) lorsque `personalitesPicker` est fourni.
  */
-export function buildNodeViewSidebarData(collections: CollectionUi[]): {
+export function buildNodeViewSidebarData(
+  collections: CollectionUi[],
+  options?: { personalitesPicker?: readonly PersonalitePickerRowUi[] },
+): {
   collections: FlowSidebarCollectionRow[];
   questions: FlowSidebarQuestionRow[];
   personalities: FlowSidebarPersonalityRow[];
   collectionHierarchy: FlowSidebarCollectionHierarchyRef[];
 } {
+  const picker = options?.personalitesPicker;
   if (collections.length === 0) {
-    return { collections: [], questions: [], personalities: [], collectionHierarchy: [] };
+    const personalities = buildNodeViewPersonalityRowsFromPickerAndLinks([], picker);
+    return { collections: [], questions: [], personalities, collectionHierarchy: [] };
   }
 
   const byId = new Map(collections.map((c) => [c.id, c]));
@@ -40,7 +109,6 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
   }));
 
   const questions: FlowSidebarQuestionRow[] = [];
-  const personalities: FlowSidebarPersonalityRow[] = [];
   for (const c of collections) {
     for (const q of c.questions) {
       questions.push({
@@ -54,23 +122,9 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
         categorie_e_type: q.categorie_e_type,
       });
     }
-    for (const p of c.personnalites ?? []) {
-      personalities.push({
-        id: `${c.id}-${p.id}`,
-        personaliteId: p.id,
-        label: `${p.prenom} ${p.nom}`.trim(),
-        importanceType: p.importance_type ?? null,
-        collectionId: c.id,
-        collectionLabel: c.nom,
-        ficheCollectionId: p.fiche_collection_id,
-      });
-    }
   }
 
-  personalities.sort((a, b) => {
-    const byLabel = a.label.localeCompare(b.label, "fr");
-    return byLabel !== 0 ? byLabel : a.collectionLabel.localeCompare(b.collectionLabel, "fr");
-  });
+  const personalities = buildNodeViewPersonalityRowsFromPickerAndLinks(collections, picker);
 
   const collectionHierarchy: FlowSidebarCollectionHierarchyRef[] = collections.map((c) => ({
     id: c.id,

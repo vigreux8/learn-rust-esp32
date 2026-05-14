@@ -1,5 +1,3 @@
-import type { CollectionItem } from "../../CollectionNode.types";
+import type { CollectionNodeSupercollectionsPanelInput } from "../../CollectionNode.types";
 
-export type CollectionPanelProps = {
-  supercollections: CollectionItem[];
-};
+export type CollectionPanelProps = CollectionNodeSupercollectionsPanelInput;

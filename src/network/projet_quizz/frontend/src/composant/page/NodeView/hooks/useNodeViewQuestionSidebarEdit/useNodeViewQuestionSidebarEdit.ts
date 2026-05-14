@@ -6,7 +6,10 @@ import {
   fetchQuestionDetail,
   fetchRefCategories,
   fetchRefCategoriesHierarchy,
+  fetchSousCollections,
   patchQuestion,
+  postAttachQuestionToSousCollection,
+  postCreateQuestion,
 } from "../../../../../lib/api";
 import type {
   CollectionUi,
@@ -17,10 +20,11 @@ import type {
 import type { AppNode } from "../../../../node/config/flow.types";
 import { hydrateCollectionNodesTreeDepthFromCollections } from "../../NodeView.metier";
 import { buildCategorieFieldsForQuestionPatch } from "../../../../ui/organismes/QuestionEditModal/QuestionEditModal.metier";
+import type { QuestionCreateSavePayload } from "../../../../ui/organismes/QuestionEditModal/QuestionEditModal.types";
 import type { UseNodeViewQuestionSidebarEditParams } from "./useNodeViewQuestionSidebarEdit.types";
 
 /**
- * Modale d’édition + suppression depuis la liste « Questions par collection » (`/node`).
+ * Modale création / édition de question depuis le graphe `/node` (liste latérale ou nœud collection).
  */
 export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSidebarEditParams) {
   const { userId, setApiCollections, setNodes } = params;
@@ -36,6 +40,12 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
   const [saving, setSaving] = useState(false);
   const [refCategories, setRefCategories] = useState<RefCategorieRow[]>([]);
   const [refCategoriesHierarchy, setRefCategoriesHierarchy] = useState<RefCategorieHierarchyRow[]>([]);
+  const [questionModalVariant, setQuestionModalVariant] = useState<"edit" | "create">("edit");
+  const [createTargetCollectionId, setCreateTargetCollectionId] = useState<number | null>(null);
+  const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<{ id: number; nom: string }[]>(
+    [],
+  );
+  const [draftSousCollectionId, setDraftSousCollectionId] = useState<number | null>(null);
 
   useEffect(() => {
     void fetchRefCategories()
@@ -59,13 +69,21 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
 
   const closeQuestionModal = useCallback(() => {
     setQuestionModalOpen(false);
+    setQuestionModalVariant("edit");
+    setCreateTargetCollectionId(null);
     setEditModalLoading(false);
     setEditModalError(null);
     setEditDetail(null);
     setEditDraftCategorieEnfantId(null);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
   }, []);
 
   const openEditModalByQuestionId = useCallback((questionId: number) => {
+    setQuestionModalVariant("edit");
+    setCreateTargetCollectionId(null);
+    setSousCollectionsForCreateModal([]);
+    setDraftSousCollectionId(null);
     setQuestionModalOpen(true);
     setEditModalLoading(true);
     setEditModalError(null);
@@ -81,6 +99,40 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
       .catch(() => setEditModalError("fetch"))
       .finally(() => setEditModalLoading(false));
   }, []);
+
+  const openCreateQuestionModalForCollection = useCallback(
+    (collectionId: number) => {
+      if (refCategories.length === 0) {
+        window.alert(
+          "Catégories indisponibles. Le formulaire de création ne peut pas s’ouvrir pour l’instant.",
+        );
+        return;
+      }
+      const firstCat = refCategories[0]?.id ?? null;
+      if (firstCat == null) {
+        window.alert(
+          "Catégories indisponibles. Le formulaire de création ne peut pas s’ouvrir pour l’instant.",
+        );
+        return;
+      }
+      setQuestionModalVariant("create");
+      setCreateTargetCollectionId(collectionId);
+      setQuestionModalOpen(true);
+      setEditModalLoading(false);
+      setEditModalError(null);
+      setEditDetail(null);
+      setEditDraftQuestion("");
+      setEditDraftCommentaire("");
+      setEditDraftCategorieId(firstCat);
+      setEditDraftCategorieEnfantId(null);
+      setSousCollectionsForCreateModal([]);
+      setDraftSousCollectionId(null);
+      void fetchSousCollections(collectionId).then((rows) => {
+        setSousCollectionsForCreateModal(rows.map((r) => ({ id: r.id, nom: r.nom })));
+      });
+    },
+    [refCategories],
+  );
 
   const refreshEditDetail = useCallback(async () => {
     if (editDetail == null) return;
@@ -157,6 +209,41 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
     refCategoriesHierarchy.length,
   ]);
 
+  const saveCreateModal = useCallback(
+    async (payload: QuestionCreateSavePayload) => {
+      if (createTargetCollectionId == null) return;
+      if (userId == null) {
+        window.alert("Utilisateur non identifié.");
+        return;
+      }
+      setSaving(true);
+      try {
+        const created = await postCreateQuestion({
+          user_id: userId,
+          categorie_id: payload.categorie_id,
+          question: payload.question,
+          commentaire: payload.commentaire,
+          reponses: payload.reponses,
+          collection_id: createTargetCollectionId,
+        });
+        if (payload.sous_collection_id != null) {
+          await postAttachQuestionToSousCollection(payload.sous_collection_id, {
+            user_id: userId,
+            question_id: created.id,
+          });
+        }
+        const list = await fetchCollections();
+        applyListToGraph(list);
+        closeQuestionModal();
+      } catch {
+        setEditModalError("create");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [applyListToGraph, closeQuestionModal, createTargetCollectionId, userId],
+  );
+
   const deleteQuestionFromSidebar = useCallback(
     async (questionId: number) => {
       if (!window.confirm("Supprimer définitivement cette question ?")) return;
@@ -181,15 +268,18 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
     settings: {
       open: questionModalOpen,
       onClose: closeQuestionModal,
-      variant: "edit" as const,
-    },
+      variant: questionModalVariant,
+      modalTitle: questionModalVariant === "create" ? "Nouvelle question" : undefined,
+    } as const,
     actions: {
       onSave: () => void saveEditModal(),
       onDraftQuestion: setEditDraftQuestion,
       onDraftCommentaire: setEditDraftCommentaire,
       onDraftCategorieId: setEditDraftCategorieId,
       onDraftCategorieEnfantId: setEditDraftCategorieEnfantId,
+      onDraftSousCollectionId: setDraftSousCollectionId,
       onReponseUpdated: () => void refreshEditDetail(),
+      onCreateSave: (payload: QuestionCreateSavePayload) => saveCreateModal(payload),
       onRemoveImplicitRelation: (relationId: number) => void removeImplicitRelationFromEditModal(relationId),
     },
     status: { loading: editModalLoading, saving, error: editModalError } as const,
@@ -197,12 +287,15 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
       questionDetail: editDetail,
       categorieOptions: refCategories,
       categorieHierarchy: refCategoriesHierarchy,
+      sousCollectionsForCreate:
+        questionModalVariant === "create" ? sousCollectionsForCreateModal : undefined,
     } as const,
     drafts: {
       question: editDraftQuestion,
       commentaire: editDraftCommentaire,
       categorieId: editDraftCategorieId,
       categorieEnfantId: editDraftCategorieEnfantId,
+      sousCollectionId: draftSousCollectionId ?? null,
     },
   };
 
@@ -211,6 +304,7 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
       onEditQuestionInSidebar: openEditModalByQuestionId,
       onDeleteQuestionInSidebar: deleteQuestionFromSidebar,
     },
+    openCreateQuestionModalForCollection,
     questionEditModal,
   };
 }

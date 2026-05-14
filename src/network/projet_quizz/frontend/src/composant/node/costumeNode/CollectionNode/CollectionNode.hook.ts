@@ -1,4 +1,4 @@
-import { useCallback, useState } from "preact/hooks";
+import { useCallback, useMemo, useState } from "preact/hooks";
 import { useReactFlow } from "@xyflow/react";
 import { useNodeViewGraphActions } from "../../../../lib/nodeViewGraphActionsContext";
 import { normalizeQuestionNodeMovePayload, normalizeReflexionGroupeNodeMovePayload, readReactFlowDnDFromEvent } from "../../../../lib/reactFlowDnD";
@@ -7,7 +7,13 @@ import {
   mergeInfluenceurFromSidebarPayload,
   mergeSupercollectionFromSidebarPayload,
 } from "./CollectionNode.metier";
-import type { CollectionNodeProps, CollectionNodeViewStates } from "./CollectionNode.types";
+import type { InfluenceurRolePick } from "./parts/CreatorPanel/CreatorPanel.metier";
+import type {
+  CollectionNodeCreatorPanelInput,
+  CollectionNodeProps,
+  CollectionNodeSupercollectionsPanelInput,
+  CollectionNodeViewStates,
+} from "./CollectionNode.types";
 
 /**
  * Orchestration locale du nœud (expansion, drop sidebar sur tout le nœud → # ou influenceurs).
@@ -15,6 +21,8 @@ import type { CollectionNodeProps, CollectionNodeViewStates } from "./Collection
 export function useCollectionNode(props: CollectionNodeProps): CollectionNodeViewStates {
   const { data, id } = props;
   const [isExpanded, setIsExpanded] = useState(false);
+  const [savingPersonaliteId, setSavingPersonaliteId] = useState<number | null>(null);
+  const [savingTagCollectionId, setSavingTagCollectionId] = useState<number | null>(null);
   const { setNodes } = useReactFlow<AppNode, AppEdge>();
   const graphActions = useNodeViewGraphActions();
 
@@ -67,6 +75,24 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
       if (parsed == null) return;
 
       if (parsed.type === "collectionNode") {
+        const record = parsed.data as Record<string, unknown>;
+        if (record.blankTemplate === true) {
+          return;
+        }
+        const tagCollectionId = typeof record.collectionId === "number" ? record.collectionId : null;
+        const taggedCollectionId = typeof data.collectionId === "number" ? data.collectionId : null;
+        const assignTag = graphActions?.assignCollectionTagOnGraph;
+
+        if (
+          tagCollectionId != null &&
+          taggedCollectionId != null &&
+          tagCollectionId !== taggedCollectionId &&
+          assignTag != null
+        ) {
+          void assignTag({ taggedCollectionId, tagCollectionId });
+          return;
+        }
+
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id !== id || node.type !== "collectionNode") return node;
@@ -153,6 +179,129 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     [data.collectionId, graphActions, id, setNodes],
   );
 
+  const onRemoveSupercollectionTag = useCallback(
+    (tagCollectionId: number) => {
+      const taggedCollectionId = typeof data.collectionId === "number" ? data.collectionId : null;
+      const unassignFn = graphActions?.unassignCollectionTagOnGraph;
+
+      if (taggedCollectionId == null || unassignFn == null) {
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id !== id || node.type !== "collectionNode") return node;
+            const supercollections = (node.data.supercollections ?? []).filter(
+              (c) => Number(c.id) !== tagCollectionId,
+            );
+            return { ...node, data: { ...node.data, supercollections } };
+          }),
+        );
+        return;
+      }
+
+      void (async () => {
+        setSavingTagCollectionId(tagCollectionId);
+        try {
+          await unassignFn({ taggedCollectionId, tagCollectionId });
+        } catch {
+          /* alerte côté NodeView */
+        } finally {
+          setSavingTagCollectionId(null);
+        }
+      })();
+    },
+    [data.collectionId, graphActions, id, setNodes],
+  );
+
+  const supercollectionsPanel = useMemo<CollectionNodeSupercollectionsPanelInput>(
+    () => ({
+      data: { supercollections: data.supercollections ?? [] },
+      settings: {
+        tagRemoveEnabled: data.isMine === true && typeof data.collectionId === "number",
+      },
+      status: { savingTagCollectionId },
+      actions: { onRemoveTag: onRemoveSupercollectionTag },
+    }),
+    [
+      data.collectionId,
+      data.isMine,
+      data.supercollections,
+      onRemoveSupercollectionTag,
+      savingTagCollectionId,
+    ],
+  );
+
+  const onRemoveCreator = useCallback(
+    (personaliteId: number) => {
+      const collectionId = typeof data.collectionId === "number" ? data.collectionId : null;
+      const unassignFn = graphActions?.unassignPersonaliteFromCollectionOnGraph;
+      if (collectionId == null || unassignFn == null) {
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id !== id || node.type !== "collectionNode") return node;
+            const creators = (node.data.creators ?? []).filter((c) => Number(c.id) !== personaliteId);
+            return { ...node, data: { ...node.data, creators } };
+          }),
+        );
+        return;
+      }
+      void (async () => {
+        setSavingPersonaliteId(personaliteId);
+        try {
+          await unassignFn({ collectionId, personaliteId });
+        } catch {
+          /* alerte côté NodeView */
+        } finally {
+          setSavingPersonaliteId(null);
+        }
+      })();
+    },
+    [data.collectionId, graphActions, id, setNodes],
+  );
+
+  const onCreatorRoleChange = useCallback(
+    (personaliteId: number, importancePick: InfluenceurRolePick) => {
+      const importanceType = importancePick === "" ? null : importancePick;
+      const collectionId = typeof data.collectionId === "number" ? data.collectionId : null;
+      const updater = graphActions?.updatePersonaliteImportanceOnCollection;
+
+      if (collectionId == null || updater == null) {
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id !== id || node.type !== "collectionNode") return node;
+            const creators = (node.data.creators ?? []).map((c) =>
+              c.id === String(personaliteId) ? { ...c, importanceType } : c,
+            );
+            return { ...node, data: { ...node.data, creators } };
+          }),
+        );
+        return;
+      }
+
+      void (async () => {
+        setSavingPersonaliteId(personaliteId);
+        try {
+          await updater({ collectionId, personaliteId, importanceType });
+        } catch {
+          /* alerte côté NodeView */
+        } finally {
+          setSavingPersonaliteId(null);
+        }
+      })();
+    },
+    [data.collectionId, graphActions, id, setNodes],
+  );
+
+  const creatorPanel = useMemo<CollectionNodeCreatorPanelInput>(
+    () => ({
+      data: { creators: data.creators ?? [] },
+      settings: {
+        roleChangeEnabled: data.isMine === true && typeof data.collectionId === "number",
+      },
+      status: { savingPersonaliteId },
+      actions: { onRoleChange: onCreatorRoleChange, onRemoveCreator: onRemoveCreator },
+    }),
+    [data.collectionId, data.creators, data.isMine, onCreatorRoleChange, onRemoveCreator, savingPersonaliteId],
+  );
+
   const collectionApiId = typeof data.collectionId === "number" ? data.collectionId : null;
   const playIncluded = data.playIncluded !== false;
 
@@ -160,9 +309,9 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     layout: { isExpanded, toggle },
     content: {
       title: data.label,
-      supercollections: data.supercollections ?? [],
-      creators: data.creators ?? [],
     },
+    supercollectionsPanel,
+    creatorPanel,
     dnd: {
       isOverBar: false,
       nodeSurface: {

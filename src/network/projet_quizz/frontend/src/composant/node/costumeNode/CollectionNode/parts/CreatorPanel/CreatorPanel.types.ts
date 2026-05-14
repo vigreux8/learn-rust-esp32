@@ -1,5 +1,3 @@
-import type { CreatorItem } from "../../CollectionNode.types";
+import type { CollectionNodeCreatorPanelInput } from "../../CollectionNode.types";
 
-export type CreatorPanelProps = {
-  creators: CreatorItem[];
-};
+export type CreatorPanelProps = CollectionNodeCreatorPanelInput;

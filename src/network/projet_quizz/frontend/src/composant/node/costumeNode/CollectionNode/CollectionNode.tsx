@@ -1,5 +1,5 @@
 import { Handle, Position } from "@xyflow/react";
-import { FileJson, ListOrdered, ListTree, Play, User, Hash } from "lucide-preact";
+import { FileJson, ListOrdered, ListTree, Play, User, Hash, CirclePlus } from "lucide-preact";
 import { route } from "preact-router";
 import { cn } from "../../../../lib/cn";
 import { collectionTreeBorderHexForDepth } from "../../../../lib/collectionHierarchyVis";
@@ -27,7 +27,7 @@ function tagRefsFromSupercollections(items: CollectionItem[]): CollectionTagRef[
 }
 
 export function CollectionNode(props: CollectionNodeProps) {
-  const { layout, content, actions, dnd, graphPlay } = useCollectionNode(props);
+  const { layout, content, supercollectionsPanel, creatorPanel, actions, dnd, graphPlay } = useCollectionNode(props);
   const { isConnectable, data } = props;
   const graphActions = useNodeViewGraphActions();
   const collectionApiId = typeof data.collectionId === "number" ? data.collectionId : null;
@@ -46,8 +46,18 @@ export function CollectionNode(props: CollectionNodeProps) {
       <div class={COLLECTION_NODE_STYLES.coreColumn}>
         {layout.isExpanded ? (
           <div class={COLLECTION_NODE_STYLES.panelsFloating}>
-            <CollectionPanel supercollections={content.supercollections} />
-            <CreatorPanel creators={content.creators} />
+            <CollectionPanel
+              data={supercollectionsPanel.data}
+              settings={supercollectionsPanel.settings}
+              status={supercollectionsPanel.status}
+              actions={supercollectionsPanel.actions}
+            />
+            <CreatorPanel
+              data={creatorPanel.data}
+              settings={creatorPanel.settings}
+              status={creatorPanel.status}
+              actions={creatorPanel.actions}
+            />
           </div>
         ) : null}
 
@@ -133,6 +143,20 @@ export function CollectionNode(props: CollectionNodeProps) {
               <ListTree class="h-4 w-4" aria-hidden />
               Questions
             </Button>
+            {data.isMine === true ? (
+              <Button
+                variant="outline"
+                class="btn-xs gap-1 sm:btn-sm"
+                title="Créer une question (même formulaire que sur la page Questions)"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  graphActions?.openCreateQuestionModalForCollection(collectionApiId);
+                }}
+              >
+                <CirclePlus class="h-4 w-4" aria-hidden />
+                Créer
+              </Button>
+            ) : null}
             {data.isMine === true && (data.questionCount ?? 0) > 0 ? (
               <Button
                 variant="outline"

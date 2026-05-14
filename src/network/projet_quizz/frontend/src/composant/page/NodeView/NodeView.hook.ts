@@ -13,6 +13,8 @@ import {
   type OnSelectionChangeFunc,
 } from "@xyflow/react";
 import {
+  assignCollectionTag,
+  assignPersonaliteToCollection,
   createEmptyCollection,
   createPersonaliteCollection,
   deleteGroupeQuestions,
@@ -25,6 +27,8 @@ import {
   linkCollectionParentCollection,
   postMoveGroupeQuestionsToCollection,
   postMoveQuestionToCollection,
+  unassignCollectionTag,
+  unassignPersonaliteFromCollection,
   unlinkCollectionParentCollection,
 } from "../../../lib/api";
 import type {
@@ -38,7 +42,12 @@ import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionNode";
 import { readReactFlowDnDFromEvent } from "../../../lib/reactFlowDnD";
 import { readStoredNodeViewGraph, writeStoredNodeViewGraph } from "../../../lib/nodeViewGraphSession";
-import type { CollectionUi, QuizzQuestionRow, RefCategorieHierarchyRow } from "../../../types/quizz";
+import type {
+  CollectionUi,
+  PersonalitePickerRowUi,
+  QuizzQuestionRow,
+  RefCategorieHierarchyRow,
+} from "../../../types/quizz";
 import {
   buildCollectionSubtreeGraphElements,
   formatGroupeQuestionsSidebarLabel,
@@ -128,6 +137,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const questionsPaneDismissStreakRef = useRef(0);
 
   const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
+  const [personalitesPicker, setPersonalitesPicker] = useState<PersonalitePickerRowUi[]>([]);
   const [sidebarRefCategoriesHierarchy, setSidebarRefCategoriesHierarchy] = useState<
     RefCategorieHierarchyRow[]
   >([]);
@@ -159,6 +169,20 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         if (!cancelled) setApiCollections([]);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPersonalitesPicker()
+      .then((rows) => {
+        if (!cancelled) setPersonalitesPicker(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setPersonalitesPicker([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -503,7 +527,11 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         });
         const list = await fetchCollections();
         setApiCollections(list);
-        void fetchPersonalitesPicker().catch(() => undefined);
+        try {
+          setPersonalitesPicker(await fetchPersonalitesPicker());
+        } catch {
+          setPersonalitesPicker([]);
+        }
         const byId = new Map(list.map((c) => [c.id, c]));
         const nodeId =
           typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -645,7 +673,10 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     [apiCollections, fitView, setEdges, setNodes, userId],
   );
 
-  const sidebarBase = useMemo(() => buildNodeViewSidebarData(apiCollections), [apiCollections]);
+  const sidebarBase = useMemo(
+    () => buildNodeViewSidebarData(apiCollections, { personalitesPicker }),
+    [apiCollections, personalitesPicker],
+  );
 
   const hierarchyQuestionRows = useMemo(
     () => buildHierarchyQuestionSidebarRows(apiCollections),
@@ -828,6 +859,8 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     setApiCollections,
     setNodes,
   });
+  const { questionEditModal, flowSidebarQuestionActions, openCreateQuestionModalForCollection } =
+    questionSidebarEdit;
 
   const openQuestionsForPersonalityFiche = useCallback((ficheCollectionId: number) => {
     void route(buildQuestionsRoutePath(ficheCollectionId, [], { fromNode: true }));
@@ -953,16 +986,102 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     [bumpReflexionSidebarData, setNodes, userId],
   );
 
+  const updatePersonaliteImportanceOnCollection = useCallback(
+    async (args: {
+      collectionId: number;
+      personaliteId: number;
+      importanceType: "pionnier" | "important" | "secondaire" | null;
+    }) => {
+      try {
+        await assignPersonaliteToCollection(args.collectionId, {
+          userId,
+          personaliteId: args.personaliteId,
+          importanceType: args.importanceType,
+        });
+        const list = await fetchCollections();
+        setApiCollections(list);
+        setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
+      } catch (e: unknown) {
+        window.alert(
+          e instanceof Error ? e.message : "Impossible de mettre à jour le rôle de l’influenceur.",
+        );
+        throw e;
+      }
+    },
+    [setNodes, userId],
+  );
+
+  const assignCollectionTagOnGraph = useCallback(
+    async (args: { taggedCollectionId: number; tagCollectionId: number }) => {
+      try {
+        await assignCollectionTag(args.taggedCollectionId, args.tagCollectionId);
+        const list = await fetchCollections();
+        setApiCollections(list);
+        setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
+      } catch (e: unknown) {
+        window.alert(
+          e instanceof Error ? e.message : "Impossible d’associer cette collection comme étiquette (#).",
+        );
+        throw e;
+      }
+    },
+    [setNodes, userId],
+  );
+
+  const unassignCollectionTagOnGraph = useCallback(
+    async (args: { taggedCollectionId: number; tagCollectionId: number }) => {
+      try {
+        await unassignCollectionTag(args.taggedCollectionId, args.tagCollectionId);
+        const list = await fetchCollections();
+        setApiCollections(list);
+        setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
+      } catch (e: unknown) {
+        window.alert(
+          e instanceof Error ? e.message : "Impossible de retirer cette étiquette (#).",
+        );
+        throw e;
+      }
+    },
+    [setNodes, userId],
+  );
+
+  const unassignPersonaliteFromCollectionOnGraph = useCallback(
+    async (args: { collectionId: number; personaliteId: number }) => {
+      try {
+        await unassignPersonaliteFromCollection(args.collectionId, args.personaliteId, userId);
+        const list = await fetchCollections();
+        setApiCollections(list);
+        setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
+      } catch (e: unknown) {
+        window.alert(
+          e instanceof Error ? e.message : "Impossible de retirer cet influenceur.",
+        );
+        throw e;
+      }
+    },
+    [setNodes, userId],
+  );
+
   const graphActions = useMemo<NodeViewGraphActionsValue>(
     () => ({
       moveQuestionToCollection,
       moveGroupeToCollection,
+      updatePersonaliteImportanceOnCollection,
+      assignCollectionTagOnGraph,
+      unassignCollectionTagOnGraph,
+      unassignPersonaliteFromCollectionOnGraph,
+      openCreateQuestionModalForCollection,
       openLlmImportForCollection,
       navigateToPlayForCollection: playModeUi.play.navigateToPlayForCollection,
     }),
     [
+      assignCollectionTagOnGraph,
       moveGroupeToCollection,
       moveQuestionToCollection,
+      openCreateQuestionModalForCollection,
+      unassignCollectionTagOnGraph,
+      unassignPersonaliteFromCollectionOnGraph,
+      updatePersonaliteImportanceOnCollection,
       openLlmImportForCollection,
       playModeUi.play.navigateToPlayForCollection,
     ],
@@ -993,7 +1112,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         onShowCollectionSubtreeOnGraph,
         onMoveQuestionToCollection: moveQuestionToCollection,
         onMoveGroupeToCollection: moveGroupeToCollection,
-        ...questionSidebarEdit.flowSidebarQuestionActions,
+        ...flowSidebarQuestionActions,
         onOpenQuestionsForPersonalityFiche: openQuestionsForPersonalityFiche,
         onOpenReflexionEditorForCollection: openReflexionEditorForCollection,
         onDeleteGroupeInSidebar: deleteGroupeFromSidebar,
@@ -1011,7 +1130,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     },
     graphActions,
     questionEditModalShellRef,
-    questionEditModal: questionSidebarEdit.questionEditModal,
+    questionEditModal,
     llmImportModal: {
       open: llmImportModalCollectionId != null,
       collectionId: llmImportModalCollectionId,

@@ -190,6 +190,26 @@ Fichiers **non-service** du module `quizz` :
 | **`dto/import-llm.dto.ts`** | **Contrat** : Valide spécifiquement le format JSON généré par LLM. |
 | **`dto/import-collection.dto.ts`** | **Contrat** : Valide spécifiquement le format d'export de l'application. |
 
+### Collections et personnalités (« influenceurs »)
+
+Une collection peut référencer des fiches **personnalité** via la table Prisma **`personnalite_collection`** (champ `importance_id` optionnel → **`ref_importance_personalite`** : types métier du genre `pionnier`, `important`, `secondaire`).
+
+| Route / écriture | Comportement documenté |
+|------------------|-------------------------|
+| **`POST /quizz/collections/:id/personalites`** | Implémenté dans **`quizz/services/core/quizz-write.service.ts`** (`assignPersonaliteToCollection`) : crée le lien `personnalite_collection` avec le `importanceType` demandé ; **si le lien existe déjà** pour cette paire collection / personnalité, la requête **met à jour** uniquement `importance_id` (changement de rôle) au lieu de renvoyer une erreur de doublon. |
+| **`DELETE /quizz/collections/:id/personalites/:personaliteId`** | Supprime l’association (`unassignPersonaliteFromCollection`). |
+
+La façade **`quizz.service.ts`** recharge ensuite la **`CollectionUi`** pour le client après assign / désassign.
+
+### Étiquettes / supercollections (#)
+
+Les liens « une collection étiquetée par une autre » sont stockés dans **`collection_tag_lien`** (`tag_collection_id` → `tagged_collection_id`). La logique d’écriture est dans **`quizz/services/core/quizz-structure.service.ts`** (`assignCollectionTag` / `unassignCollectionTag`) ; le contrôleur expose les routes ci-dessous et **`quizz.service.ts`** renvoie une **`CollectionUi`** à jour.
+
+| Route / écriture | Comportement documenté |
+|------------------|-------------------------|
+| **`POST /quizz/collections/:id/collection-tags`** | Corps `{ tagCollectionId }` : rattache la collection `:id` (étiquetée) à l’étiquette `tagCollectionId`. Interdit d’étiqueter une collection par elle-même ; doublon ignoré sans erreur. |
+| **`DELETE /quizz/collections/:id/collection-tags/:tagCollectionId`** | Supprime le lien correspondant. |
+
 ### `stats/services/`
 
 | Service | Rôle |

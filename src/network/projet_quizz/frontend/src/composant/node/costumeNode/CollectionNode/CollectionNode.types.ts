@@ -1,8 +1,28 @@
 import type { Node, NodeProps } from "@xyflow/react";
 
+import type { InfluenceurRolePick } from "./parts/CreatorPanel/CreatorPanel.metier";
+
 export type CollectionItem = { id: string; label: string };
 /** `importanceType` = rôle (`ref_importance_personalite.type` : pionnier, important, secondaire, ou absent). */
 export type CreatorItem = { id: string; name: string; importanceType?: string | null };
+
+/** Props du panneau influenceurs (partagé avec `CreatorPanel` sans cycle d’import). */
+export type CollectionNodeCreatorPanelInput = {
+  data: { creators: CreatorItem[] };
+  settings: { roleChangeEnabled: boolean };
+  status: { savingPersonaliteId: number | null };
+  actions: {
+    onRoleChange: (personaliteId: number, importancePick: InfluenceurRolePick) => void;
+    onRemoveCreator: (personaliteId: number) => void;
+  };
+};
+/** Props du panneau supercollections / # (partagé avec `CollectionPanel`). */
+export type CollectionNodeSupercollectionsPanelInput = {
+  data: { supercollections: CollectionItem[] };
+  settings: { tagRemoveEnabled: boolean };
+  status: { savingTagCollectionId: number | null };
+  actions: { onRemoveTag: (tagCollectionId: number) => void };
+};
 
 export type CollectionNodeActions = {
   onPlay?: (nodeId: string) => void;
@@ -41,12 +61,12 @@ export type CollectionNodeViewStates = {
   };
   content: {
     title: string;
-    supercollections: CollectionItem[];
-    creators: CreatorItem[];
   };
+  supercollectionsPanel: CollectionNodeSupercollectionsPanelInput;
+  creatorPanel: CollectionNodeCreatorPanelInput;
   dnd: {
     isOverBar: boolean;
-    /** Drop depuis la sidebar sur tout le nœud : collection → #, personnalité → influenceurs. */
+    /** Drop depuis la sidebar : collection → # (persisté API si graphe NodeView), personnalité → influenceurs. */
     nodeSurface: {
       onDragOver: (event: DragEvent) => void;
       onDragOverCapture: (event: DragEvent) => void;

@@ -51,7 +51,7 @@ export function PersonalityFilterPanel(props: PersonalityFilterPanelProps) {
       <div class="nodrag nowheel flex min-h-0 flex-1 flex-col gap-2 touch-pan-y overflow-y-auto overscroll-y-contain">
         {data.rows.length === 0 ? (
           <p class={PERSONALITY_FILTER_PANEL_STYLES.emptyState}>
-            Aucune personnalité pour ce filtre. Associe des personnalités depuis l’écran Collections.
+            Aucune personnalité pour ce filtre. Crée une fiche depuis l’onglet Création ou l’écran Collections.
           </p>
         ) : null}
         {data.rows.map((row) => (
