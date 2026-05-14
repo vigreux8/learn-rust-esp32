@@ -61,7 +61,11 @@ export function CollectionNode(props: CollectionNodeProps) {
           </div>
         ) : null}
 
-        <div class={COLLECTION_NODE_STYLES.topStrip} aria-hidden>
+        <div
+          class={cn(COLLECTION_NODE_STYLES.nodeCard, treeDepthAccentHex ? "border-l-4" : undefined)}
+          style={treeDepthAccentHex ? { borderLeftColor: treeDepthAccentHex } : undefined}
+        >
+          <div class={COLLECTION_NODE_STYLES.topStrip} aria-hidden />
           <Handle
             type="target"
             position={Position.Top}
@@ -76,115 +80,111 @@ export function CollectionNode(props: CollectionNodeProps) {
             isConnectable={isConnectable}
             className={`${COLLECTION_NODE_STYLES.handleOnBarHalf} !left-1/2`}
           />
-        </div>
 
-        <div
-          class={cn(COLLECTION_NODE_STYLES.mainBar, treeDepthAccentHex ? "border-2" : undefined)}
-          style={treeDepthAccentHex ? { borderColor: treeDepthAccentHex } : undefined}
-        >
-          <div class="flex min-w-0 flex-1 items-center gap-2">
-            {graphPlay.showToggle ? (
-              <label
-                class={COLLECTION_NODE_STYLES.playIncludeToggle}
-                title="Inclure les questions de cette collection dans le paquet quand tu lances une partie depuis le graphe (avec ou sans collections enfant côté mode de jeu)."
+          <div class={COLLECTION_NODE_STYLES.mainBar}>
+            <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+              {graphPlay.showToggle ? (
+                <label
+                  class={COLLECTION_NODE_STYLES.playIncludeToggle}
+                  title="Inclure les questions de cette collection dans le paquet quand tu lances une partie depuis le graphe"
+                >
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-primary checkbox-xs nodrag"
+                    checked={graphPlay.included}
+                    onChange={graphPlay.onToggleIncluded}
+                    aria-label="Inclure les questions de cette collection au jeu depuis le graphe"
+                  />
+                </label>
+              ) : null}
+              <button
+                type="button"
+                class={COLLECTION_NODE_STYLES.buttonIconCollections}
+                onClick={layout.toggle}
+                aria-label="Basculer panneau supercollections"
               >
-                <input
-                  type="checkbox"
-                  class="checkbox checkbox-primary checkbox-xs nodrag"
-                  checked={graphPlay.included}
-                  onChange={graphPlay.onToggleIncluded}
-                  aria-label="Inclure les questions de cette collection au jeu depuis le graphe"
-                />
-              </label>
-            ) : null}
-            <button
-              type="button"
-              class={COLLECTION_NODE_STYLES.buttonIconCollections}
-              onClick={layout.toggle}
-              aria-label="Basculer panneau supercollections (collections étiquette)"
-            >
-              <Hash class="h-4 w-4" aria-hidden />
-            </button>
+                <Hash class="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+              </button>
 
-            <h3 class={COLLECTION_NODE_STYLES.title}>{content.title}</h3>
+              <h3 class={COLLECTION_NODE_STYLES.title}>{content.title}</h3>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                class={COLLECTION_NODE_STYLES.buttonIconCreators}
+                onClick={layout.toggle}
+                aria-label="Basculer panneau influenceurs"
+              >
+                <User class="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+              </button>
+              <button type="button" class={COLLECTION_NODE_STYLES.playButton} onClick={actions.onPlay} aria-label="Lancer">
+                <Play class="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-current ml-0.5" aria-hidden />
+              </button>
+            </div>
           </div>
 
-          <div class="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              class={COLLECTION_NODE_STYLES.buttonIconCreators}
-              onClick={layout.toggle}
-              aria-label="Basculer panneau influenceurs"
-            >
-              <User class="h-4 w-4" aria-hidden />
-            </button>
-            <button type="button" class={COLLECTION_NODE_STYLES.playButton} onClick={actions.onPlay} aria-label="Lancer">
-              <Play class="h-3.5 w-3.5 fill-current" aria-hidden />
-            </button>
-          </div>
-        </div>
-
-        {collectionApiId != null ? (
-          <div class={COLLECTION_NODE_STYLES.actionsRow}>
-            <Button
-              variant="outline"
-              class="btn-xs gap-1 sm:btn-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                route(
-                  buildQuestionsRoutePath(
-                    collectionApiId,
-                    tagRefsFromSupercollections(data.supercollections ?? []),
-                    { fromNode: true },
-                  ),
-                );
-              }}
-            >
-              <ListTree class="h-4 w-4" aria-hidden />
-              Questions
-            </Button>
-            {data.isMine === true ? (
+          {collectionApiId != null ? (
+            <div class={COLLECTION_NODE_STYLES.actionsRow}>
               <Button
                 variant="outline"
-                class="btn-xs gap-1 sm:btn-sm"
-                title="Créer une question (même formulaire que sur la page Questions)"
+                class="btn-xs gap-1.5 bg-base-100 hover:bg-base-200/50 shadow-sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  graphActions?.openCreateQuestionModalForCollection(collectionApiId);
+                  route(
+                    buildQuestionsRoutePath(
+                      collectionApiId,
+                      tagRefsFromSupercollections(data.supercollections ?? []),
+                      { fromNode: true },
+                    ),
+                  );
                 }}
               >
-                <CirclePlus class="h-4 w-4" aria-hidden />
-                Créer
+                <ListTree class="h-3.5 w-3.5 text-base-content/70" aria-hidden />
+                Questions
               </Button>
-            ) : null}
-            {data.isMine === true && (data.questionCount ?? 0) > 0 ? (
+              {data.isMine === true ? (
+                <Button
+                  variant="outline"
+                  class="btn-xs gap-1.5 bg-base-100 hover:bg-base-200/50 shadow-sm"
+                  title="Créer une question"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    graphActions?.openCreateQuestionModalForCollection(collectionApiId);
+                  }}
+                >
+                  <CirclePlus class="h-3.5 w-3.5 text-base-content/70" aria-hidden />
+                  Créer
+                </Button>
+              ) : null}
+              {data.isMine === true && (data.questionCount ?? 0) > 0 ? (
+                <Button
+                  variant="outline"
+                  class="btn-xs gap-1.5 bg-base-100 hover:bg-base-200/50 shadow-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    route(buildReflexionRoutePath(collectionApiId));
+                  }}
+                >
+                  <ListOrdered class="h-3.5 w-3.5 text-base-content/70" aria-hidden />
+                  Suite logique
+                </Button>
+              ) : null}
               <Button
-                variant="outline"
-                class="btn-xs gap-1 sm:btn-sm"
+                variant="learn"
+                class="btn-xs gap-1.5 shadow-sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  route(buildReflexionRoutePath(collectionApiId));
+                  graphActions?.openLlmImportForCollection(collectionApiId);
                 }}
               >
-                <ListOrdered class="h-4 w-4" aria-hidden />
-                Suite logique
+                <FileJson class="h-3.5 w-3.5" aria-hidden />
+                Import LLM
               </Button>
-            ) : null}
-            <Button
-              variant="learn"
-              class="btn-xs gap-1 sm:btn-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                graphActions?.openLlmImportForCollection(collectionApiId);
-              }}
-            >
-              <FileJson class="h-4 w-4" aria-hidden />
-              Import LLM
-            </Button>
-          </div>
-        ) : null}
+            </div>
+          ) : null}
 
-        <div class={COLLECTION_NODE_STYLES.bottomStrip} aria-hidden>
+          <div class={COLLECTION_NODE_STYLES.bottomStrip} aria-hidden />
           <Handle
             type="source"
             position={Position.Bottom}
