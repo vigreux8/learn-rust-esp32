@@ -28,6 +28,10 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   questionRowPostMove: cn(
     "border-primary/70 bg-primary/15 shadow-md shadow-primary/15 ring-2 ring-primary/35 transition-[box-shadow,background-color,border-color] duration-500",
   ),
+  /** Ligne sélectionnée (Maj+clic plage) avant déplacement. */
+  questionRowSelected: cn(
+    "border-flow/50 bg-flow/12 ring-1 ring-flow/30 hover:border-flow/55 hover:bg-flow/15",
+  ),
   grip: "opacity-30",
   collectionLabel: "min-w-0 flex-1 text-sm font-medium text-base-content",
   questionTitle: "text-[11px] leading-tight",

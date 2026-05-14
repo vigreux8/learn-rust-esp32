@@ -3,6 +3,7 @@ import type { FlowSidebarCollectionRow, FlowSidebarPersonalityRow } from "./Flow
 
 export {
   REACT_FLOW_DND_MIME,
+  normalizeQuestionNodeMovePayload,
   parseReactFlowDnDPayload,
   readReactFlowDnDFromEvent,
   type ReactFlowDnDPayload,

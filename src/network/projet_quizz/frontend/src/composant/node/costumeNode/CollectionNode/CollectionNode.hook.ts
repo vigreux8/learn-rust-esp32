@@ -1,7 +1,7 @@
 import { useCallback, useState } from "preact/hooks";
 import { useReactFlow } from "@xyflow/react";
 import { useNodeViewGraphActions } from "../../../../lib/nodeViewGraphActionsContext";
-import { readReactFlowDnDFromEvent } from "../../../../lib/reactFlowDnD";
+import { normalizeQuestionNodeMovePayload, readReactFlowDnDFromEvent } from "../../../../lib/reactFlowDnD";
 import type { AppEdge, AppNode } from "../../config/flow.types";
 import {
   mergeInfluenceurFromSidebarPayload,
@@ -99,13 +99,8 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
           window.alert("Dépose sur un nœud collection relié à l’API (pas le gabarit vide).");
           return;
         }
-        const patch = (parsed.data ?? {}) as {
-          collectionId?: unknown;
-          questionId?: unknown;
-        };
-        const questionId = typeof patch.questionId === "number" ? patch.questionId : null;
-        const fromCollectionId = typeof patch.collectionId === "number" ? patch.collectionId : null;
-        if (questionId == null || fromCollectionId == null) {
+        const { fromCollectionId, questionIds } = normalizeQuestionNodeMovePayload(parsed.data);
+        if (questionIds.length === 0 || fromCollectionId == null) {
           window.alert(
             "Seules les questions déjà liées à une collection (liste ou nœud avec poignée) peuvent être déplacées.",
           );
@@ -119,7 +114,12 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
           window.alert("Action de déplacement non disponible sur ce graphe.");
           return;
         }
-        void moveQuestionToCollection({ questionId, fromCollectionId, toCollectionId });
+        void moveQuestionToCollection({
+          questionId: questionIds[0],
+          fromCollectionId,
+          toCollectionId,
+          ...(questionIds.length > 1 ? { questionIds } : {}),
+        });
       }
     },
     [data.collectionId, graphActions, id, setNodes],

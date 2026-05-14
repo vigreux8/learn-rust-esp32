@@ -1,13 +1,15 @@
 import { ChevronDown, GripVertical, Pencil, Search, Trash2 } from "lucide-preact";
-import { useEffect, useLayoutEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { cn } from "../../../../../../lib/cn";
 import { collectionTreeBorderHexForDepth } from "../../../../../../lib/collectionHierarchyVis";
-import { readReactFlowDnDFromEvent } from "../../../../../../lib/reactFlowDnD";
 import { MarkdownViewer } from "../../../../atomes/MarkdownViewer";
+import { normalizeQuestionNodeMovePayload, readReactFlowDnDFromEvent } from "../../FlowSidebarOverlay.metier";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import type { QuestionListGroup, QuestionListPanelProps } from "./QuestionListPanel.types";
 
 type QuestionListRow = QuestionListGroup["items"][number];
+
+type SelectionAnchor = { collectionId: number; index: number };
 
 function defaultDetailsOpenForCollection(collectionId: number, expandId: number | null): boolean {
   if (expandId == null) return false;
@@ -50,8 +52,48 @@ function scrollMovedQuestionRowIntoView(flash: MovedQuestionFlash): void {
   }
 }
 
+function rowCollectionIdForQuestion(groups: QuestionListGroup[], questionId: number): number | null {
+  for (const g of groups) {
+    for (const it of g.items) {
+      if (Number(it.id) === questionId) return g.collectionId;
+    }
+  }
+  return null;
+}
+
+/**
+ * Si la ligne glissée est dans la sélection, retourne toutes les questions sélectionnées
+ * de la même collection ; sinon une seule question.
+ */
+function collectDragQuestionIds(
+  dragged: { questionId: number; collectionId: number },
+  selected: ReadonlySet<number>,
+  groups: QuestionListGroup[],
+): number[] {
+  const { questionId, collectionId } = dragged;
+  if (!(selected.size > 0 && selected.has(questionId))) {
+    return [questionId];
+  }
+  const acc: number[] = [];
+  for (const qid of selected) {
+    if (rowCollectionIdForQuestion(groups, qid) === collectionId) acc.push(qid);
+  }
+  const unique = [...new Set(acc)].sort((a, b) => a - b);
+  return unique.length > 0 ? unique : [questionId];
+}
+
+function flashIdSet(flash: MovedQuestionFlash, collectionId: number): Set<number> | null {
+  if (flash.collectionId !== collectionId) return null;
+  if (flash.questionIds != null && flash.questionIds.length > 0) {
+    return new Set(flash.questionIds.map((x) => Number(x)));
+  }
+  return new Set<number>([flash.questionId]);
+}
+
 /**
  * Panneau : recherche et accordéons par collection (`category`) avec questions draggables.
+ * Maj+clic : plage dans un même bloc. Cmd / Ctrl + clic : bascule une question dans la sélection (sans plage).
+ * Glisser-déposer : déplace la sélection (même collection que la ligne glissée).
  */
 export function QuestionListPanel(props: QuestionListPanelProps) {
   const { data, actions } = props;
@@ -59,10 +101,20 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
     {},
   );
   const [dropTargetCollectionId, setDropTargetCollectionId] = useState<number | null>(null);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<ReadonlySet<number>>(() => new Set());
+  const anchorRef = useRef<SelectionAnchor | null>(null);
   const moveQuestion = actions.onMoveQuestionToCollection;
   const editQuestion = actions.onEditQuestionInSidebar;
   const deleteQuestion = actions.onDeleteQuestionInSidebar;
   const showQuestionRowActions = editQuestion != null || deleteQuestion != null;
+
+  const visibleQuestionIds = useMemo(() => {
+    const s = new Set<number>();
+    for (const g of data.groups) {
+      for (const it of g.items) s.add(Number(it.id));
+    }
+    return s;
+  }, [data.groups]);
 
   useEffect(() => {
     setDetailsOpenOverride({});
@@ -74,6 +126,19 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
       setDetailsOpenOverride({});
     }
   }, [data.search]);
+
+  useEffect(() => {
+    setSelectedQuestionIds((prev) => {
+      let changed = false;
+      const next = new Set<number>();
+      for (const id of prev) {
+        if (visibleQuestionIds.has(id)) next.add(id);
+        else changed = true;
+      }
+      if (!changed && next.size === prev.size) return prev;
+      return next;
+    });
+  }, [visibleQuestionIds]);
 
   useEffect(() => {
     if (moveQuestion == null) return;
@@ -91,6 +156,41 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
     };
     requestAnimationFrame(() => requestAnimationFrame(run));
   }, [data.movedQuestionHighlight]);
+
+  const handleQuestionRowClick = useCallback(
+    (event: MouseEvent, group: QuestionListGroup, item: QuestionListRow) => {
+      const qid = Number(item.id);
+      const idx = group.items.findIndex((x) => x.id === item.id);
+      if (idx < 0) return;
+
+      /** Cmd (macOS) ou Ctrl (Windows / habituel) : ajouter ou retirer une seule question, sans plage. */
+      if (event.metaKey || event.ctrlKey) {
+        event.preventDefault();
+        setSelectedQuestionIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(qid)) next.delete(qid);
+          else next.add(qid);
+          return next;
+        });
+        anchorRef.current = { collectionId: group.collectionId, index: idx };
+        return;
+      }
+
+      if (event.shiftKey && anchorRef.current?.collectionId === group.collectionId) {
+        const anchorIdx = anchorRef.current.index;
+        const lo = Math.min(anchorIdx, idx);
+        const hi = Math.max(anchorIdx, idx);
+        const next = new Set<number>();
+        for (let i = lo; i <= hi; i++) next.add(Number(group.items[i].id));
+        setSelectedQuestionIds(next);
+        return;
+      }
+
+      setSelectedQuestionIds(new Set([qid]));
+      anchorRef.current = { collectionId: group.collectionId, index: idx };
+    },
+    [],
+  );
 
   return (
     <div class="flex min-h-0 flex-1 flex-col gap-2">
@@ -126,6 +226,7 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
           const accentHex = collectionTreeBorderHexForDepth(depth);
           const sectionKey = String(collectionId);
           const flash = data.movedQuestionHighlight;
+          const flashIds = flash != null ? flashIdSet(flash, collectionId) : null;
           const override = detailsOpenOverride[collectionId];
           const hasActiveSearch = data.search.trim().length > 0;
           const collectionHasSearchHit = hasActiveSearch && group.items.length > 0;
@@ -184,17 +285,23 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                       setDropTargetCollectionId(null);
                       const parsed = readReactFlowDnDFromEvent(event as unknown as DragEvent);
                       if (parsed?.type !== "questionNode") return;
-                      const patch = (parsed.data ?? {}) as {
-                        collectionId?: unknown;
-                        questionId?: unknown;
-                      };
-                      const questionId = typeof patch.questionId === "number" ? patch.questionId : null;
-                      const fromCollectionId =
-                        typeof patch.collectionId === "number" ? patch.collectionId : null;
-                      if (questionId == null || fromCollectionId == null) return;
+                      const { fromCollectionId, questionIds } = normalizeQuestionNodeMovePayload(parsed.data);
+                      if (questionIds.length === 0 || fromCollectionId == null) return;
                       const toCollectionId = collectionId;
                       if (fromCollectionId === toCollectionId) return;
-                      void moveQuestion({ questionId, fromCollectionId, toCollectionId });
+                      void moveQuestion({
+                        questionId: questionIds[0],
+                        fromCollectionId,
+                        toCollectionId,
+                        ...(questionIds.length > 1 ? { questionIds } : {}),
+                      })
+                        .then(() => {
+                          setSelectedQuestionIds(new Set());
+                          anchorRef.current = null;
+                        })
+                        .catch(() => {
+                          /* erreur déjà signalée côté page */
+                        });
                     }
                   : undefined
               }
@@ -231,33 +338,45 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                   </p>
                 ) : (
                   group.items.map((item: QuestionListRow) => {
-                    const isPostMoveFlash =
-                      flash != null &&
-                      flash.collectionId === collectionId &&
-                      Number(item.id) === flash.questionId;
+                    const qNum = Number(item.id);
+                    const isPostMoveFlash = flashIds != null && flashIds.has(qNum);
+                    const isSelected = selectedQuestionIds.has(qNum);
                     return (
                     <div
                       key={item.id}
-                      data-moved-question-row={isPostMoveFlash ? String(flash.token) : undefined}
+                      data-moved-question-row={isPostMoveFlash && flash != null ? String(flash.token) : undefined}
                       class={cn(
                         FLOW_SIDEBAR_OVERLAY_STYLES.dragItem,
                         isPostMoveFlash ? FLOW_SIDEBAR_OVERLAY_STYLES.questionRowPostMove : undefined,
+                        isSelected ? FLOW_SIDEBAR_OVERLAY_STYLES.questionRowSelected : undefined,
                       )}
                       draggable
-                      onDragStart={(event) =>
+                      onDragStart={(event) => {
+                        const ids = collectDragQuestionIds(
+                          { questionId: qNum, collectionId: item.collectionId },
+                          selectedQuestionIds,
+                          data.groups,
+                        );
                         actions.onDragStart(event as unknown as DragEvent, "questionNode", {
                           title: item.title,
-                          questionId: Number(item.id),
+                          questionId: qNum,
                           collectionId: item.collectionId,
-                        })
-                      }
+                          ...(ids.length > 1 ? { questionIds: ids } : {}),
+                        });
+                      }}
                     >
                       <GripVertical
                         size={16}
                         class={`${FLOW_SIDEBAR_OVERLAY_STYLES.grip} mt-0.5 shrink-0`}
                         aria-hidden
                       />
-                      <div class={FLOW_SIDEBAR_OVERLAY_STYLES.questionRowMain}>
+                      <div
+                        class={cn(
+                          FLOW_SIDEBAR_OVERLAY_STYLES.questionRowMain,
+                          "cursor-pointer select-none",
+                        )}
+                        onClick={(event) => handleQuestionRowClick(event as unknown as MouseEvent, group, item)}
+                      >
                         <div
                           class={`min-w-0 flex-1 ${FLOW_SIDEBAR_OVERLAY_STYLES.questionTitleMarkdown}`}
                         >

@@ -29,3 +29,23 @@ export function readReactFlowDnDFromEvent(event: DragEvent): ReactFlowDnDPayload
   if (raw == null || raw === "") return null;
   return parseReactFlowDnDPayload(raw);
 }
+
+/**
+ * Charge utile `questionNode` (sidebar ou nœud) : `questionIds` optionnel pour un déplacement groupé.
+ */
+export function normalizeQuestionNodeMovePayload(data: unknown): {
+  fromCollectionId: number | null;
+  questionIds: number[];
+} {
+  const patch = (data ?? {}) as Record<string, unknown>;
+  const fromCollectionId = typeof patch.collectionId === "number" ? patch.collectionId : null;
+  const single = typeof patch.questionId === "number" ? patch.questionId : null;
+  const raw = patch.questionIds;
+  const fromArray = Array.isArray(raw)
+    ? raw.filter((x): x is number => typeof x === "number" && Number.isFinite(x))
+    : [];
+  const merged =
+    fromArray.length > 0 ? [...new Set(fromArray)] : single != null ? [single] : [];
+  merged.sort((a, b) => a - b);
+  return { fromCollectionId, questionIds: merged };
+}

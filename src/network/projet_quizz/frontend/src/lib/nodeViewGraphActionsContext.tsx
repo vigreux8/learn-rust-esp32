@@ -6,6 +6,8 @@ export type NodeViewGraphMoveQuestionArgs = {
   questionId: number;
   fromCollectionId: number;
   toCollectionId: number;
+  /** Si défini (plusieurs ids), déplace toutes ces questions depuis `fromCollectionId`. */
+  questionIds?: readonly number[];
 };
 
 export type NodeViewGraphActionsValue = {

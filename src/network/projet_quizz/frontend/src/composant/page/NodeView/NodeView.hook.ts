@@ -22,7 +22,7 @@ import {
   postMoveQuestionToCollection,
   unlinkCollectionParentCollection,
 } from "../../../lib/api";
-import type { NodeViewGraphActionsValue } from "../../../lib/nodeViewGraphActionsContext";
+import type { NodeViewGraphActionsValue, NodeViewGraphMoveQuestionArgs } from "../../../lib/nodeViewGraphActionsContext";
 import { useUserSession } from "../../../lib/userSession";
 import { flowEdgeTypes, flowNodeTypes } from "../../node/config/flow.registry";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
@@ -660,7 +660,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
 
   const questionsPanelHint = useMemo(() => {
     const canvasIntro =
-      "Seules les collections présentes comme nœuds sur le graphe (collection ou question avec id API) : questions et blocs correspondent à cette vue. Ordre hiérarchique ; glisser-déposer pour changer de collection.";
+      "Seules les collections présentes comme nœuds sur le graphe (collection ou question avec id API) : questions et blocs correspondent à cette vue. Ordre hiérarchique ; glisser-déposer pour changer de collection. Maj+clic : plage dans un même bloc. Cmd (macOS) ou Ctrl (Windows) + clic : ajouter ou retirer une question à la sélection, sans remplir l’intervalle. Glisser déplace la sélection.";
 
     if (questionsCanvasCollectionScope.orderedIds.length === 0) {
       return `${canvasIntro} Aucune collection API sur le graphe : utilise « Filtrer collections » pour en déposer, ou recharge une branche.`;
@@ -726,15 +726,22 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   }, []);
 
   const moveQuestionToCollection = useCallback(
-    async (args: { questionId: number; fromCollectionId: number; toCollectionId: number }) => {
-      const { questionId, fromCollectionId, toCollectionId } = args;
-      if (fromCollectionId === toCollectionId) return;
+    async (args: NodeViewGraphMoveQuestionArgs) => {
+      const { fromCollectionId, toCollectionId } = args;
+      const rawIds =
+        args.questionIds != null && args.questionIds.length > 0
+          ? [...new Set([...args.questionIds])]
+          : [args.questionId];
+      const ids = rawIds.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+      if (ids.length === 0 || fromCollectionId === toCollectionId) return;
       try {
-        await postMoveQuestionToCollection(questionId, {
-          user_id: userId,
-          from_collection_id: fromCollectionId,
-          to_collection_id: toCollectionId,
-        });
+        for (const questionId of ids) {
+          await postMoveQuestionToCollection(questionId, {
+            user_id: userId,
+            from_collection_id: fromCollectionId,
+            to_collection_id: toCollectionId,
+          });
+        }
         const list = await fetchCollections();
         setApiCollections(list);
 
@@ -745,9 +752,10 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           window.clearTimeout(moveHighlightClearTimerRef.current);
         }
         setMovedQuestionHighlight({
-          questionId,
+          questionId: ids[ids.length - 1],
           collectionId: toCollectionId,
           token: highlightToken,
+          ...(ids.length > 1 ? { questionIds: ids } : {}),
         });
         moveHighlightClearTimerRef.current = window.setTimeout(() => {
           setMovedQuestionHighlight(null);
@@ -756,24 +764,26 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
 
         setNodes((nds) =>
           hydrateCollectionNodesTreeDepthFromCollections(
-            nds.map((n) =>
-              n.type === "questionNode" && n.data.questionId === questionId
-                ? {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      collectionId: toCollectionId,
-                      moveFlashToken: graphFlashToken,
-                    },
-                  }
-                : n,
-            ),
+            nds.map((n) => {
+              if (n.type !== "questionNode") return n;
+              const qid = n.data.questionId;
+              if (typeof qid !== "number" || !ids.includes(qid)) return n;
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  collectionId: toCollectionId,
+                  moveFlashToken: graphFlashToken,
+                },
+              };
+            }),
             list,
             userId,
           ),
         );
       } catch (e: unknown) {
         window.alert(e instanceof Error ? e.message : "Impossible de déplacer la question.");
+        throw e;
       }
     },
     [setNodes, userId],

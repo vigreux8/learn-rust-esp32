@@ -61,6 +61,8 @@ export type FlowSidebarMoveQuestionArgs = {
   questionId: number;
   fromCollectionId: number;
   toCollectionId: number;
+  /** Déplacement groupé (sidebar : Maj+clic + glisser). */
+  questionIds?: readonly number[];
 };
 
 /** Mise en évidence temporaire dans le panneau Questions après un changement de collection. */
@@ -69,6 +71,8 @@ export type MovedQuestionHighlight = {
   collectionId: number;
   /** Incrémenté à chaque déplacement pour relancer scroll / animation. */
   token: number;
+  /** Toutes les lignes concernées reçoivent la même animation (déplacement groupé). */
+  questionIds?: readonly number[];
 };
 
 /** API côté page (`/node`) : fermeture au double clic sur le fond, ouverture d’onglet depuis le graphe. */
