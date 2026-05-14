@@ -43,7 +43,7 @@ import {
   resolveQuestionsScopeCollectionIdFromSelection,
 } from "./NodeView.metier";
 import { useNodeViewPlayMode } from "./hooks/useNodeViewPlayMode";
-import type { FlowSidebarHostApi } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
+import type { FlowSidebarHostApi, MovedQuestionHighlight } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
 import type { NodeViewProps } from "./NodeView.types";
 
 /**
@@ -85,6 +85,9 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   /** Conteneur du canvas React Flow : exclu du clic extérieur quand l’onglet Questions est ouvert. */
   const reactFlowRootRef = useRef<HTMLDivElement | null>(null);
   const flowSidebarHostApiRef = useRef<FlowSidebarHostApi | null>(null);
+  const [movedQuestionHighlight, setMovedQuestionHighlight] = useState<MovedQuestionHighlight | null>(null);
+  const moveHighlightTokenRef = useRef(0);
+  const moveHighlightClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Compteur de `onPaneClick` consécutifs pour fermer le panneau Questions au 2ᵉ clic sur le fond. */
   const questionsPaneDismissStreakRef = useRef(0);
 
@@ -121,6 +124,15 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       cancelled = true;
     };
   }, [userId]);
+
+  useEffect(() => {
+    return () => {
+      if (moveHighlightClearTimerRef.current != null) {
+        window.clearTimeout(moveHighlightClearTimerRef.current);
+        moveHighlightClearTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (llmImportModalCollectionId == null) {
@@ -728,11 +740,35 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         });
         const list = await fetchCollections();
         setApiCollections(list);
+
+        moveHighlightTokenRef.current += 1;
+        const highlightToken = moveHighlightTokenRef.current;
+        const graphFlashToken = Date.now();
+        if (moveHighlightClearTimerRef.current != null) {
+          window.clearTimeout(moveHighlightClearTimerRef.current);
+        }
+        setMovedQuestionHighlight({
+          questionId,
+          collectionId: toCollectionId,
+          token: highlightToken,
+        });
+        moveHighlightClearTimerRef.current = window.setTimeout(() => {
+          setMovedQuestionHighlight(null);
+          moveHighlightClearTimerRef.current = null;
+        }, 2800);
+
         setNodes((nds) =>
           hydrateCollectionNodesTreeDepthFromCollections(
             nds.map((n) =>
               n.type === "questionNode" && n.data.questionId === questionId
-                ? { ...n, data: { ...n.data, collectionId: toCollectionId } }
+                ? {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      collectionId: toCollectionId,
+                      moveFlashToken: graphFlashToken,
+                    },
+                  }
                 : n,
             ),
             list,
@@ -788,6 +824,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         clickOutsideIgnoreRefs: [playModeUi.panel.containerRef],
         reactFlowRootRef,
         sidebarHostApiRef: flowSidebarHostApiRef,
+        movedQuestionHighlight,
       },
     },
     graphActions,

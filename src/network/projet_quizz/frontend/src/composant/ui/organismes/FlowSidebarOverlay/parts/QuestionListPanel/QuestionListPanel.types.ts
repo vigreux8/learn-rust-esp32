@@ -1,4 +1,4 @@
-import type { FlowSidebarMoveQuestionArgs, FlowSidebarQuestionRow } from "../../FlowSidebarOverlay.types";
+import type { FlowSidebarMoveQuestionArgs, FlowSidebarQuestionRow, MovedQuestionHighlight } from "../../FlowSidebarOverlay.types";
 
 export type QuestionListGroup = {
   collectionId: number;
@@ -13,6 +13,8 @@ export type QuestionListPanelProps = {
     groups: QuestionListGroup[];
     /** Déplié par défaut pour ce `collectionId` ; `null` = tout replié jusqu’au clic. */
     detailsExpandCollectionId: number | null;
+    /** Après déplacement : surbrillance + scroll sur la ligne dans la collection cible. */
+    movedQuestionHighlight?: MovedQuestionHighlight | null;
   };
   actions: {
     setSearch: (value: string) => void;

@@ -108,6 +108,7 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                   search: questions.search,
                   groups: questions.groups,
                   detailsExpandCollectionId: presentation?.questionsDetailsExpandCollectionId ?? null,
+                  movedQuestionHighlight: presentation?.movedQuestionHighlight ?? null,
                 }}
                 actions={{
                   setSearch: questions.setSearch,

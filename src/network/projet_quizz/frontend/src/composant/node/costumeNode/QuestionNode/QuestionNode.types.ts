@@ -6,6 +6,8 @@ export type QuestionNodeData = {
   questionId?: number | null;
   /** Collection d’origine (filtre sidebar Questions au clic sur ce nœud). */
   collectionId?: number | null;
+  /** Horodatage temporaire : surbrillance après déplacement de collection depuis la sidebar. */
+  moveFlashToken?: number;
 };
 
 export type QuestionNodeType = Node<QuestionNodeData, "questionNode">;

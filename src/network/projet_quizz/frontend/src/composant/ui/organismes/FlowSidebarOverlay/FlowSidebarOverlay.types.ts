@@ -53,6 +53,14 @@ export type FlowSidebarMoveQuestionArgs = {
   toCollectionId: number;
 };
 
+/** Mise en évidence temporaire dans le panneau Questions après un changement de collection. */
+export type MovedQuestionHighlight = {
+  questionId: number;
+  collectionId: number;
+  /** Incrémenté à chaque déplacement pour relancer scroll / animation. */
+  token: number;
+};
+
 /** API côté page (`/node`) : fermeture au double clic sur le fond, ouverture d’onglet depuis le graphe. */
 export type FlowSidebarHostApi = {
   activeTab: SidebarTab;
@@ -105,5 +113,7 @@ export type FlowSidebarOverlayProps = {
      * Mis à jour par la sidebar : onglet actif, fermeture, ouverture d’onglet (ex. double-clic nœud → Questions).
      */
     sidebarHostApiRef?: RefObject<FlowSidebarHostApi | null>;
+    /** Surbrillance + scroll sur la ligne déplacée dans « Questions par collection ». */
+    movedQuestionHighlight?: MovedQuestionHighlight | null;
   };
 };

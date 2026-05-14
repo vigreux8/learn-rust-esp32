@@ -1,4 +1,6 @@
-import { useCallback } from "preact/hooks";
+import { useCallback, useEffect } from "preact/hooks";
+import { useReactFlow } from "@xyflow/react";
+import type { AppEdge, AppNode } from "../../config/flow.types";
 import { REACT_FLOW_DND_MIME } from "../../../../lib/reactFlowDnD";
 import type { QuestionNodeData } from "./QuestionNode.types";
 
@@ -30,4 +32,25 @@ export function useQuestionNodeSidebarDrag(data: QuestionNodeData) {
   );
 
   return { onGripDragStart, canSidebarDrag: typeof data.questionId === "number" && typeof data.collectionId === "number" };
+}
+
+/**
+ * Retire `moveFlashToken` après surbrillance temporaire (déplacement collection).
+ */
+export function useQuestionNodeMoveFlash(opts: { nodeId: string; moveFlashToken?: number }) {
+  const { nodeId, moveFlashToken } = opts;
+  const { setNodes } = useReactFlow<AppNode, AppEdge>();
+  useEffect(() => {
+    if (moveFlashToken == null) return;
+    const t = window.setTimeout(() => {
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === nodeId && n.type === "questionNode"
+            ? { ...n, data: { ...n.data, moveFlashToken: undefined } }
+            : n,
+        ),
+      );
+    }, 2600);
+    return () => window.clearTimeout(t);
+  }, [moveFlashToken, nodeId, setNodes]);
 }

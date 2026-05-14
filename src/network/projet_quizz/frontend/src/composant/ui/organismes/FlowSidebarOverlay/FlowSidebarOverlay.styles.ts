@@ -24,13 +24,18 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   dragItem: cn(
     "flex cursor-grab items-center gap-3 rounded-xl border-2 border-transparent bg-base-200 p-3 transition-all hover:border-flow/35 hover:bg-flow/8 active:cursor-grabbing",
   ),
+  /** Ligne question juste après déplacement de collection (sidebar). */
+  questionRowPostMove: cn(
+    "border-primary/70 bg-primary/15 shadow-md shadow-primary/15 ring-2 ring-primary/35 transition-[box-shadow,background-color,border-color] duration-500",
+  ),
   grip: "opacity-30",
   collectionLabel: "min-w-0 flex-1 text-sm font-medium text-base-content",
   questionTitle: "text-[11px] leading-tight",
   /**
-   * Accordéon natif (`<details>`) : évite le `collapse` Daisy + checkbox, fragile avec overflow / grilles internes.
+   * Accordéon natif (`<details>`) : `shrink-0` évite que plusieurs blocs ouverts soient écrasés en colonne flex
+   * (sinon flex-shrink: 1 compresse les titres au lieu de faire défiler le conteneur).
    */
-  questionCollectionDetails: "group mb-1.5 overflow-hidden rounded-lg bg-base-200",
+  questionCollectionDetails: "group mb-1.5 shrink-0 overflow-hidden rounded-lg bg-base-200",
   /**
    * Même lecture que les lignes « Filtrer collections » : bord gauche colorée par `treeDepth`
    * (`borderLeftColor` inline sur le `<details>`).
@@ -39,12 +44,16 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
     "border-l-[4px] border-solid border-y border-y-base-content/[0.12] border-r border-r-base-content/[0.12]",
   questionCollectionSummary:
     "flex cursor-pointer list-none items-center gap-2 px-2 py-2 text-sm font-bold outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-primary/30",
-  /** Cible de dépôt : surbrillance quand une question est glissée au-dessus du nom de collection. */
-  questionCollectionSummaryDropOver:
+  /**
+   * Cible de dépôt (tout le bloc collection : en-tête + liste) quand une question est glissée au-dessus.
+   */
+  questionCollectionDropOver:
     "border border-dashed border-primary/60 bg-primary/10 ring-2 ring-primary/25",
   /**
    * Défilement des questions : plafond de hauteur pour ne pas masquer les autres collections.
    */
   questionListScrollInner:
     "flex max-h-[min(50vh,20rem)] min-h-0 flex-col gap-2 overflow-y-auto overscroll-y-contain px-1 pb-2 pt-1",
+  /** Zone de liste vide : garde une hauteur minimale pour pouvoir déposer une question sur la collection. */
+  questionListScrollInnerEmptyDropTarget: "min-h-[4.5rem] justify-center",
 } as const;

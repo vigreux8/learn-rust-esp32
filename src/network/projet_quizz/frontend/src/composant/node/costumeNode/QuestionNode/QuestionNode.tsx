@@ -1,6 +1,7 @@
 import { Handle, Position } from "@xyflow/react";
 import { GripVertical, MessageSquare } from "lucide-preact";
-import { useQuestionNodeSidebarDrag } from "./QuestionNode.hook";
+import { cn } from "../../../../lib/cn";
+import { useQuestionNodeMoveFlash, useQuestionNodeSidebarDrag } from "./QuestionNode.hook";
 import { QUESTION_NODE_STYLES } from "./QuestionNode.styles";
 import type { QuestionNodeProps } from "./QuestionNode.types";
 
@@ -8,11 +9,17 @@ import type { QuestionNodeProps } from "./QuestionNode.types";
  * Nœud graphe minimal pour une question (titre), utilisable après drag depuis la sidebar.
  */
 export function QuestionNode(props: QuestionNodeProps) {
-  const { data, isConnectable } = props;
+  const { data, isConnectable, id } = props;
   const sidebarDrag = useQuestionNodeSidebarDrag(data);
+  useQuestionNodeMoveFlash({ nodeId: id, moveFlashToken: data.moveFlashToken });
 
   return (
-    <div class={QUESTION_NODE_STYLES.wrapper}>
+    <div
+      class={cn(
+        QUESTION_NODE_STYLES.wrapper,
+        data.moveFlashToken != null ? QUESTION_NODE_STYLES.wrapperMoveFlash : undefined,
+      )}
+    >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} />
       <div class="flex items-start gap-2">
         {sidebarDrag.canSidebarDrag ? (
