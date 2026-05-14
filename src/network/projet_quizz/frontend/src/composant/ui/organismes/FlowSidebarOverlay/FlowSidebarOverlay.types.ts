@@ -91,6 +91,10 @@ export type FlowSidebarOverlayProps = {
     onShowCollectionSubtreeOnGraph?: (collectionId: number) => void;
     /** Dépôt d’une question sur l’en-tête d’une autre collection dans le panneau Questions. */
     onMoveQuestionToCollection?: (args: FlowSidebarMoveQuestionArgs) => Promise<void>;
+    /** Édition depuis la liste Questions (ex. `/node`) : ouvre la modale métier. */
+    onEditQuestionInSidebar?: (questionId: number) => void;
+    /** Suppression depuis la liste Questions (ex. `/node`). */
+    onDeleteQuestionInSidebar?: (questionId: number) => void | Promise<void>;
   };
   presentation?: {
     /** Affiché sous le titre du panneau Questions lorsque la liste est restreinte au graphe. */

@@ -43,6 +43,7 @@ import {
   resolveQuestionsScopeCollectionIdFromSelection,
 } from "./NodeView.metier";
 import { useNodeViewPlayMode } from "./hooks/useNodeViewPlayMode";
+import { useNodeViewQuestionSidebarEdit } from "./hooks/useNodeViewQuestionSidebarEdit";
 import type { FlowSidebarHostApi, MovedQuestionHighlight } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
 import type { NodeViewProps } from "./NodeView.types";
 
@@ -85,6 +86,8 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   /** Conteneur du canvas React Flow : exclu du clic extérieur quand l’onglet Questions est ouvert. */
   const reactFlowRootRef = useRef<HTMLDivElement | null>(null);
   const flowSidebarHostApiRef = useRef<FlowSidebarHostApi | null>(null);
+  /** Clics sur la modale d’édition question ne ferment pas le panneau latéral (`clickOutsideIgnoreRefs`). */
+  const questionEditModalShellRef = useRef<HTMLDivElement | null>(null);
   const [movedQuestionHighlight, setMovedQuestionHighlight] = useState<MovedQuestionHighlight | null>(null);
   const moveHighlightTokenRef = useRef(0);
   const moveHighlightClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -728,6 +731,12 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     clickOutsideIgnoreRefs: [flowSidebarShellRef],
   });
 
+  const questionSidebarEdit = useNodeViewQuestionSidebarEdit({
+    userId,
+    setApiCollections,
+    setNodes,
+  });
+
   const moveQuestionToCollection = useCallback(
     async (args: { questionId: number; fromCollectionId: number; toCollectionId: number }) => {
       const { questionId, fromCollectionId, toCollectionId } = args;
@@ -815,19 +824,22 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         ...page.actions,
         onShowCollectionSubtreeOnGraph,
         onMoveQuestionToCollection: moveQuestionToCollection,
+        ...questionSidebarEdit.flowSidebarQuestionActions,
       },
       presentation: {
         questionsPanelHint,
         questionsDetailsExpandCollectionId: questionsScopeCollectionId,
         questionsCanvasCollectionIds: questionsCanvasCollectionScope.orderedIds,
         shellRef: flowSidebarShellRef,
-        clickOutsideIgnoreRefs: [playModeUi.panel.containerRef],
+        clickOutsideIgnoreRefs: [playModeUi.panel.containerRef, questionEditModalShellRef],
         reactFlowRootRef,
         sidebarHostApiRef: flowSidebarHostApiRef,
         movedQuestionHighlight,
       },
     },
     graphActions,
+    questionEditModalShellRef,
+    questionEditModal: questionSidebarEdit.questionEditModal,
     llmImportModal: {
       open: llmImportModalCollectionId != null,
       collectionId: llmImportModalCollectionId,

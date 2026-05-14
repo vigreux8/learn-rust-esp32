@@ -22,7 +22,7 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   searchInput: "grow",
   levelRow: "mb-2 flex flex-wrap gap-1",
   dragItem: cn(
-    "flex cursor-grab items-center gap-3 rounded-xl border-2 border-transparent bg-base-200 p-3 transition-all hover:border-flow/35 hover:bg-flow/8 active:cursor-grabbing",
+    "flex cursor-grab items-start gap-2 rounded-xl border-2 border-transparent bg-base-200 p-3 transition-all hover:border-flow/35 hover:bg-flow/8 active:cursor-grabbing",
   ),
   /** Ligne question juste après déplacement de collection (sidebar). */
   questionRowPostMove: cn(
@@ -37,6 +37,11 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
     "[&_.prose_p]:my-0.5 [&_.prose_p]:text-[11px] [&_.prose_p]:leading-tight",
     "[&_.katex-display]:my-1 [&_.katex-display]:overflow-x-auto",
   ),
+  /** Ligne question : zone titre + actions (ne pas capturer le drag du grip). */
+  questionRowMain: "nodrag flex min-w-0 flex-1 items-start gap-1.5",
+  questionRowActions: "flex shrink-0 flex-row items-center gap-0.5 self-start pt-0.5",
+  questionRowActionBtn:
+    "btn btn-square btn-ghost btn-xs h-6 w-6 min-h-0 border-0 bg-transparent p-0 text-base-content/35 hover:bg-base-content/8 hover:text-base-content/80",
   /**
    * Accordéon natif (`<details>`) : `shrink-0` évite que plusieurs blocs ouverts soient écrasés en colonne flex
    * (sinon flex-shrink: 1 compresse les titres au lieu de faire défiler le conteneur).

@@ -3,6 +3,7 @@ import { NodeViewGraphActionsContext } from "../../../lib/nodeViewGraphActionsCo
 import { AppHeader } from "../../ui/atomes/AppHeader/AppHeader";
 import { PageMain } from "../../ui/atomes/PageMain/PageMain";
 import { FlowSidebarOverlay } from "../../ui/organismes/FlowSidebarOverlay";
+import { QuestionEditModal } from "../../ui/organismes/QuestionEditModal/QuestionEditModal";
 import { CreatePersonnaliteModal } from "../CollectionsView/parts/CreatePersonnaliteModal";
 import { GraphCreateNormaleCollectionModal } from "./parts/GraphCreateNormaleCollectionModal";
 import { NodeViewLlmImportModal } from "./parts/NodeViewLlmImportModal/NodeViewLlmImportModal";
@@ -15,9 +16,10 @@ import type { NodeViewProps } from "./NodeView.types";
  * Zone graphe + sidebar : doit vivre sous `ReactFlowProvider` pour `useReactFlow` dans le hook.
  */
 function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
-  const { flow, sidebar, graphModals, graphActions, llmImportModal, playModePanel } = useNodeViewFlow({
-    actions: props.actions,
-  });
+  const { flow, sidebar, graphActions, graphModals, llmImportModal, playModePanel, questionEditModal, questionEditModalShellRef } =
+    useNodeViewFlow({
+      actions: props.actions,
+    });
 
   return (
     <NodeViewGraphActionsContext.Provider value={graphActions}>
@@ -78,6 +80,15 @@ function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
           onClose={llmImportModal.onClose}
           onImportSuccess={llmImportModal.onImportSuccess}
         />
+        <div ref={questionEditModalShellRef}>
+          <QuestionEditModal
+            settings={questionEditModal.settings}
+            actions={questionEditModal.actions}
+            status={questionEditModal.status}
+            data={questionEditModal.data}
+            drafts={questionEditModal.drafts}
+          />
+        </div>
         <NodeViewPlayModePanel panel={playModePanel.panel} play={playModePanel.play} />
       </div>
     </div>

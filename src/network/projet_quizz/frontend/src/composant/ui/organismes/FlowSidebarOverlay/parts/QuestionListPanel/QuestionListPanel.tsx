@@ -1,4 +1,4 @@
-import { ChevronDown, GripVertical, Search } from "lucide-preact";
+import { ChevronDown, GripVertical, Pencil, Search, Trash2 } from "lucide-preact";
 import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { cn } from "../../../../../../lib/cn";
 import { collectionTreeBorderHexForDepth } from "../../../../../../lib/collectionHierarchyVis";
@@ -60,6 +60,9 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
   );
   const [dropTargetCollectionId, setDropTargetCollectionId] = useState<number | null>(null);
   const moveQuestion = actions.onMoveQuestionToCollection;
+  const editQuestion = actions.onEditQuestionInSidebar;
+  const deleteQuestion = actions.onDeleteQuestionInSidebar;
+  const showQuestionRowActions = editQuestion != null || deleteQuestion != null;
 
   useEffect(() => {
     setDetailsOpenOverride({});
@@ -249,11 +252,48 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                         })
                       }
                     >
-                      <GripVertical size={16} class={FLOW_SIDEBAR_OVERLAY_STYLES.grip} aria-hidden />
-                      <div
-                        class={`nodrag min-w-0 flex-1 ${FLOW_SIDEBAR_OVERLAY_STYLES.questionTitleMarkdown}`}
-                      >
-                        <MarkdownViewer data={{ content: item.title }} />
+                      <GripVertical
+                        size={16}
+                        class={`${FLOW_SIDEBAR_OVERLAY_STYLES.grip} mt-0.5 shrink-0`}
+                        aria-hidden
+                      />
+                      <div class={FLOW_SIDEBAR_OVERLAY_STYLES.questionRowMain}>
+                        <div
+                          class={`min-w-0 flex-1 ${FLOW_SIDEBAR_OVERLAY_STYLES.questionTitleMarkdown}`}
+                        >
+                          <MarkdownViewer data={{ content: item.title }} />
+                        </div>
+                        {showQuestionRowActions ? (
+                          <div
+                            class={FLOW_SIDEBAR_OVERLAY_STYLES.questionRowActions}
+                            onMouseDown={(event) => event.stopPropagation()}
+                          >
+                            {editQuestion != null ? (
+                              <button
+                                type="button"
+                                class={FLOW_SIDEBAR_OVERLAY_STYLES.questionRowActionBtn}
+                                draggable={false}
+                                aria-label="Modifier la question"
+                                title="Modifier"
+                                onClick={() => editQuestion(Number(item.id))}
+                              >
+                                <Pencil size={13} strokeWidth={2} aria-hidden />
+                              </button>
+                            ) : null}
+                            {deleteQuestion != null ? (
+                              <button
+                                type="button"
+                                class={FLOW_SIDEBAR_OVERLAY_STYLES.questionRowActionBtn}
+                                draggable={false}
+                                aria-label="Supprimer la question"
+                                title="Supprimer"
+                                onClick={() => void deleteQuestion(Number(item.id))}
+                              >
+                                <Trash2 size={13} strokeWidth={2} aria-hidden />
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                     );

@@ -19,5 +19,7 @@ export type QuestionListPanelProps = {
     setSearch: (value: string) => void;
     onDragStart: (event: DragEvent, nodeType: string, payload: unknown) => void;
     onMoveQuestionToCollection?: (args: FlowSidebarMoveQuestionArgs) => Promise<void>;
+    onEditQuestionInSidebar?: (questionId: number) => void;
+    onDeleteQuestionInSidebar?: (questionId: number) => void | Promise<void>;
   };
 };

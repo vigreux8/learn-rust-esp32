@@ -114,6 +114,8 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                   setSearch: questions.setSearch,
                   onDragStart: drag.onDragStart,
                   onMoveQuestionToCollection: actions?.onMoveQuestionToCollection,
+                  onEditQuestionInSidebar: actions?.onEditQuestionInSidebar,
+                  onDeleteQuestionInSidebar: actions?.onDeleteQuestionInSidebar,
                 }}
               />
             ) : null}
