@@ -24,7 +24,7 @@ function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
   return (
     <NodeViewGraphActionsContext.Provider value={graphActions}>
     <div class={NODE_VIEW_STYLES.flowShell}>
-      <div class={`${NODE_VIEW_STYLES.canvasInner} relative`}>
+      <div class={NODE_VIEW_STYLES.canvasInner}>
         <div ref={flow.reactFlowRootRef} class="h-full min-h-0 w-full">
           <ReactFlow
             className="h-full w-full"

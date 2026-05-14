@@ -41,7 +41,7 @@ import { flowEdgeTypes, flowNodeTypes } from "../../node/config/flow.registry";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionNode";
 import { readReactFlowDnDFromEvent } from "../../../lib/reactFlowDnD";
-import { readStoredNodeViewGraph, writeStoredNodeViewGraph } from "../../../lib/nodeViewGraphSession";
+import { readStoredNodeViewGraph, writeStoredNodeViewGraph, readNodeViewGraphUiSettings, writeNodeViewGraphUiSettings, type NodeViewGraphUiSettings } from "../../../lib/nodeViewGraphSession";
 import type {
   CollectionUi,
   PersonalitePickerRowUi,
@@ -135,6 +135,9 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   /** Clics sur la modale d’édition question ne ferment pas le panneau latéral (`clickOutsideIgnoreRefs`). */
   const questionEditModalShellRef = useRef<HTMLDivElement | null>(null);
   const [movedQuestionHighlight, setMovedQuestionHighlight] = useState<MovedQuestionHighlight | null>(null);
+  const [graphUiSettings, setGraphUiSettings] = useState<NodeViewGraphUiSettings>(() =>
+    readNodeViewGraphUiSettings(),
+  );
   const moveHighlightTokenRef = useRef(0);
   const moveHighlightClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Compteur de `onPaneClick` consécutifs pour fermer le panneau Questions au 2ᵉ clic sur le fond. */
@@ -317,6 +320,14 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         /* ignore */
       }
     };
+  }, []);
+
+  const onGraphUiSettingsChange = useCallback((patch: Partial<NodeViewGraphUiSettings>) => {
+    setGraphUiSettings((prev) => {
+      const next = { ...prev, ...patch };
+      writeNodeViewGraphUiSettings(next);
+      return next;
+    });
   }, []);
 
   const onEdgesChange = useCallback(
@@ -899,23 +910,25 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         const list = await fetchCollections();
         setApiCollections(list);
 
-        moveHighlightTokenRef.current += 1;
-        const highlightToken = moveHighlightTokenRef.current;
-        const graphFlashToken = Date.now();
-        if (moveHighlightClearTimerRef.current != null) {
-          window.clearTimeout(moveHighlightClearTimerRef.current);
+        if (graphUiSettings.focusQuestionAfterCollectionMove) {
+          moveHighlightTokenRef.current += 1;
+          const highlightToken = moveHighlightTokenRef.current;
+          if (moveHighlightClearTimerRef.current != null) {
+            window.clearTimeout(moveHighlightClearTimerRef.current);
+          }
+          setMovedQuestionHighlight({
+            questionId: ids[ids.length - 1],
+            collectionId: toCollectionId,
+            token: highlightToken,
+            ...(ids.length > 1 ? { questionIds: ids } : {}),
+          });
+          moveHighlightClearTimerRef.current = window.setTimeout(() => {
+            setMovedQuestionHighlight(null);
+            moveHighlightClearTimerRef.current = null;
+          }, 2800);
         }
-        setMovedQuestionHighlight({
-          questionId: ids[ids.length - 1],
-          collectionId: toCollectionId,
-          token: highlightToken,
-          ...(ids.length > 1 ? { questionIds: ids } : {}),
-        });
-        moveHighlightClearTimerRef.current = window.setTimeout(() => {
-          setMovedQuestionHighlight(null);
-          moveHighlightClearTimerRef.current = null;
-        }, 2800);
 
+        const graphFlashToken = Date.now();
         setNodes((nds) =>
           hydrateCollectionNodesTreeDepthFromCollections(
             nds.map((n) => {
@@ -941,7 +954,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         throw e;
       }
     },
-    [bumpReflexionSidebarData, setNodes, userId],
+    [bumpReflexionSidebarData, graphUiSettings.focusQuestionAfterCollectionMove, setNodes, userId],
   );
 
   const moveGroupeToCollection = useCallback(
@@ -1094,6 +1107,29 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     ],
   );
 
+  const anyCollectionSidePanelOpen = useMemo(
+    () => nodes.some((n) => n.type === "collectionNode" && n.data.sidePanelsOpen === true),
+    [nodes],
+  );
+
+  const collectionNodeCountOnGraph = useMemo(
+    () => nodes.filter((n) => n.type === "collectionNode").length,
+    [nodes],
+  );
+
+  const toggleAllCollectionSidePanels = useCallback(() => {
+    setNodes((nds) => {
+      const collectionNodes = nds.filter((n) => n.type === "collectionNode");
+      if (collectionNodes.length === 0) return nds;
+      const anyOpen = collectionNodes.some((n) => n.data.sidePanelsOpen === true);
+      const nextOpen = !anyOpen;
+      return nds.map((n) => {
+        if (n.type !== "collectionNode") return n;
+        return { ...n, data: { ...n.data, sidePanelsOpen: nextOpen } };
+      });
+    });
+  }, [setNodes]);
+
   return {
     flow: {
       nodes,
@@ -1111,6 +1147,9 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       edgeTypes: flowEdgeTypes,
       reactFlowFitView: !shouldRestoreGraph,
       reactFlowRootRef,
+      anyCollectionSidePanelOpen,
+      collectionNodeCountOnGraph,
+      toggleAllCollectionSidePanels,
     },
     sidebar: {
       data: sidebarDataForOverlay,
@@ -1133,6 +1172,13 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         reactFlowRootRef,
         sidebarHostApiRef: flowSidebarHostApiRef,
         movedQuestionHighlight,
+        graphCollectionPanelsToolbar: {
+          collectionNodeCount: collectionNodeCountOnGraph,
+          anySidePanelOpen: anyCollectionSidePanelOpen,
+          onToggleAll: toggleAllCollectionSidePanels,
+        },
+        graphUiSettings,
+        onGraphUiSettingsChange,
       },
     },
     graphActions,

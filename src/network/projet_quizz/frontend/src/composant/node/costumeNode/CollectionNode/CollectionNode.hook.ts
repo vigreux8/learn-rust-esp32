@@ -23,15 +23,22 @@ import type {
  */
 export function useCollectionNode(props: CollectionNodeProps): CollectionNodeViewStates {
   const { data, id } = props;
-  const [isExpanded, setIsExpanded] = useState(false);
   const [savingPersonaliteId, setSavingPersonaliteId] = useState<number | null>(null);
   const [savingTagCollectionId, setSavingTagCollectionId] = useState<number | null>(null);
   const { setNodes } = useReactFlow<AppNode, AppEdge>();
   const graphActions = useNodeViewGraphActions();
 
+  const isExpanded = data.sidePanelsOpen === true;
+
   const toggle = useCallback(() => {
-    setIsExpanded((prev) => !prev);
-  }, []);
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id !== id || node.type !== "collectionNode") return node;
+        const cur = node.data.sidePanelsOpen === true;
+        return { ...node, data: { ...node.data, sidePanelsOpen: !cur } };
+      }),
+    );
+  }, [id, setNodes]);
 
   const onTogglePlayIncluded = useCallback(
     (e: Event) => {

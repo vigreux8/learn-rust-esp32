@@ -3,6 +3,50 @@ import type { ChildCollectionsMix, PlayQtype } from "./playOrder";
 import type { PlayModeSettings } from "../composant/ui/atomes/PlayModePicker/PlayModePicker.types";
 
 const STORAGE_KEY = "quizz-node-view-graph-session";
+
+/** Préférences UI du graphe `/node` (clé séparée pour ne pas versionner tout le payload graphe). */
+const UI_SETTINGS_KEY = "quizz-node-graph-ui-settings";
+
+/** Options d’affichage / comportement côté graphe (sidebar, déplacements). */
+export type NodeViewGraphUiSettings = {
+  /**
+   * Si vrai (défaut), après déplacement d’une question vers une autre collection : surbrillance +
+   * défilement vers la ligne dans le panneau Questions.
+   */
+  focusQuestionAfterCollectionMove: boolean;
+};
+
+export function defaultNodeViewGraphUiSettings(): NodeViewGraphUiSettings {
+  return { focusQuestionAfterCollectionMove: true };
+}
+
+export function readNodeViewGraphUiSettings(): NodeViewGraphUiSettings {
+  if (typeof sessionStorage === "undefined") return defaultNodeViewGraphUiSettings();
+  try {
+    const raw = sessionStorage.getItem(UI_SETTINGS_KEY);
+    if (raw == null || raw === "") return defaultNodeViewGraphUiSettings();
+    const p = JSON.parse(raw) as unknown;
+    if (p === null || typeof p !== "object" || Array.isArray(p)) return defaultNodeViewGraphUiSettings();
+    const rec = p as Record<string, unknown>;
+    return {
+      focusQuestionAfterCollectionMove:
+        typeof rec.focusQuestionAfterCollectionMove === "boolean"
+          ? rec.focusQuestionAfterCollectionMove
+          : true,
+    };
+  } catch {
+    return defaultNodeViewGraphUiSettings();
+  }
+}
+
+export function writeNodeViewGraphUiSettings(settings: NodeViewGraphUiSettings): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(UI_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    /* quota / mode privé */
+  }
+}
 /** v2 : inclut `playUi` (options panneau Mode jeu). v1 : graphe uniquement. */
 const STORAGE_VERSION = 2;
 const STORAGE_VERSION_LEGACY = 1;

@@ -1,4 +1,5 @@
 import type { RefObject } from "preact";
+import type { NodeViewGraphUiSettings } from "../../../../lib/nodeViewGraphSession";
 import type { RefCategorieHierarchyRow } from "../../../../types/quizz";
 
 export type SidebarTab =
@@ -7,6 +8,7 @@ export type SidebarTab =
   | "questions"
   | "personalities"
   | "create"
+  | "settings"
   | null;
 
 export type FlowSidebarCollectionRow = {
@@ -182,5 +184,14 @@ export type FlowSidebarOverlayProps = {
     sidebarHostApiRef?: RefObject<FlowSidebarHostApi | null>;
     /** Surbrillance + scroll sur la ligne déplacée dans « Questions par collection ». */
     movedQuestionHighlight?: MovedQuestionHighlight | null;
+    /** Bouton « tout déplier / replier » les panneaux # / influenceurs (toutes les collections du graphe). */
+    graphCollectionPanelsToolbar?: {
+      collectionNodeCount: number;
+      anySidePanelOpen: boolean;
+      onToggleAll: () => void;
+    };
+    /** Préférences graphe (onglet Réglages). */
+    graphUiSettings?: NodeViewGraphUiSettings;
+    onGraphUiSettingsChange?: (patch: Partial<NodeViewGraphUiSettings>) => void;
   };
 };

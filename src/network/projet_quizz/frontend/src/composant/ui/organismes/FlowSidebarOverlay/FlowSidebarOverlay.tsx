@@ -6,6 +6,7 @@ import { FLOW_SIDEBAR_OVERLAY_STYLES } from "./FlowSidebarOverlay.styles";
 import type { FlowSidebarCollectionRow, FlowSidebarOverlayProps } from "./FlowSidebarOverlay.types";
 import { CollectionFilterPanel } from "./parts/CollectionFilterPanel";
 import { CreationShortcutsPanel } from "./parts/CreationShortcutsPanel";
+import { GraphSettingsPanel } from "./parts/GraphSettingsPanel";
 import { PersonalityFilterPanel } from "./parts/PersonalityFilterPanel";
 import { QuestionListPanel } from "./parts/QuestionListPanel";
 import { SidebarRail } from "./parts/SidebarRail";
@@ -43,11 +44,19 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
             ? "Personnalités"
             : panneau.activeTab === "create"
               ? "Créer sur le graphe"
-              : "";
+              : panneau.activeTab === "settings"
+                ? "Réglages graphe"
+                : "";
 
   return (
     <div ref={assignOverlayRef} class={FLOW_SIDEBAR_OVERLAY_STYLES.overlayWrapper}>
-      <SidebarRail data={{ activeTab: rail.activeTab }} actions={{ toggleTab: rail.toggleTab }} />
+      <SidebarRail
+        data={{
+          activeTab: rail.activeTab,
+          graphCollectionPanelsToolbar: presentation?.graphCollectionPanelsToolbar,
+        }}
+        actions={{ toggleTab: rail.toggleTab }}
+      />
 
       {panelOpen ? (
         <aside class={FLOW_SIDEBAR_OVERLAY_STYLES.panel}>
@@ -147,6 +156,23 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
 
             {panneau.activeTab === "create" ? (
               <CreationShortcutsPanel actions={{ onDragStart: drag.onDragStart }} />
+            ) : null}
+
+            {panneau.activeTab === "settings" &&
+            presentation?.graphUiSettings != null &&
+            presentation.onGraphUiSettingsChange != null ? (
+              <GraphSettingsPanel
+                settings={{
+                  focusQuestionAfterCollectionMove:
+                    presentation.graphUiSettings.focusQuestionAfterCollectionMove,
+                }}
+                actions={{
+                  setFocusQuestionAfterCollectionMove: (value) =>
+                    presentation.onGraphUiSettingsChange?.({
+                      focusQuestionAfterCollectionMove: value,
+                    }),
+                }}
+              />
             ) : null}
           </div>
         </aside>

@@ -25,6 +25,7 @@ const SIDEBAR_TAB_IDS: Exclude<SidebarTab, null>[] = [
   "questions",
   "personalities",
   "create",
+  "settings",
 ];
 
 function readStoredSidebarTab(): SidebarTab {
