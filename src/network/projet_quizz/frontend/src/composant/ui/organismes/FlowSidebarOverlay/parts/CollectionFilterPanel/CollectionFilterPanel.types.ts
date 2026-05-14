@@ -4,6 +4,8 @@ export type CollectionFilterPanelProps = {
   data: {
     search: string;
     rows: FlowSidebarCollectionRow[];
+    /** Panneau « Recherche branches » : collections sans parent API, listées en tête. */
+    orphanRows?: FlowSidebarCollectionRow[];
     isPaletteBucketActive: (bucket: number) => boolean;
   };
   actions: {

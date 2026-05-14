@@ -3,6 +3,8 @@ import { cn } from "../../../../../../lib/cn";
 export const COLLECTION_FILTER_PANEL_STYLES = {
   emptyState:
     "rounded-lg border border-base-content/10 bg-base-200/40 px-3 py-6 text-center text-xs text-base-content/60",
+  sectionLabel:
+    "shrink-0 rounded-md border border-base-content/10 bg-base-200/50 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-base-content/55",
   depthChip: (active: boolean) =>
     cn(
       "btn btn-xs shrink-0 gap-1.5 border font-normal",

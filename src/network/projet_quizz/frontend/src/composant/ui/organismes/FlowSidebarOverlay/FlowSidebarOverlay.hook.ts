@@ -9,7 +9,7 @@ import {
   collectAllowedEnfantIdsUnion,
   questionMatchesSidebarCategoryFilters,
 } from "./parts/QuestionListPanel/QuestionListPanel.categoryFilter.metier";
-import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME, dedupePersonalityRowsByPersonId, personalityLabelsMatchesNameTokens } from "./FlowSidebarOverlay.metier";
+import { filterFlowSidebarCollectionRows, hierarchyHasDirectChildFor, REACT_FLOW_DND_MIME, dedupePersonalityRowsByPersonId, personalityLabelsMatchesNameTokens } from "./FlowSidebarOverlay.metier";
 import type {
   FlowSidebarOverlayProps,
   FlowSidebarQuestionListGroup,
@@ -276,6 +276,26 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     [collectionSubtreeSearch, data.collections, subtreePaletteBucketFilters],
   );
 
+  const collectionSubtreeOrphanRows = useMemo(() => {
+    const hierarchy = data.collectionHierarchy ?? [];
+    const orphans = data.collections.filter(
+      (r) => r.parentCollectionId == null && !hierarchyHasDirectChildFor(r.collectionId, hierarchy),
+    );
+    return filterFlowSidebarCollectionRows(
+      orphans,
+      subtreePaletteBucketFilters,
+      collectionSubtreeSearch,
+    );
+  }, [collectionSubtreeSearch, data.collectionHierarchy, data.collections, subtreePaletteBucketFilters]);
+
+  const collectionSubtreeRowsExcludingOrphans = useMemo(() => {
+    const hierarchy = data.collectionHierarchy ?? [];
+    return filteredCollectionSubtreeRows.filter(
+      (r) =>
+        r.parentCollectionId != null || hierarchyHasDirectChildFor(r.collectionId, hierarchy),
+    );
+  }, [data.collectionHierarchy, filteredCollectionSubtreeRows]);
+
   const questionGroups = useMemo(() => {
     const query = questionSearch.trim().toLowerCase();
     /** Recherche uniquement sur l’intitulé brut de la question ; les collections restent toutes listées. */
@@ -365,7 +385,8 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     collectionSubtree: {
       search: collectionSubtreeSearch,
       setSearch: setCollectionSubtreeSearch,
-      rows: filteredCollectionSubtreeRows,
+      rows: collectionSubtreeRowsExcludingOrphans,
+      orphanRows: collectionSubtreeOrphanRows,
       togglePaletteBucket: toggleSubtreePaletteBucket,
       isPaletteBucketActive: isSubtreePaletteBucketActive,
     },

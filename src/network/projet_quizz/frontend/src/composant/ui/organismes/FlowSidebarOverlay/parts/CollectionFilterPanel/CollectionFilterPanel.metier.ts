@@ -11,3 +11,6 @@ export function flowCollectionPaletteHexForDepth(treeDepth: number): string {
 export const FLOW_COLLECTION_PALETTE_BUCKET_INDICES = COLLECTION_TREE_LEVEL_BORDER_HEX.map(
   (_, index) => index,
 );
+
+/** Bordure latérale des collections sans parent (sidebar branche / accent orphelin). */
+export const ORPHAN_COLLECTION_ACCENT_HEX = "#94a3b8";

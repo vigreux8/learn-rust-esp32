@@ -22,11 +22,14 @@ export const COLLECTION_NODE_STYLES = {
     "group-hover:shadow-xl group-hover:shadow-base-content/10 group-hover:-translate-y-0.5 ring-1 ring-transparent group-hover:ring-base-content/5",
   ),
 
+  /** Carte en tons grisés quand la collection n’a pas de parent en base (lien parent supprimé ou racine seule). */
+  nodeCardOrphan: "border-base-content/20 bg-base-200/45 shadow-inner",
+  titleOrphan: "text-base-content/60",
+
   /** Bandeau connexion entrée — un liseré décoratif en haut */
   topStrip: "absolute top-0 left-0 right-0 h-1.5 w-full bg-flow/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl z-10",
-  
+
   mainBar: "relative flex w-full items-center gap-3 px-4 py-3.5",
-  
   playIncludeToggle: "nopan nodrag flex shrink-0 cursor-pointer items-center leading-none hover:scale-110 transition-transform duration-200",
   
   actionsRow: cn(

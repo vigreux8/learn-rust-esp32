@@ -106,6 +106,7 @@ export function buildNodeViewSidebarData(
     collectionId: c.id,
     label: c.nom,
     treeDepth: computeTreeDepth(c, byId),
+    parentCollectionId: c.parent_collection_id ?? null,
   }));
 
   const questions: FlowSidebarQuestionRow[] = [];
@@ -246,6 +247,17 @@ export function parseCollectionParentChildEdgeId(
   return { parentId: Number(m[1]), childId: Number(m[2]) };
 }
 
+/** Vrai si une autre collection du catalogue a `parent_collection_id` égal à cet id (enfant direct). */
+export function collectionHasDirectChildInCatalog(
+  collectionId: number,
+  byId: Map<number, CollectionUi>,
+): boolean {
+  for (const c of byId.values()) {
+    if ((c.parent_collection_id ?? null) === collectionId) return true;
+  }
+  return false;
+}
+
 export function collectionUiToCollectionNodeData(
   coll: CollectionUi,
   byId: Map<number, CollectionUi>,
@@ -257,6 +269,9 @@ export function collectionUiToCollectionNodeData(
     label: coll.nom,
     collectionId: coll.id,
     treeDepth: computeTreeDepth(coll, byId),
+    isHierarchyOrphan:
+      (coll.parent_collection_id ?? null) === null &&
+      !collectionHasDirectChildInCatalog(coll.id, byId),
     questionCount,
     isMine,
     supercollections: (coll.collection_tags ?? []).map((tag) => ({
@@ -469,6 +484,8 @@ export function buildCollectionSubtreeGraphElements(
       target: treeCollectionReactFlowNodeId(c.id),
       sourceHandle: "output",
       targetHandle: "h-left",
+      selectable: true,
+      deletable: true,
     });
   }
 

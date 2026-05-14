@@ -16,6 +16,8 @@ export type FlowSidebarCollectionRow = {
   label: string;
   /** Profondeur dans l’arbre (parents remontés), comme `computeTreeDepth` / cartes Collections. */
   treeDepth: number;
+  /** `null` = collection sans parent en base (orpheline / racine détachée). */
+  parentCollectionId: number | null;
 };
 
 export type FlowSidebarPersonalityRow = {

@@ -91,6 +91,7 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                 data={{
                   search: collectionSubtree.search,
                   rows: collectionSubtree.rows,
+                  orphanRows: collectionSubtree.orphanRows,
                   isPaletteBucketActive: collectionSubtree.isPaletteBucketActive,
                 }}
                 actions={{

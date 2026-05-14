@@ -35,6 +35,14 @@ export function CollectionNode(props: CollectionNodeProps) {
     data.treeDepth !== undefined && data.treeDepth !== null
       ? collectionTreeBorderHexForDepth(data.treeDepth)
       : null;
+  const apiHierarchyOrphan = collectionApiId != null && data.isHierarchyOrphan === true;
+  const orphanBorderHex = "#94a3b8";
+  const showLeftDepthStripe = apiHierarchyOrphan || treeDepthAccentHex != null;
+  const nodeCardLeftStyle = apiHierarchyOrphan
+    ? { borderLeftColor: orphanBorderHex }
+    : treeDepthAccentHex
+      ? { borderLeftColor: treeDepthAccentHex }
+      : undefined;
 
   return (
     <div
@@ -62,8 +70,17 @@ export function CollectionNode(props: CollectionNodeProps) {
         ) : null}
 
         <div
-          class={cn(COLLECTION_NODE_STYLES.nodeCard, treeDepthAccentHex ? "border-l-4" : undefined)}
-          style={treeDepthAccentHex ? { borderLeftColor: treeDepthAccentHex } : undefined}
+          class={cn(
+            COLLECTION_NODE_STYLES.nodeCard,
+            apiHierarchyOrphan ? COLLECTION_NODE_STYLES.nodeCardOrphan : undefined,
+            showLeftDepthStripe ? "border-l-4" : undefined,
+          )}
+          style={nodeCardLeftStyle}
+          title={
+            apiHierarchyOrphan
+              ? "Collection sans parent ni enfant en base : relie-la en tirant une arête du bas d’une collection parente vers ce nœud."
+              : undefined
+          }
         >
           <div class={COLLECTION_NODE_STYLES.topStrip} aria-hidden />
           <Handle
@@ -106,7 +123,9 @@ export function CollectionNode(props: CollectionNodeProps) {
                 <Hash class="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
               </button>
 
-              <h3 class={COLLECTION_NODE_STYLES.title}>{content.title}</h3>
+              <h3 class={cn(COLLECTION_NODE_STYLES.title, apiHierarchyOrphan ? COLLECTION_NODE_STYLES.titleOrphan : undefined)}>
+                {content.title}
+              </h3>
             </div>
 
             <div class="flex shrink-0 items-center gap-2 sm:gap-3">

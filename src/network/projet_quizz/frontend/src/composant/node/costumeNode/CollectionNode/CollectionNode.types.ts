@@ -48,6 +48,8 @@ export type CollectionNodeData = {
   questionCount?: number;
   /** Collection appartenant à l’utilisateur courant (aligné sur les cartes Collections). */
   isMine?: boolean;
+  /** `true` si la collection n’a pas de parent en base **et** aucun enfant direct — sinon ce n’est pas considérée comme orpheline (racine qui porte une branche). */
+  isHierarchyOrphan?: boolean;
 };
 
 export type CollectionNodeType = Node<CollectionNodeData, "collectionNode">;
