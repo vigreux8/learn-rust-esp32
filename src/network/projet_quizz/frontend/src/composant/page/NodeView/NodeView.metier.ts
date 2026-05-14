@@ -464,6 +464,7 @@ export function buildCollectionSubtreeGraphElements(
     if (pid == null || !graphIds.has(pid)) continue;
     edges.push({
       id: collectionParentChildEdgeId(pid, c.id),
+      type: "collectionEdge",
       source: treeCollectionReactFlowNodeId(pid),
       target: treeCollectionReactFlowNodeId(c.id),
       sourceHandle: "output",

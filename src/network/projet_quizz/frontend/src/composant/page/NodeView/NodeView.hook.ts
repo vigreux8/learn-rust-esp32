@@ -114,7 +114,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           (e) =>
             graphBootstrapStripped.some((n) => n.id === e.source) &&
             graphBootstrapStripped.some((n) => n.id === e.target),
-        )
+        ).map((e) => (parseCollectionParentChildEdgeId(e.id) ? { ...e, type: "collectionEdge" } : e))
       : [];
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodesForCanvas);
@@ -378,6 +378,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
               {
                 ...connection,
                 id: edgeId,
+                type: "collectionEdge",
                 source: connection.source!,
                 target: connection.target!,
                 sourceHandle: connection.sourceHandle ?? undefined,
