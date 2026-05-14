@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { cn } from "../../../../../../lib/cn";
 import { collectionTreeBorderHexForDepth } from "../../../../../../lib/collectionHierarchyVis";
 import { readReactFlowDnDFromEvent } from "../../../../../../lib/reactFlowDnD";
+import { MarkdownViewer } from "../../../../atomes/MarkdownViewer";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
 import type { QuestionListPanelProps } from "./QuestionListPanel.types";
 
@@ -223,7 +224,11 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                       }
                     >
                       <GripVertical size={16} class={FLOW_SIDEBAR_OVERLAY_STYLES.grip} aria-hidden />
-                      <span class={FLOW_SIDEBAR_OVERLAY_STYLES.questionTitle}>{item.title}</span>
+                      <div
+                        class={`nodrag min-w-0 flex-1 ${FLOW_SIDEBAR_OVERLAY_STYLES.questionTitleMarkdown}`}
+                      >
+                        <MarkdownViewer data={{ content: item.title }} />
+                      </div>
                     </div>
                     );
                   })

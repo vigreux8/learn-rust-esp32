@@ -31,6 +31,12 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   grip: "opacity-30",
   collectionLabel: "min-w-0 flex-1 text-sm font-medium text-base-content",
   questionTitle: "text-[11px] leading-tight",
+  /** Conteneur Markdown / KaTeX pour les intitulés dans la liste Questions (sidebar). */
+  questionTitleMarkdown: cn(
+    "[&_.prose]:prose-sm [&_.prose]:max-w-none [&_.prose]:my-0 [&_.prose]:leading-snug",
+    "[&_.prose_p]:my-0.5 [&_.prose_p]:text-[11px] [&_.prose_p]:leading-tight",
+    "[&_.katex-display]:my-1 [&_.katex-display]:overflow-x-auto",
+  ),
   /**
    * Accordéon natif (`<details>`) : `shrink-0` évite que plusieurs blocs ouverts soient écrasés en colonne flex
    * (sinon flex-shrink: 1 compresse les titres au lieu de faire défiler le conteneur).

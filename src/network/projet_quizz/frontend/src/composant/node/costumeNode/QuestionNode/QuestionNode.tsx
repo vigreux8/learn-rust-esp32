@@ -1,6 +1,7 @@
 import { Handle, Position } from "@xyflow/react";
 import { GripVertical, MessageSquare } from "lucide-preact";
 import { cn } from "../../../../lib/cn";
+import { MarkdownViewer } from "../../../ui/atomes/MarkdownViewer";
 import { useQuestionNodeMoveFlash, useQuestionNodeSidebarDrag } from "./QuestionNode.hook";
 import { QUESTION_NODE_STYLES } from "./QuestionNode.styles";
 import type { QuestionNodeProps } from "./QuestionNode.types";
@@ -33,7 +34,9 @@ export function QuestionNode(props: QuestionNodeProps) {
           </span>
         ) : null}
         <MessageSquare class="mt-0.5 h-4 w-4 shrink-0 text-primary/70" aria-hidden />
-        <p class={QUESTION_NODE_STYLES.title}>{data.title}</p>
+        <div class={QUESTION_NODE_STYLES.titleMarkdown}>
+          <MarkdownViewer data={{ content: data.title }} />
+        </div>
       </div>
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} />
     </div>
