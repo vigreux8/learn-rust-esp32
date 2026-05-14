@@ -31,6 +31,14 @@ export function filterFlowSidebarCollectionRows(
   return out;
 }
 
+/** Vrai si une entrée hiérarchie a ce `parent_collection_id` (au moins un enfant direct). */
+export function hierarchyHasDirectChildFor(
+  collectionId: number,
+  hierarchy: readonly { id: number; parent_collection_id: number | null }[],
+): boolean {
+  return hierarchy.some((h) => h.parent_collection_id === collectionId);
+}
+
 /**
  * Filtre nom personnalité : chaque segment séparé par des espaces doit apparaître dans le libellé (casse ignorée).
  */
