@@ -1,4 +1,6 @@
-import { useCallback, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { route } from "preact-router";
+import { useRoutePath } from "../../../lib/routePathContext";
 import { useQuestionReflexionBootstrap } from "./hooks/useQuestionReflexionBootstrap";
 import { useQuestionReflexionChainDraft } from "./hooks/useQuestionReflexionChainDraft";
 import { useQuestionReflexionGroupeListe } from "./hooks/useQuestionReflexionGroupeListe";
@@ -6,17 +8,58 @@ import { useQuestionReflexionLeaveGuard } from "./hooks/useQuestionReflexionLeav
 import { useQuestionReflexionQuestionEdit } from "./hooks/useQuestionReflexionQuestionEdit";
 import type { QuestionReflexionViewProps } from "./QuestionReflexionView.types";
 
+function readFromNodeFromWindowLocation(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).get("from") === "node";
+  } catch {
+    return false;
+  }
+}
+
+function readGroupeIdFromWindowLocation(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = new URLSearchParams(window.location.search).get("groupeId");
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Orchestrateur vue « suite logique » : assemble bootstrap, état chaîne, gardes de sortie, liste des groupes,
  * modale question et erreurs globales ; résout `confirmLeave` via ref pour éviter les dépendances circulaires.
  */
 export function useQuestionReflexionViewState(props: QuestionReflexionViewProps) {
+  const routePath = useRoutePath();
+  const [fromNode, setFromNode] = useState(readFromNodeFromWindowLocation);
+  const [urlGroupeId, setUrlGroupeId] = useState(readGroupeIdFromWindowLocation);
   const chainFlushRef = useRef<((cid: number, gid: number | null) => Promise<void>) | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const confirmLeaveRef = useRef<() => Promise<boolean>>(() => Promise.resolve(true));
 
+  useLayoutEffect(() => {
+    setFromNode(readFromNodeFromWindowLocation());
+    setUrlGroupeId(readGroupeIdFromWindowLocation());
+  }, [props.route.collectionId, routePath]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setFromNode(readFromNodeFromWindowLocation());
+      setUrlGroupeId(readGroupeIdFromWindowLocation());
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [props.route.collectionId, routePath]);
+
+  const onBackToNode = useCallback(() => {
+    void route("/node");
+  }, []);
+
   const bootstrap = useQuestionReflexionBootstrap({
-    route: props.route,
+    route: { collectionId: props.route.collectionId, groupeId: urlGroupeId },
     chainFlush: chainFlushRef,
   });
 
@@ -85,6 +128,10 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
   );
 
   return {
+    navigation: {
+      showBackToNode: fromNode,
+      onBackToNode,
+    },
     routing: chain.routing,
     status: {
       loading: chain.loading,

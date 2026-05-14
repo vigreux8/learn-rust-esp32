@@ -9,6 +9,8 @@ export type QuestionReflexionRouterInject = {
 export type QuestionReflexionViewProps = {
   route: {
     collectionId?: string;
+    /** Injecté côté hook depuis `?groupeId=` (pas par preact-router sur le path). */
+    groupeId?: number | null;
   };
 };
 

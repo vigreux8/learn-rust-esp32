@@ -4,6 +4,7 @@ import type { FlowSidebarCollectionRow, FlowSidebarPersonalityRow } from "./Flow
 export {
   REACT_FLOW_DND_MIME,
   normalizeQuestionNodeMovePayload,
+  normalizeReflexionGroupeNodeMovePayload,
   parseReactFlowDnDPayload,
   readReactFlowDnDFromEvent,
   type ReactFlowDnDPayload,

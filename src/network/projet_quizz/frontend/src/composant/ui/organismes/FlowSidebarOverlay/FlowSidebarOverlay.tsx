@@ -117,8 +117,11 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                   toggleEnfantCategory: questions.toggleEnfantCategory,
                   onDragStart: drag.onDragStart,
                   onMoveQuestionToCollection: actions?.onMoveQuestionToCollection,
+                  onMoveGroupeToCollection: actions?.onMoveGroupeToCollection,
                   onEditQuestionInSidebar: actions?.onEditQuestionInSidebar,
                   onDeleteQuestionInSidebar: actions?.onDeleteQuestionInSidebar,
+                  onDeleteGroupeInSidebar: actions?.onDeleteGroupeInSidebar,
+                  onOpenReflexionEditorForCollection: actions?.onOpenReflexionEditorForCollection,
                 }}
               />
             ) : null}

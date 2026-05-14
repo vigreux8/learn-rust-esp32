@@ -1212,6 +1212,70 @@ export class QuizzWriteService {
   }
 
   /**
+   * Rattache un `groupe_questions` à une autre collection (sidebar graphe / réorganisation).
+   * Met à jour la colonne `nom` (historique v4 : entier aligné sur l’id collection).
+   */
+  async moveGroupeQuestionsToCollection(
+    groupeId: number,
+    body: { user_id: number; to_collection_id: number },
+  ): Promise<GroupeQuestionsUi> {
+    const existing = await this.prisma.prisma.groupe_questions.findUnique({
+      where: { id: groupeId },
+      include: { quizz_collection: true },
+    });
+    if (existing == null) {
+      throw new NotFoundException(`groupe_questions ${groupeId} introuvable`);
+    }
+    if (existing.collection_id == null) {
+      throw new BadRequestException('Ce groupe n’est pas rattaché à une collection.');
+    }
+    if (existing.quizz_collection == null) {
+      throw new NotFoundException(`Collection liée au groupe ${groupeId} introuvable.`);
+    }
+    if (existing.quizz_collection.user_id !== body.user_id) {
+      throw new ForbiddenException('Accès refusé pour déplacer ce groupe.');
+    }
+    const fromCollectionId = existing.collection_id;
+    if (fromCollectionId === body.to_collection_id) {
+      return {
+        id: existing.id,
+        collection_id: existing.collection_id,
+        nom: existing.nom,
+        description: existing.description,
+      };
+    }
+    const target = await this.prisma.prisma.quizz_collection.findUnique({
+      where: { id: body.to_collection_id },
+    });
+    if (target == null) {
+      throw new NotFoundException(`Collection ${body.to_collection_id} introuvable`);
+    }
+    if (target.user_id !== body.user_id) {
+      throw new ForbiddenException(
+        `La collection cible ${body.to_collection_id} n’appartient pas à l’utilisateur ${body.user_id}.`,
+      );
+    }
+    const now = nowIso();
+    const row = await this.prisma.prisma.groupe_questions.update({
+      where: { id: groupeId },
+      data: {
+        collection_id: body.to_collection_id,
+        nom: body.to_collection_id,
+      },
+    });
+    await this.prisma.prisma.quizz_collection.updateMany({
+      where: { id: { in: [fromCollectionId, body.to_collection_id] } },
+      data: { update_at: now },
+    });
+    return {
+      id: row.id,
+      collection_id: row.collection_id,
+      nom: row.nom,
+      description: row.description,
+    };
+  }
+
+  /**
    * Définit l’ordre logique des questions (suite P→A dans `question_reflexion`, tête dans `groupe_questions`).
    */
   async setReflexionChainOrder(

@@ -10,8 +10,17 @@ export type NodeViewGraphMoveQuestionArgs = {
   questionIds?: readonly number[];
 };
 
+/** Arguments pour déplacer une suite logique (`groupe_questions`) vers une autre collection. */
+export type NodeViewGraphMoveGroupeArgs = {
+  groupeId: number;
+  fromCollectionId: number;
+  toCollectionId: number;
+  groupeIds?: readonly number[];
+};
+
 export type NodeViewGraphActionsValue = {
   moveQuestionToCollection: (args: NodeViewGraphMoveQuestionArgs) => Promise<void>;
+  moveGroupeToCollection: (args: NodeViewGraphMoveGroupeArgs) => Promise<void>;
   /** Ouvre le panneau d’import LLM (même flux que la page Questions) pour une collection du graphe. */
   openLlmImportForCollection: (collectionId: number) => void;
   /** Lance `/play/:collectionId` avec les options du panneau « Mode de jeu » du canvas. */

@@ -13,6 +13,7 @@ import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME, dedupePersonality
 import type {
   FlowSidebarOverlayProps,
   FlowSidebarQuestionListGroup,
+  FlowSidebarReflexionGroupeRow,
   SidebarTab,
 } from "./FlowSidebarOverlay.types";
 
@@ -124,6 +125,18 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const toggleQuestionFilterEnfant = useCallback((enfantCategorieId: number) => {
     setQuestionFilterEnfantId((prev) => (prev === enfantCategorieId ? null : enfantCategorieId));
   }, []);
+
+  const reflexionSuitesByCollectionId = useMemo(() => {
+    const m = new Map<number, { groupes: readonly FlowSidebarReflexionGroupeRow[] }>();
+    const payloads = data.reflexionSuites;
+    if (payloads == null) return m;
+    for (const p of payloads) {
+      m.set(p.collectionId, {
+        groupes: p.groupes,
+      });
+    }
+    return m;
+  }, [data.reflexionSuites]);
 
   const parentScopeForEnfantChips = useMemo(
     () => (questionFilterParentId != null ? [questionFilterParentId] : []),
@@ -307,12 +320,14 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     for (const row of rowsOrdered) {
       const rawItems = byCollectionId.get(row.collectionId) ?? [];
       const items = [...rawItems].sort((a, b) => Number(a.id) - Number(b.id));
+      const reflex = reflexionSuitesByCollectionId.get(row.collectionId);
       groups.push({
         collectionId: row.collectionId,
         category: row.label,
         treeDepth: row.treeDepth,
         items,
         totalQuestionCount: totalByCollectionId.get(row.collectionId) ?? 0,
+        reflexionGroupes: [...(reflex?.groupes ?? [])],
       });
     }
 
@@ -326,6 +341,7 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     questionFilterEnfantId,
     questionFilterParentId,
     questionSearch,
+    reflexionSuitesByCollectionId,
   ]);
 
   const onDragStart = useCallback((event: DragEvent, nodeType: string, payload: unknown) => {

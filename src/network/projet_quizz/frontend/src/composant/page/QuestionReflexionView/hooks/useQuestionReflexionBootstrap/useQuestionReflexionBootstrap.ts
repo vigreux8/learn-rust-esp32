@@ -43,14 +43,16 @@ export function useQuestionReflexionBootstrap({ route, chainFlush }: UseQuestion
         const nextId =
           selectedGroupeIdRef.current != null && groupesList.some((g) => g.id === selectedGroupeIdRef.current)
             ? selectedGroupeIdRef.current
-            : groupesList[0]?.id ?? null;
+            : route.groupeId != null && groupesList.some((g) => g.id === route.groupeId)
+              ? route.groupeId
+              : groupesList[0]?.id ?? null;
         applySelectedGroupeId(nextId);
         const flush = chainFlush.current;
         return flush?.(collectionIdNum, nextId) ?? Promise.resolve();
       })
       .catch(() => setLoadError("fetch"))
       .finally(() => setLoading(false));
-  }, [collectionIdNum, applySelectedGroupeId, chainFlush]);
+  }, [collectionIdNum, route.groupeId, applySelectedGroupeId, chainFlush]);
 
   useEffect(() => {
     if (collectionIdNum == null) {

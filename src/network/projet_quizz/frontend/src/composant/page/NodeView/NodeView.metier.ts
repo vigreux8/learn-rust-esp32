@@ -3,7 +3,7 @@ import {
   computeTreeDepth,
   orderCollectionsHierarchy,
 } from "../../../lib/collectionHierarchyVis";
-import type { CollectionUi } from "../../../types/quizz";
+import type { CollectionUi, GroupeQuestionsUi } from "../../../types/quizz";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import type { CollectionNodeData } from "../../node/costumeNode/CollectionNode/CollectionNode.types";
 import {
@@ -78,6 +78,39 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
   }));
 
   return { collections: collectionRows, questions, personalities, collectionHierarchy };
+}
+
+/**
+ * Libellé carte « suite logique » pour la sidebar (même logique que `titreGroupeQuestion` côté vue réflexion).
+ */
+export function formatGroupeQuestionsSidebarLabel(g: GroupeQuestionsUi): string {
+  const d = (g.description ?? "").trim();
+  if (d !== "") {
+    const first = d.split("\n")[0]?.trim();
+    if (first) return first;
+  }
+  return `Suite #${g.id}`;
+}
+
+/**
+ * Collections affichées dans le panneau « Questions par collection » (filtre canvas + branche optionnelle).
+ */
+export function listQuestionPanelCollectionIds(args: {
+  collections: FlowSidebarCollectionRow[];
+  canvasCollectionIds?: readonly number[] | undefined;
+  scopeRootCollectionId: number | null;
+  hierarchy: FlowSidebarCollectionHierarchyRef[];
+}): number[] {
+  let rows = args.collections;
+  if (args.canvasCollectionIds !== undefined) {
+    const canvasSet = new Set(args.canvasCollectionIds);
+    rows = rows.filter((r) => canvasSet.has(r.collectionId));
+  }
+  if (args.scopeRootCollectionId != null && args.hierarchy.length > 0) {
+    const scopeSet = collectSubtreeCollectionIds(args.scopeRootCollectionId, args.hierarchy);
+    rows = rows.filter((r) => scopeSet.has(r.collectionId));
+  }
+  return rows.map((r) => r.collectionId);
 }
 
 /**

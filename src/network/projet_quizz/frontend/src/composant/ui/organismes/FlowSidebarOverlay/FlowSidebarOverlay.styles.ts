@@ -28,6 +28,13 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   questionCategoryFilterChip:
     "btn btn-ghost btn-xs h-6 min-h-6 shrink-0 border border-base-content/12 px-1.5 py-0 text-[10px] font-semibold normal-case tracking-tight text-base-content/80 hover:border-base-content/25 hover:bg-base-content/6",
   questionCategoryFilterChipActive: "border-primary/70 bg-primary/12 text-primary hover:bg-primary/18",
+  reflexionSuiteSectionTitle:
+    "px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-base-content/50",
+  reflexionSuiteCard:
+    "nodrag mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-base-content/12 bg-base-100/90 px-2 py-1.5",
+  reflexionSuiteCardLabel: "min-w-0 flex-1 truncate text-[11px] font-medium text-base-content/90",
+  reflexionSuiteEditBtn:
+    "btn btn-ghost btn-xs h-6 shrink-0 border-0 px-1.5 text-[10px] font-semibold normal-case text-primary hover:bg-primary/10",
   levelRow: "mb-2 flex flex-wrap gap-1",
   dragItem: cn(
     "flex cursor-grab items-start gap-2 rounded-xl border-2 border-transparent bg-base-200 p-3 transition-all hover:border-flow/35 hover:bg-flow/8 active:cursor-grabbing",

@@ -179,6 +179,13 @@ export class QuizzService {
     return this.write.deleteGroupeQuestions(groupeId, userId);
   }
 
+  moveGroupeQuestionsToCollection(
+    groupeId: number,
+    body: { user_id: number; to_collection_id: number },
+  ): Promise<GroupeQuestionsUi> {
+    return this.write.moveGroupeQuestionsToCollection(groupeId, body);
+  }
+
   // Delegation: QuizzWriteService
   updateQuestion(
     id: number,

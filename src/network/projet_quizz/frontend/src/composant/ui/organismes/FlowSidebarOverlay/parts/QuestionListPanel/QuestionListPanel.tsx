@@ -1,15 +1,23 @@
-import { ChevronDown, GripVertical, Pencil, Search, Trash2 } from "lucide-preact";
+import { ChevronDown, Search } from "lucide-preact";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { cn } from "../../../../../../lib/cn";
 import { collectionTreeBorderHexForDepth } from "../../../../../../lib/collectionHierarchyVis";
 import { MarkdownViewer } from "../../../../atomes/MarkdownViewer";
-import { normalizeQuestionNodeMovePayload, readReactFlowDnDFromEvent } from "../../FlowSidebarOverlay.metier";
+import {
+  normalizeQuestionNodeMovePayload,
+  normalizeReflexionGroupeNodeMovePayload,
+  readReactFlowDnDFromEvent,
+} from "../../FlowSidebarOverlay.metier";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
+import { QuestionListDraggableRow } from "../QuestionListDraggableRow";
+import {
+  collectDragBundleForRow,
+  reduceSidebarListRowClick,
+  type SidebarListAnchor,
+} from "./QuestionListPanel.interactions.metier";
 import type { QuestionListGroup, QuestionListPanelProps } from "./QuestionListPanel.types";
 
 type QuestionListRow = QuestionListGroup["items"][number];
-
-type SelectionAnchor = { collectionId: number; index: number };
 
 function defaultDetailsOpenForCollection(collectionId: number, expandId: number | null): boolean {
   if (expandId == null) return false;
@@ -18,9 +26,6 @@ function defaultDetailsOpenForCollection(collectionId: number, expandId: number 
 
 type MovedQuestionFlash = NonNullable<QuestionListPanelProps["data"]["movedQuestionHighlight"]>;
 
-/**
- * Ajuste scrollTop pour que `child` soit visible dans `container` (sans scrollIntoView sur la ligne).
- */
 function scrollRegionToRevealChildEdge(container: HTMLElement, child: HTMLElement, margin: number): void {
   const cRect = container.getBoundingClientRect();
   const rRect = child.getBoundingClientRect();
@@ -56,36 +61,6 @@ function scrollMovedQuestionRowIntoView(flash: MovedQuestionFlash): void {
   }
 }
 
-function rowCollectionIdForQuestion(groups: QuestionListGroup[], questionId: number): number | null {
-  for (const g of groups) {
-    for (const it of g.items) {
-      if (Number(it.id) === questionId) return g.collectionId;
-    }
-  }
-  return null;
-}
-
-/**
- * Si la ligne glissée est dans la sélection, retourne toutes les questions sélectionnées
- * de la même collection ; sinon une seule question.
- */
-function collectDragQuestionIds(
-  dragged: { questionId: number; collectionId: number },
-  selected: ReadonlySet<number>,
-  groups: QuestionListGroup[],
-): number[] {
-  const { questionId, collectionId } = dragged;
-  if (!(selected.size > 0 && selected.has(questionId))) {
-    return [questionId];
-  }
-  const acc: number[] = [];
-  for (const qid of selected) {
-    if (rowCollectionIdForQuestion(groups, qid) === collectionId) acc.push(qid);
-  }
-  const unique = [...new Set(acc)].sort((a, b) => a - b);
-  return unique.length > 0 ? unique : [questionId];
-}
-
 function flashIdSet(flash: MovedQuestionFlash, collectionId: number): Set<number> | null {
   if (flash.collectionId !== collectionId) return null;
   if (flash.questionIds != null && flash.questionIds.length > 0) {
@@ -95,8 +70,8 @@ function flashIdSet(flash: MovedQuestionFlash, collectionId: number): Set<number
 }
 
 /**
- * Panneau : recherche et accordéons par collection (`category`) avec questions draggables.
- * Maj+clic : plage dans un même bloc. Cmd / Ctrl + clic : bascule une question dans la sélection (sans plage).
+ * Panneau : recherche et accordéons par collection (`category`) avec questions et suites logiques draggables.
+ * Maj+clic : plage dans un même bloc. Cmd / Ctrl + clic : bascule dans la sélection (sans plage).
  * Glisser-déposer : déplace la sélection (même collection que la ligne glissée).
  */
 export function QuestionListPanel(props: QuestionListPanelProps) {
@@ -110,11 +85,18 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
   );
   const [dropTargetCollectionId, setDropTargetCollectionId] = useState<number | null>(null);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<ReadonlySet<number>>(() => new Set());
-  const anchorRef = useRef<SelectionAnchor | null>(null);
+  const [selectedGroupeIds, setSelectedGroupeIds] = useState<ReadonlySet<number>>(() => new Set());
+  const anchorQuestionsRef = useRef<SidebarListAnchor | null>(null);
+  const anchorGroupesRef = useRef<SidebarListAnchor | null>(null);
   const moveQuestion = actions.onMoveQuestionToCollection;
+  const moveGroupe = actions.onMoveGroupeToCollection;
+  const canDropSidebar = moveQuestion != null || moveGroupe != null;
   const editQuestion = actions.onEditQuestionInSidebar;
   const deleteQuestion = actions.onDeleteQuestionInSidebar;
+  const deleteGroupe = actions.onDeleteGroupeInSidebar;
+  const openReflexionEditor = actions.onOpenReflexionEditorForCollection;
   const showQuestionRowActions = editQuestion != null || deleteQuestion != null;
+  const showGroupeRowActions = openReflexionEditor != null || deleteGroupe != null;
 
   const visibleQuestionIds = useMemo(() => {
     const s = new Set<number>();
@@ -124,11 +106,18 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
     return s;
   }, [data.groups]);
 
+  const visibleGroupeIds = useMemo(() => {
+    const s = new Set<number>();
+    for (const g of data.groups) {
+      for (const it of g.reflexionGroupes) s.add(it.groupeId);
+    }
+    return s;
+  }, [data.groups]);
+
   useEffect(() => {
     setDetailsOpenOverride({});
   }, [data.detailsExpandCollectionId]);
 
-  /** Filtres vidés : on repasse sur le seul défaut graphe (`detailsExpandCollectionId`) sans vieux `false` qui bloquerait le dépliage. */
   useEffect(() => {
     if (!hasListFilter) {
       setDetailsOpenOverride({});
@@ -149,11 +138,24 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
   }, [visibleQuestionIds]);
 
   useEffect(() => {
-    if (moveQuestion == null) return;
+    setSelectedGroupeIds((prev) => {
+      let changed = false;
+      const next = new Set<number>();
+      for (const id of prev) {
+        if (visibleGroupeIds.has(id)) next.add(id);
+        else changed = true;
+      }
+      if (!changed && next.size === prev.size) return prev;
+      return next;
+    });
+  }, [visibleGroupeIds]);
+
+  useEffect(() => {
+    if (!canDropSidebar) return;
     const clearDrop = () => setDropTargetCollectionId(null);
     document.addEventListener("dragend", clearDrop);
     return () => document.removeEventListener("dragend", clearDrop);
-  }, [moveQuestion]);
+  }, [canDropSidebar]);
 
   const mainListScrollRef = useRef<HTMLDivElement>(null);
   const gutterScrollRef = useRef<HTMLDivElement>(null);
@@ -221,37 +223,40 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
 
   const handleQuestionRowClick = useCallback(
     (event: MouseEvent, group: QuestionListGroup, item: QuestionListRow) => {
-      const qid = Number(item.id);
       const idx = group.items.findIndex((x) => x.id === item.id);
       if (idx < 0) return;
-
-      /** Cmd (macOS) ou Ctrl (Windows / habituel) : ajouter ou retirer une seule question, sans plage. */
-      if (event.metaKey || event.ctrlKey) {
-        event.preventDefault();
-        setSelectedQuestionIds((prev) => {
-          const next = new Set(prev);
-          if (next.has(qid)) next.delete(qid);
-          else next.add(qid);
-          return next;
-        });
-        anchorRef.current = { collectionId: group.collectionId, index: idx };
-        return;
-      }
-
-      if (event.shiftKey && anchorRef.current?.collectionId === group.collectionId) {
-        const anchorIdx = anchorRef.current.index;
-        const lo = Math.min(anchorIdx, idx);
-        const hi = Math.max(anchorIdx, idx);
-        const next = new Set<number>();
-        for (let i = lo; i <= hi; i++) next.add(Number(group.items[i].id));
-        setSelectedQuestionIds(next);
-        return;
-      }
-
-      setSelectedQuestionIds(new Set([qid]));
-      anchorRef.current = { collectionId: group.collectionId, index: idx };
+      const { nextSelected, nextAnchor } = reduceSidebarListRowClick({
+        event,
+        collectionId: group.collectionId,
+        rowIndex: idx,
+        listLength: group.items.length,
+        getIdAtIndex: (i) => Number(group.items[i].id),
+        prevSelected: selectedQuestionIds,
+        prevAnchor: anchorQuestionsRef.current,
+      });
+      setSelectedQuestionIds(nextSelected);
+      anchorQuestionsRef.current = nextAnchor;
     },
-    [],
+    [selectedQuestionIds],
+  );
+
+  const handleGroupeRowClick = useCallback(
+    (event: MouseEvent, group: QuestionListGroup, groupeId: number) => {
+      const idx = group.reflexionGroupes.findIndex((x) => x.groupeId === groupeId);
+      if (idx < 0) return;
+      const { nextSelected, nextAnchor } = reduceSidebarListRowClick({
+        event,
+        collectionId: group.collectionId,
+        rowIndex: idx,
+        listLength: group.reflexionGroupes.length,
+        getIdAtIndex: (i) => group.reflexionGroupes[i].groupeId,
+        prevSelected: selectedGroupeIds,
+        prevAnchor: anchorGroupesRef.current,
+      });
+      setSelectedGroupeIds(nextSelected);
+      anchorGroupesRef.current = nextAnchor;
+    },
+    [selectedGroupeIds],
   );
 
   return (
@@ -342,7 +347,7 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
       <div
         class="flex min-h-0 min-w-0 flex-1 flex-row"
         onDragLeave={(event) => {
-          if (moveQuestion == null) return;
+          if (!canDropSidebar) return;
           const rel = event.relatedTarget as Node | null;
           const root = event.currentTarget as HTMLElement;
           if (rel != null && root.contains(rel)) return;
@@ -368,12 +373,12 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
           const flash = data.movedQuestionHighlight;
           const flashIds = flash != null ? flashIdSet(flash, collectionId) : null;
           const override = detailsOpenOverride[collectionId];
-          const collectionHasFilterHit = hasListFilter && group.items.length > 0;
+          const collectionHasFilterHit =
+            hasListFilter && (group.items.length > 0 || group.reflexionGroupes.length > 0);
           const defaultOpen = defaultDetailsOpenForCollection(
             collectionId,
             data.detailsExpandCollectionId,
           );
-          /** Repli explicite d’abord ; sinon déplier toutes les collections avec au moins un match ; sinon override / défaut graphe. */
           const isOpen =
             override === false
               ? false
@@ -388,7 +393,7 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
               class={cn(
                 FLOW_SIDEBAR_OVERLAY_STYLES.questionCollectionDetails,
                 FLOW_SIDEBAR_OVERLAY_STYLES.questionListCollectionDepthStripe,
-                moveQuestion != null && dropTargetCollectionId === collectionId
+                canDropSidebar && dropTargetCollectionId === collectionId
                   ? FLOW_SIDEBAR_OVERLAY_STYLES.questionCollectionDropOver
                   : undefined,
               )}
@@ -399,7 +404,7 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                 setDetailsOpenOverride((prev) => ({ ...prev, [collectionId]: target.open }));
               }}
               onDragOver={
-                moveQuestion != null
+                canDropSidebar
                   ? (event) => {
                       event.preventDefault();
                       if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
@@ -408,7 +413,7 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                   : undefined
               }
               onDragLeave={
-                moveQuestion != null
+                canDropSidebar
                   ? (event) => {
                       const rel = event.relatedTarget as Node | null;
                       const root = event.currentTarget as HTMLElement;
@@ -418,29 +423,54 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                   : undefined
               }
               onDrop={
-                moveQuestion != null
+                canDropSidebar
                   ? (event) => {
                       event.preventDefault();
                       setDropTargetCollectionId(null);
                       const parsed = readReactFlowDnDFromEvent(event as unknown as DragEvent);
-                      if (parsed?.type !== "questionNode") return;
-                      const { fromCollectionId, questionIds } = normalizeQuestionNodeMovePayload(parsed.data);
-                      if (questionIds.length === 0 || fromCollectionId == null) return;
+                      if (parsed == null) return;
                       const toCollectionId = collectionId;
-                      if (fromCollectionId === toCollectionId) return;
-                      void moveQuestion({
-                        questionId: questionIds[0],
-                        fromCollectionId,
-                        toCollectionId,
-                        ...(questionIds.length > 1 ? { questionIds } : {}),
-                      })
-                        .then(() => {
-                          setSelectedQuestionIds(new Set());
-                          anchorRef.current = null;
+
+                      if (parsed.type === "questionNode" && moveQuestion != null) {
+                        const { fromCollectionId, questionIds } = normalizeQuestionNodeMovePayload(parsed.data);
+                        if (questionIds.length === 0 || fromCollectionId == null) return;
+                        if (fromCollectionId === toCollectionId) return;
+                        void moveQuestion({
+                          questionId: questionIds[0],
+                          fromCollectionId,
+                          toCollectionId,
+                          ...(questionIds.length > 1 ? { questionIds } : {}),
                         })
-                        .catch(() => {
-                          /* erreur déjà signalée côté page */
-                        });
+                          .then(() => {
+                            setSelectedQuestionIds(new Set());
+                            anchorQuestionsRef.current = null;
+                          })
+                          .catch(() => {
+                            /* erreur déjà signalée côté page */
+                          });
+                        return;
+                      }
+
+                      if (parsed.type === "reflexionGroupeNode" && moveGroupe != null) {
+                        const { fromCollectionId, groupeIds } = normalizeReflexionGroupeNodeMovePayload(
+                          parsed.data,
+                        );
+                        if (groupeIds.length === 0 || fromCollectionId == null) return;
+                        if (fromCollectionId === toCollectionId) return;
+                        void moveGroupe({
+                          groupeId: groupeIds[0],
+                          fromCollectionId,
+                          toCollectionId,
+                          ...(groupeIds.length > 1 ? { groupeIds } : {}),
+                        })
+                          .then(() => {
+                            setSelectedGroupeIds(new Set());
+                            anchorGroupesRef.current = null;
+                          })
+                          .catch(() => {
+                            /* erreur déjà signalée côté page */
+                          });
+                      }
                     }
                   : undefined
               }
@@ -459,11 +489,66 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                 data-question-collection-body={String(collectionId)}
                 class={cn(
                   FLOW_SIDEBAR_OVERLAY_STYLES.questionListScrollInner,
-                  group.items.length === 0 && moveQuestion != null
+                  group.items.length === 0 &&
+                    group.reflexionGroupes.length === 0 &&
+                    canDropSidebar
                     ? FLOW_SIDEBAR_OVERLAY_STYLES.questionListScrollInnerEmptyDropTarget
                     : undefined,
                 )}
               >
+                {group.reflexionGroupes.length > 0 ? (
+                  <div class="mb-1 shrink-0 border-b border-base-content/10 px-1 pb-2">
+                    <p class={FLOW_SIDEBAR_OVERLAY_STYLES.reflexionSuiteSectionTitle}>Suites logiques</p>
+                    <div class="flex flex-col gap-1">
+                      {group.reflexionGroupes.map((suite) => {
+                        const idsInBlock = new Set(group.reflexionGroupes.map((g) => g.groupeId));
+                        const dragIds = collectDragBundleForRow(
+                          suite.groupeId,
+                          selectedGroupeIds,
+                          idsInBlock,
+                        );
+                        const isSelected = selectedGroupeIds.has(suite.groupeId);
+                        return (
+                          <QuestionListDraggableRow
+                            key={`groupe-${suite.groupeId}`}
+                            movedFlashToken={null}
+                            isPostMoveFlash={false}
+                            isSelected={isSelected}
+                            draggable={moveGroupe != null}
+                            onDragStart={(event) => {
+                              actions.onDragStart(event as unknown as DragEvent, "reflexionGroupeNode", {
+                                title: suite.label,
+                                groupeId: suite.groupeId,
+                                collectionId: group.collectionId,
+                                ...(dragIds.length > 1 ? { groupeIds: dragIds } : {}),
+                              });
+                            }}
+                            onMainClick={(event) =>
+                              handleGroupeRowClick(event as unknown as MouseEvent, group, suite.groupeId)
+                            }
+                            title={<span class="text-[11px] font-medium leading-snug">{suite.label}</span>}
+                            actions={
+                              showGroupeRowActions
+                                ? {
+                                    onEdit:
+                                      openReflexionEditor != null
+                                        ? () => openReflexionEditor(group.collectionId, suite.groupeId)
+                                        : undefined,
+                                    onDelete:
+                                      deleteGroupe != null ? () => void deleteGroupe(suite.groupeId) : undefined,
+                                    editAriaLabel: `Modifier la suite « ${suite.label} »`,
+                                    editTitle: "Ouvrir l’éditeur de suites logiques",
+                                    deleteAriaLabel: `Supprimer la suite « ${suite.label} »`,
+                                    deleteTitle: "Supprimer la suite logique",
+                                  }
+                                : null
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 {group.items.length === 0 ? (
                   <p
                     class="px-2 py-3 text-center text-[11px] italic"
@@ -480,80 +565,39 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                     const qNum = Number(item.id);
                     const isPostMoveFlash = flashIds != null && flashIds.has(qNum);
                     const isSelected = selectedQuestionIds.has(qNum);
+                    const idsInBlock = new Set(group.items.map((it) => Number(it.id)));
+                    const dragIds = collectDragBundleForRow(qNum, selectedQuestionIds, idsInBlock);
                     return (
-                    <div
-                      key={item.id}
-                      data-moved-question-row={isPostMoveFlash && flash != null ? String(flash.token) : undefined}
-                      class={cn(
-                        FLOW_SIDEBAR_OVERLAY_STYLES.dragItem,
-                        isPostMoveFlash ? FLOW_SIDEBAR_OVERLAY_STYLES.questionRowPostMove : undefined,
-                        isSelected ? FLOW_SIDEBAR_OVERLAY_STYLES.questionRowSelected : undefined,
-                      )}
-                      draggable
-                      onDragStart={(event) => {
-                        const ids = collectDragQuestionIds(
-                          { questionId: qNum, collectionId: item.collectionId },
-                          selectedQuestionIds,
-                          data.groups,
-                        );
-                        actions.onDragStart(event as unknown as DragEvent, "questionNode", {
-                          title: item.title,
-                          questionId: qNum,
-                          collectionId: item.collectionId,
-                          ...(ids.length > 1 ? { questionIds: ids } : {}),
-                        });
-                      }}
-                    >
-                      <GripVertical
-                        size={16}
-                        class={`${FLOW_SIDEBAR_OVERLAY_STYLES.grip} mt-0.5 shrink-0`}
-                        aria-hidden
+                      <QuestionListDraggableRow
+                        key={item.id}
+                        movedFlashToken={isPostMoveFlash && flash != null ? flash.token : null}
+                        isPostMoveFlash={isPostMoveFlash}
+                        isSelected={isSelected}
+                        draggable={moveQuestion != null}
+                        onDragStart={(event) => {
+                          actions.onDragStart(event as unknown as DragEvent, "questionNode", {
+                            title: item.title,
+                            questionId: qNum,
+                            collectionId: item.collectionId,
+                            ...(dragIds.length > 1 ? { questionIds: dragIds } : {}),
+                          });
+                        }}
+                        onMainClick={(event) =>
+                          handleQuestionRowClick(event as unknown as MouseEvent, group, item)
+                        }
+                        title={<MarkdownViewer data={{ content: item.title }} />}
+                        actions={
+                          showQuestionRowActions
+                            ? {
+                                onEdit: editQuestion != null ? () => editQuestion(Number(item.id)) : undefined,
+                                onDelete:
+                                  deleteQuestion != null ? () => void deleteQuestion(Number(item.id)) : undefined,
+                                editAriaLabel: "Modifier la question",
+                                deleteAriaLabel: "Supprimer la question",
+                              }
+                            : null
+                        }
                       />
-                      <div
-                        class={cn(
-                          FLOW_SIDEBAR_OVERLAY_STYLES.questionRowMain,
-                          "cursor-pointer select-none",
-                        )}
-                        onClick={(event) => handleQuestionRowClick(event as unknown as MouseEvent, group, item)}
-                      >
-                        <div
-                          class={`min-w-0 flex-1 ${FLOW_SIDEBAR_OVERLAY_STYLES.questionTitleMarkdown}`}
-                        >
-                          <MarkdownViewer data={{ content: item.title }} />
-                        </div>
-                        {showQuestionRowActions ? (
-                          <div
-                            class={FLOW_SIDEBAR_OVERLAY_STYLES.questionRowActions}
-                            onMouseDown={(event) => event.stopPropagation()}
-                          >
-                            {editQuestion != null ? (
-                              <button
-                                type="button"
-                                class={FLOW_SIDEBAR_OVERLAY_STYLES.questionRowActionBtn}
-                                draggable={false}
-                                aria-label="Modifier la question"
-                                title="Modifier"
-                                onClick={() => editQuestion(Number(item.id))}
-                              >
-                                <Pencil size={13} strokeWidth={2} aria-hidden />
-                              </button>
-                            ) : null}
-                            {deleteQuestion != null ? (
-                              <button
-                                type="button"
-                                class={FLOW_SIDEBAR_OVERLAY_STYLES.questionRowActionBtn}
-                                draggable={false}
-                                aria-label="Supprimer la question"
-                                title="Supprimer"
-                                onClick={() => void deleteQuestion(Number(item.id))}
-                              >
-                                <Trash2 size={13} strokeWidth={2} aria-hidden />
-                              </button>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
                     );
                   })
                 )}

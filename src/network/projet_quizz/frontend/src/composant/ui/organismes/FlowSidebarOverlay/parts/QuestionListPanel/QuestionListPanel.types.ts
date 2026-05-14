@@ -1,5 +1,6 @@
 import type {
   FlowSidebarMoveQuestionArgs,
+  FlowSidebarMoveGroupeArgs,
   FlowSidebarQuestionListGroup,
   MovedQuestionHighlight,
 } from "../../FlowSidebarOverlay.types";
@@ -33,7 +34,10 @@ export type QuestionListPanelProps = {
     toggleEnfantCategory: (enfantCategorieId: number) => void;
     onDragStart: (event: DragEvent, nodeType: string, payload: unknown) => void;
     onMoveQuestionToCollection?: (args: FlowSidebarMoveQuestionArgs) => Promise<void>;
+    onMoveGroupeToCollection?: (args: FlowSidebarMoveGroupeArgs) => Promise<void>;
     onEditQuestionInSidebar?: (questionId: number) => void;
     onDeleteQuestionInSidebar?: (questionId: number) => void | Promise<void>;
+    onDeleteGroupeInSidebar?: (groupeId: number) => void | Promise<void>;
+    onOpenReflexionEditorForCollection?: (collectionId: number, groupeId?: number) => void;
   };
 };

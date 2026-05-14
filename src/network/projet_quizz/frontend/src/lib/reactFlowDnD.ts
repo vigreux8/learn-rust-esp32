@@ -49,3 +49,23 @@ export function normalizeQuestionNodeMovePayload(data: unknown): {
   merged.sort((a, b) => a - b);
   return { fromCollectionId, questionIds: merged };
 }
+
+/**
+ * Charge utile `reflexionGroupeNode` (sidebar) : `groupeIds` optionnel pour un déplacement groupé.
+ */
+export function normalizeReflexionGroupeNodeMovePayload(data: unknown): {
+  fromCollectionId: number | null;
+  groupeIds: number[];
+} {
+  const patch = (data ?? {}) as Record<string, unknown>;
+  const fromCollectionId = typeof patch.collectionId === "number" ? patch.collectionId : null;
+  const single = typeof patch.groupeId === "number" ? patch.groupeId : null;
+  const raw = patch.groupeIds;
+  const fromArray = Array.isArray(raw)
+    ? raw.filter((x): x is number => typeof x === "number" && Number.isFinite(x))
+    : [];
+  const merged =
+    fromArray.length > 0 ? [...new Set(fromArray)] : single != null ? [single] : [];
+  merged.sort((a, b) => a - b);
+  return { fromCollectionId, groupeIds: merged };
+}

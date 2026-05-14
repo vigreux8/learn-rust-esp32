@@ -28,3 +28,20 @@ export function buildSousCollectionsRoutePath(collectionId: number): string {
 export function buildReflexionRoutePath(collectionId: number): string {
   return `/collections/${collectionId}/reflexion`;
 }
+
+export type BuildReflexionRouteFromNodeOptions = {
+  /** Pré-sélectionne une suite dans l’éditeur (`?groupeId=`). */
+  groupeId?: number;
+};
+
+/** Vue suites logiques depuis le graphe : bouton retour vers `/node` (query `from=node`). */
+export function buildReflexionRoutePathFromNode(
+  collectionId: number,
+  options?: BuildReflexionRouteFromNodeOptions,
+): string {
+  const params = new URLSearchParams();
+  params.set("from", "node");
+  if (options?.groupeId != null) params.set("groupeId", String(options.groupeId));
+  const q = params.toString();
+  return `/collections/${collectionId}/reflexion?${q}`;
+}

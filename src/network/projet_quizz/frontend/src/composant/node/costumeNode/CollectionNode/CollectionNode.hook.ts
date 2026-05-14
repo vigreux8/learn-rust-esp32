@@ -1,7 +1,7 @@
 import { useCallback, useState } from "preact/hooks";
 import { useReactFlow } from "@xyflow/react";
 import { useNodeViewGraphActions } from "../../../../lib/nodeViewGraphActionsContext";
-import { normalizeQuestionNodeMovePayload, readReactFlowDnDFromEvent } from "../../../../lib/reactFlowDnD";
+import { normalizeQuestionNodeMovePayload, normalizeReflexionGroupeNodeMovePayload, readReactFlowDnDFromEvent } from "../../../../lib/reactFlowDnD";
 import type { AppEdge, AppNode } from "../../config/flow.types";
 import {
   mergeInfluenceurFromSidebarPayload,
@@ -119,6 +119,34 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
           fromCollectionId,
           toCollectionId,
           ...(questionIds.length > 1 ? { questionIds } : {}),
+        });
+        return;
+      }
+
+      if (parsed.type === "reflexionGroupeNode") {
+        const toCollectionId = data.collectionId;
+        if (typeof toCollectionId !== "number") {
+          window.alert("Dépose sur un nœud collection relié à l’API (pas le gabarit vide).");
+          return;
+        }
+        const { fromCollectionId, groupeIds } = normalizeReflexionGroupeNodeMovePayload(parsed.data);
+        if (groupeIds.length === 0 || fromCollectionId == null) {
+          window.alert("Seules les suites logiques de la barre latérale peuvent être déplacées ainsi.");
+          return;
+        }
+        if (fromCollectionId === toCollectionId) {
+          return;
+        }
+        const moveGroupeToCollection = graphActions?.moveGroupeToCollection;
+        if (moveGroupeToCollection == null) {
+          window.alert("Action de déplacement non disponible sur ce graphe.");
+          return;
+        }
+        void moveGroupeToCollection({
+          groupeId: groupeIds[0],
+          fromCollectionId,
+          toCollectionId,
+          ...(groupeIds.length > 1 ? { groupeIds } : {}),
         });
       }
     },

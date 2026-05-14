@@ -350,6 +350,19 @@ export async function deleteGroupeQuestions(groupeId: number, userId: number): P
   await assertResponseOk(res);
 }
 
+export async function postMoveGroupeQuestionsToCollection(
+  groupeId: number,
+  body: { user_id: number; to_collection_id: number },
+): Promise<GroupeQuestionsUi> {
+  const res = await fetch(apiUrl(`/quizz/groupe-questions/${groupeId}/move`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  await assertResponseOk(res);
+  return res.json() as Promise<GroupeQuestionsUi>;
+}
+
 export async function fetchReflexionChain(
   collectionId: number,
   groupeId?: number,

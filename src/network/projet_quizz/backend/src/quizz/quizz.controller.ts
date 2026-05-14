@@ -15,6 +15,7 @@ import {
 import { QuizzService } from './services';
 import { AppCollectionImportBodyDto } from './dto/import-collection.dto';
 import { LlmImportBodyDto } from './dto/import-llm.dto';
+import { MoveGroupeQuestionsBodyDto } from './dto/move-groupe-questions.dto';
 import {
   AssignCollectionTagDto,
   AssignPersonaliteToCollectionDto,
@@ -480,6 +481,17 @@ export class QuizzController {
       user_id: body.user_id,
       nom: body.nom,
       description: body.description,
+    });
+  }
+
+  @Post('groupe-questions/:groupeId/move')
+  moveGroupeQuestionsToCollection(
+    @Param('groupeId', ParseIntPipe) groupeId: number,
+    @Body() body: MoveGroupeQuestionsBodyDto,
+  ) {
+    return this.quizz.moveGroupeQuestionsToCollection(groupeId, {
+      user_id: body.user_id,
+      to_collection_id: body.to_collection_id,
     });
   }
 

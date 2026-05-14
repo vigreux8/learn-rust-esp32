@@ -15,15 +15,23 @@ import {
 import {
   createEmptyCollection,
   createPersonaliteCollection,
+  deleteGroupeQuestions,
   fetchCollections,
+  fetchGroupeQuestions,
   fetchPersonalitesPicker,
   fetchQuestions,
   fetchRefCategoriesHierarchy,
+  fetchReflexionChain,
   linkCollectionParentCollection,
+  postMoveGroupeQuestionsToCollection,
   postMoveQuestionToCollection,
   unlinkCollectionParentCollection,
 } from "../../../lib/api";
-import type { NodeViewGraphActionsValue, NodeViewGraphMoveQuestionArgs } from "../../../lib/nodeViewGraphActionsContext";
+import type {
+  NodeViewGraphActionsValue,
+  NodeViewGraphMoveGroupeArgs,
+  NodeViewGraphMoveQuestionArgs,
+} from "../../../lib/nodeViewGraphActionsContext";
 import { useUserSession } from "../../../lib/userSession";
 import { flowEdgeTypes, flowNodeTypes } from "../../node/config/flow.registry";
 import type { AppEdge, AppNode } from "../../node/config/flow.types";
@@ -33,6 +41,7 @@ import { readStoredNodeViewGraph, writeStoredNodeViewGraph } from "../../../lib/
 import type { CollectionUi, QuizzQuestionRow, RefCategorieHierarchyRow } from "../../../types/quizz";
 import {
   buildCollectionSubtreeGraphElements,
+  formatGroupeQuestionsSidebarLabel,
   buildHierarchyQuestionSidebarRows,
   buildNodeViewSidebarData,
   filterQuestionRowsForCollectionSubtree,
@@ -41,13 +50,21 @@ import {
   collectGraphPlayIncludedCollectionIds,
   hydrateCollectionNodesTreeDepthFromCollections,
   isHierarchyCollectionConnectionValid,
+  listQuestionPanelCollectionIds,
   parseCollectionParentChildEdgeId,
   resolveQuestionsScopeCollectionIdFromSelection,
 } from "./NodeView.metier";
 import { useNodeViewPlayMode } from "./hooks/useNodeViewPlayMode";
 import { useNodeViewQuestionSidebarEdit } from "./hooks/useNodeViewQuestionSidebarEdit";
-import { buildQuestionsRoutePath } from "../../ui/molecules/CollectionCard/CollectionCard.metier";
-import type { FlowSidebarHostApi, MovedQuestionHighlight } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
+import {
+  buildQuestionsRoutePath,
+  buildReflexionRoutePathFromNode,
+} from "../../ui/molecules/CollectionCard/CollectionCard.metier";
+import type {
+  FlowSidebarHostApi,
+  FlowSidebarReflexionSuitesPayload,
+  MovedQuestionHighlight,
+} from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
 import type { NodeViewProps } from "./NodeView.types";
 
 function stripLegacyPersonalityNodes(nodes: AppNode[]): AppNode[] {
@@ -684,6 +701,71 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     sidebarRefCategoriesHierarchy,
   ]);
 
+  const reflexionPanelCollectionIds = useMemo(
+    () =>
+      listQuestionPanelCollectionIds({
+        collections: sidebarBase.collections,
+        canvasCollectionIds: questionsCanvasCollectionScope.orderedIds,
+        scopeRootCollectionId: questionsScopeCollectionId,
+        hierarchy: sidebarBase.collectionHierarchy,
+      }),
+    [
+      questionsCanvasCollectionScope.orderedIds,
+      questionsScopeCollectionId,
+      sidebarBase.collectionHierarchy,
+      sidebarBase.collections,
+    ],
+  );
+
+  const reflexionFetchKey = reflexionPanelCollectionIds.join(",");
+
+  const [reflexionReloadNonce, setReflexionReloadNonce] = useState(0);
+  const [reflexionSuites, setReflexionSuites] = useState<FlowSidebarReflexionSuitesPayload[]>([]);
+
+  const bumpReflexionSidebarData = useCallback(() => {
+    setReflexionReloadNonce((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (reflexionPanelCollectionIds.length === 0) {
+      setReflexionSuites([]);
+      return;
+    }
+    void (async () => {
+      const out: FlowSidebarReflexionSuitesPayload[] = [];
+      for (const collectionId of reflexionPanelCollectionIds) {
+        if (cancelled) return;
+        try {
+          const groupesApi = await fetchGroupeQuestions(collectionId);
+          const groupes: FlowSidebarReflexionSuitesPayload["groupes"] = [];
+          const orderedAcc = new Set<number>();
+          for (const g of groupesApi) {
+            groupes.push({ groupeId: g.id, label: formatGroupeQuestionsSidebarLabel(g) });
+            try {
+              const chain = await fetchReflexionChain(collectionId, g.id);
+              for (const q of chain.ordered_questions) orderedAcc.add(q.id);
+            } catch {
+              /* ignore */
+            }
+          }
+          out.push({ collectionId, groupes, orderedQuestionIdsInChains: [...orderedAcc] });
+        } catch {
+          out.push({ collectionId, groupes: [], orderedQuestionIdsInChains: [] });
+        }
+      }
+      if (!cancelled) setReflexionSuites(out);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reflexionFetchKey, reflexionReloadNonce]);
+
+  const sidebarDataForOverlay = useMemo(
+    () => ({ ...sidebarData, reflexionSuites }),
+    [sidebarData, reflexionSuites],
+  );
+
   const questionsPanelHint = useMemo(() => {
     const canvasIntro =
       "Seules les collections présentes comme nœuds sur le graphe (collection ou question avec id API) : questions et blocs correspondent à cette vue. Ordre hiérarchique ; glisser-déposer pour changer de collection. Maj+clic : plage dans un même bloc. Cmd (macOS) ou Ctrl (Windows) + clic : ajouter ou retirer une question à la sélection, sans remplir l’intervalle. Glisser déplace la sélection.";
@@ -751,6 +833,12 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     void route(buildQuestionsRoutePath(ficheCollectionId, [], { fromNode: true }));
   }, []);
 
+  const openReflexionEditorForCollection = useCallback((collectionId: number, groupeId?: number) => {
+    void route(
+      buildReflexionRoutePathFromNode(collectionId, groupeId != null ? { groupeId } : undefined),
+    );
+  }, []);
+
   const moveQuestionToCollection = useCallback(
     async (args: NodeViewGraphMoveQuestionArgs) => {
       const { fromCollectionId, toCollectionId } = args;
@@ -807,21 +895,77 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
             userId,
           ),
         );
+        bumpReflexionSidebarData();
       } catch (e: unknown) {
         window.alert(e instanceof Error ? e.message : "Impossible de déplacer la question.");
         throw e;
       }
     },
-    [setNodes, userId],
+    [bumpReflexionSidebarData, setNodes, userId],
+  );
+
+  const moveGroupeToCollection = useCallback(
+    async (args: NodeViewGraphMoveGroupeArgs) => {
+      const rawIds =
+        args.groupeIds != null && args.groupeIds.length > 0
+          ? [...new Set([...args.groupeIds])]
+          : [args.groupeId];
+      const ids = rawIds.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+      if (ids.length === 0 || args.fromCollectionId === args.toCollectionId) return;
+      try {
+        for (const groupeId of ids) {
+          await postMoveGroupeQuestionsToCollection(groupeId, {
+            user_id: userId,
+            to_collection_id: args.toCollectionId,
+          });
+        }
+        const list = await fetchCollections();
+        setApiCollections(list);
+        setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
+        bumpReflexionSidebarData();
+      } catch (e: unknown) {
+        window.alert(e instanceof Error ? e.message : "Impossible de déplacer la suite logique.");
+        throw e;
+      }
+    },
+    [bumpReflexionSidebarData, setNodes, userId],
+  );
+
+  const deleteGroupeFromSidebar = useCallback(
+    async (groupeId: number) => {
+      if (
+        !window.confirm(
+          "Supprimer cette suite logique ? Les liens d’ordre (réflexion) seront effacés ; les questions restent dans les collections.",
+        )
+      ) {
+        return;
+      }
+      try {
+        await deleteGroupeQuestions(groupeId, userId);
+        const list = await fetchCollections();
+        setApiCollections(list);
+        setNodes((nds) => hydrateCollectionNodesTreeDepthFromCollections(nds, list, userId));
+        bumpReflexionSidebarData();
+      } catch {
+        window.alert("Suppression impossible.");
+      }
+    },
+    [bumpReflexionSidebarData, setNodes, userId],
   );
 
   const graphActions = useMemo<NodeViewGraphActionsValue>(
     () => ({
       moveQuestionToCollection,
+      moveGroupeToCollection,
       openLlmImportForCollection,
       navigateToPlayForCollection: playModeUi.play.navigateToPlayForCollection,
     }),
-    [moveQuestionToCollection, openLlmImportForCollection, playModeUi.play.navigateToPlayForCollection],
+    [
+      moveGroupeToCollection,
+      moveQuestionToCollection,
+      openLlmImportForCollection,
+      playModeUi.play.navigateToPlayForCollection,
+    ],
   );
 
   return {
@@ -843,13 +987,16 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       reactFlowRootRef,
     },
     sidebar: {
-      data: sidebarData,
+      data: sidebarDataForOverlay,
       actions: {
         ...page.actions,
         onShowCollectionSubtreeOnGraph,
         onMoveQuestionToCollection: moveQuestionToCollection,
+        onMoveGroupeToCollection: moveGroupeToCollection,
         ...questionSidebarEdit.flowSidebarQuestionActions,
         onOpenQuestionsForPersonalityFiche: openQuestionsForPersonalityFiche,
+        onOpenReflexionEditorForCollection: openReflexionEditorForCollection,
+        onDeleteGroupeInSidebar: deleteGroupeFromSidebar,
       },
       presentation: {
         questionsPanelHint,

@@ -49,6 +49,19 @@ export type FlowSidebarQuestionRow = {
   categorie_e_type: string | null;
 };
 
+/** Ligne « suite logique » (`groupe_questions`) dans le panneau Questions par collection. */
+export type FlowSidebarReflexionGroupeRow = {
+  groupeId: number;
+  label: string;
+};
+
+/** Chargé côté page `/node` : suites et ids des questions en chaîne ordonnée (données graphe / sidebar). */
+export type FlowSidebarReflexionSuitesPayload = {
+  collectionId: number;
+  groupes: FlowSidebarReflexionGroupeRow[];
+  orderedQuestionIdsInChains: readonly number[];
+};
+
 /** Bloc accordéon « une collection » dans le panneau Questions par collection. */
 export type FlowSidebarQuestionListGroup = {
   collectionId: number;
@@ -57,6 +70,8 @@ export type FlowSidebarQuestionListGroup = {
   items: FlowSidebarQuestionRow[];
   /** Nombre de questions dans la collection (hors filtre recherche sur l’intitulé). */
   totalQuestionCount: number;
+  /** Suites logiques de la collection (noms uniquement). */
+  reflexionGroupes: FlowSidebarReflexionGroupeRow[];
 };
 
 /** Hiérarchie plate pour filtre personnalités (parent → enfants). */
@@ -72,6 +87,14 @@ export type FlowSidebarMoveQuestionArgs = {
   toCollectionId: number;
   /** Déplacement groupé (sidebar : Maj+clic + glisser). */
   questionIds?: readonly number[];
+};
+
+/** Déplacement d’un `groupe_questions` vers une autre collection (sidebar `/node`). */
+export type FlowSidebarMoveGroupeArgs = {
+  groupeId: number;
+  fromCollectionId: number;
+  toCollectionId: number;
+  groupeIds?: readonly number[];
 };
 
 /** Mise en évidence temporaire dans le panneau Questions après un changement de collection. */
@@ -99,6 +122,11 @@ export type FlowSidebarOverlayProps = {
     collectionHierarchy: FlowSidebarCollectionHierarchyRef[];
     /** Hiérarchie `ref_p_categorie` + enfants (comme session quiz) pour filtrer les sous-types. */
     refCategoriesHierarchy?: RefCategorieHierarchyRow[];
+    /**
+     * Suites logiques par collection (ex. `/node` après chargement API).
+     * Absent : pas de cartes suites dans le panneau.
+     */
+    reflexionSuites?: FlowSidebarReflexionSuitesPayload[];
   };
   actions: {
     onNodeCreate?: (type: string, position: { x: number; y: number }, data: unknown) => void;
@@ -106,12 +134,18 @@ export type FlowSidebarOverlayProps = {
     onShowCollectionSubtreeOnGraph?: (collectionId: number) => void;
     /** Dépôt d’une question sur l’en-tête d’une autre collection dans le panneau Questions. */
     onMoveQuestionToCollection?: (args: FlowSidebarMoveQuestionArgs) => Promise<void>;
+    /** Dépôt d’une suite logique sur une autre collection (même flux que les questions). */
+    onMoveGroupeToCollection?: (args: FlowSidebarMoveGroupeArgs) => Promise<void>;
     /** Édition depuis la liste Questions (ex. `/node`) : ouvre la modale métier. */
     onEditQuestionInSidebar?: (questionId: number) => void;
     /** Suppression depuis la liste Questions (ex. `/node`). */
     onDeleteQuestionInSidebar?: (questionId: number) => void | Promise<void>;
+    /** Suppression d’une suite logique depuis la liste (ex. `/node`). */
+    onDeleteGroupeInSidebar?: (groupeId: number) => void | Promise<void>;
     /** Liste personnalités : ouvre `/questions/:ficheCollectionId?from=node` (même retour graphe que le bouton Questions du nœud collection). */
     onOpenQuestionsForPersonalityFiche?: (ficheCollectionId: number) => void;
+    /** Ouvre la vue suites logiques ; `groupeId` optionnel pour pré-sélectionner une suite (`?groupeId=`). */
+    onOpenReflexionEditorForCollection?: (collectionId: number, groupeId?: number) => void;
   };
   presentation?: {
     /** Affiché sous le titre du panneau Questions lorsque la liste est restreinte au graphe. */

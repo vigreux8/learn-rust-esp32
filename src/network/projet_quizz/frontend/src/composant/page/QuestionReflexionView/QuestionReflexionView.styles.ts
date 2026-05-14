@@ -5,6 +5,7 @@ export const QUESTION_REFLEXION_VIEW_STYLES = {
   pageTitle: SOUS_COLLECTIONS_VIEW_STYLES.pageTitle,
   /** Enveloppe tout le contenu principal sous PageMain (titre, alertes, DnD). */
   pageContentOuter: "flex w-full min-w-0 max-w-full flex-col gap-6",
+  backToNodeRow: "mb-3 flex",
   pageStack: SOUS_COLLECTIONS_VIEW_STYLES.pageStack,
   topBand: SOUS_COLLECTIONS_VIEW_STYLES.topBand,
   bottomGrid: SOUS_COLLECTIONS_VIEW_STYLES.bottomGrid,

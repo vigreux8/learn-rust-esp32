@@ -14,6 +14,7 @@ import type { QuestionReflexionRouterInject, QuestionReflexionViewProps } from "
 export function QuestionReflexionView(router: QuestionReflexionRouterInject) {
   const props: QuestionReflexionViewProps = { route: { collectionId: router.collectionId } };
   const collect = useQuestionReflexionViewState(props);
+  const navigation = collect.navigation;
   const routing = collect.routing;
   const status = collect.status;
   const data = collect.data;
@@ -45,6 +46,14 @@ export function QuestionReflexionView(router: QuestionReflexionRouterInject) {
         <div class={QUESTION_REFLEXION_VIEW_STYLES.root}>
           <AppHeader beforeNavigate={guardHeaderNavigation} />
           <PageMain>
+            {navigation.showBackToNode ? (
+              <div class={QUESTION_REFLEXION_VIEW_STYLES.backToNodeRow}>
+                <Button variant="ghost" class="btn-sm gap-2" type="button" onClick={navigation.onBackToNode}>
+                  <ArrowLeft class="h-4 w-4 shrink-0" aria-hidden />
+                  Retour au graphe
+                </Button>
+              </div>
+            ) : null}
             <p class="text-base-content/70">Identifiant de collection invalide.</p>
             <Button variant="outline" class="mt-4 gap-2" onClick={() => actions.navigateAwayToCollections()}>
               <ArrowLeft class="h-4 w-4" aria-hidden />
@@ -64,6 +73,14 @@ export function QuestionReflexionView(router: QuestionReflexionRouterInject) {
         <div class={QUESTION_REFLEXION_VIEW_STYLES.root}>
           <AppHeader beforeNavigate={guardHeaderNavigation} />
           <PageMain>
+            {navigation.showBackToNode ? (
+              <div class={QUESTION_REFLEXION_VIEW_STYLES.backToNodeRow}>
+                <Button variant="ghost" class="btn-sm gap-2" type="button" onClick={navigation.onBackToNode}>
+                  <ArrowLeft class="h-4 w-4 shrink-0" aria-hidden />
+                  Retour au graphe
+                </Button>
+              </div>
+            ) : null}
             <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h1 class={QUESTION_REFLEXION_VIEW_STYLES.pageTitle}>Suite logique</h1>
               <Button variant="outline" class="gap-2 self-start" onClick={() => actions.navigateAwayToCollections()}>
@@ -88,6 +105,14 @@ export function QuestionReflexionView(router: QuestionReflexionRouterInject) {
         <div class={QUESTION_REFLEXION_VIEW_STYLES.root}>
           <AppHeader beforeNavigate={guardHeaderNavigation} />
           <PageMain>
+            {navigation.showBackToNode ? (
+              <div class={QUESTION_REFLEXION_VIEW_STYLES.backToNodeRow}>
+                <Button variant="ghost" class="btn-sm gap-2" type="button" onClick={navigation.onBackToNode}>
+                  <ArrowLeft class="h-4 w-4 shrink-0" aria-hidden />
+                  Retour au graphe
+                </Button>
+              </div>
+            ) : null}
             <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h1 class={QUESTION_REFLEXION_VIEW_STYLES.pageTitle}>Suite logique</h1>
               <Button variant="outline" class="gap-2 self-start" onClick={() => actions.navigateAwayToCollections()}>
@@ -121,6 +146,14 @@ export function QuestionReflexionView(router: QuestionReflexionRouterInject) {
       <div class={QUESTION_REFLEXION_VIEW_STYLES.root}>
         <AppHeader beforeNavigate={guardHeaderNavigation} />
         <PageMain>
+          {navigation.showBackToNode ? (
+            <div class={QUESTION_REFLEXION_VIEW_STYLES.backToNodeRow}>
+              <Button variant="ghost" class="btn-sm gap-2" type="button" onClick={navigation.onBackToNode}>
+                <ArrowLeft class="h-4 w-4 shrink-0" aria-hidden />
+                Retour au graphe
+              </Button>
+            </div>
+          ) : null}
           <div class={QUESTION_REFLEXION_VIEW_STYLES.pageContentOuter}>
           <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div class="min-w-0 flex-1">
