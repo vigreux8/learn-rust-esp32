@@ -5,7 +5,9 @@ import { collectionTreeBorderHexForDepth } from "../../../../../../lib/collectio
 import { readReactFlowDnDFromEvent } from "../../../../../../lib/reactFlowDnD";
 import { MarkdownViewer } from "../../../../atomes/MarkdownViewer";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "../../FlowSidebarOverlay.styles";
-import type { QuestionListPanelProps } from "./QuestionListPanel.types";
+import type { QuestionListGroup, QuestionListPanelProps } from "./QuestionListPanel.types";
+
+type QuestionListRow = QuestionListGroup["items"][number];
 
 function defaultDetailsOpenForCollection(collectionId: number, expandId: number | null): boolean {
   if (expandId == null) return false;
@@ -63,6 +65,13 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
     setDetailsOpenOverride({});
   }, [data.detailsExpandCollectionId]);
 
+  /** Recherche vidée : on repasse sur le seul défaut graphe (`detailsExpandCollectionId`) sans vieux `false` qui bloquerait le dépliage. */
+  useEffect(() => {
+    if (data.search.trim().length === 0) {
+      setDetailsOpenOverride({});
+    }
+  }, [data.search]);
+
   useEffect(() => {
     if (moveQuestion == null) return;
     const clearDrop = () => setDropTargetCollectionId(null);
@@ -87,7 +96,7 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
         <input
           type="search"
           class={FLOW_SIDEBAR_OVERLAY_STYLES.searchInput}
-          placeholder="Rechercher une question ou une collection…"
+          placeholder="Rechercher dans les intitulés des questions…"
           value={data.search}
           onInput={(event) => actions.setSearch((event.target as HTMLInputElement).value)}
         />
@@ -105,8 +114,8 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
       >
         {data.groups.length === 0 ? (
           <p class="rounded-lg border border-base-content/10 bg-base-200/40 px-3 py-6 text-center text-xs text-base-content/60">
-            Aucune question correspondante à ta recherche ; essaie un autre mot-clé ou vérifie les filtres de la
-            sélection sur le graphe.
+            Aucune collection dans ce périmètre ; ajoute des nœuds collection ou question sur le graphe, ou élargis
+            la sélection.
           </p>
         ) : null}
         {data.groups.map((group) => {
@@ -114,9 +123,22 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
           const accentHex = collectionTreeBorderHexForDepth(depth);
           const sectionKey = String(collectionId);
           const flash = data.movedQuestionHighlight;
+          const override = detailsOpenOverride[collectionId];
+          const hasActiveSearch = data.search.trim().length > 0;
+          const collectionHasSearchHit = hasActiveSearch && group.items.length > 0;
+          const defaultOpen = defaultDetailsOpenForCollection(
+            collectionId,
+            data.detailsExpandCollectionId,
+          );
+          /** Repli explicite d’abord ; sinon déplier toutes les collections avec au moins un match ; sinon override / défaut graphe. */
           const isOpen =
-            detailsOpenOverride[collectionId] ??
-            defaultDetailsOpenForCollection(collectionId, data.detailsExpandCollectionId);
+            override === false
+              ? false
+              : collectionHasSearchHit
+                ? true
+                : override === true
+                  ? true
+                  : defaultOpen;
           return (
             <details
               key={sectionKey}
@@ -198,10 +220,14 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                     class="px-2 py-3 text-center text-[11px] italic"
                     style={{ color: accentHex }}
                   >
-                    <span class="opacity-65">Aucune question dans cette collection.</span>
+                    <span class="opacity-65">
+                      {data.search.trim().length > 0 && group.totalQuestionCount > 0
+                        ? "Aucune question ne correspond à ta recherche dans cette collection."
+                        : "Aucune question dans cette collection."}
+                    </span>
                   </p>
                 ) : (
-                  group.items.map((item) => {
+                  group.items.map((item: QuestionListRow) => {
                     const isPostMoveFlash =
                       flash != null &&
                       flash.collectionId === collectionId &&

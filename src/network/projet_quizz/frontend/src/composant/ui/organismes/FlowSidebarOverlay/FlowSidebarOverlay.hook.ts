@@ -2,7 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { collectSubtreeCollectionIds } from "../../../../lib/collectionHierarchyVis";
 import { useClosePanelOnDocumentClickOutside } from "../../../../lib/useClosePanelOnDocumentClickOutside";
 import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
-import type { FlowSidebarOverlayProps, SidebarTab } from "./FlowSidebarOverlay.types";
+import type {
+  FlowSidebarOverlayProps,
+  FlowSidebarQuestionListGroup,
+  SidebarTab,
+} from "./FlowSidebarOverlay.types";
 
 const FLOW_SIDEBAR_TAB_STORAGE_KEY = "quizz-node-flow-sidebar-active-tab";
 
@@ -38,13 +42,7 @@ function persistSidebarTab(tab: SidebarTab): void {
   }
 }
 
-type QuestionGroup = {
-  collectionId: number;
-  /** Même libellé que `FlowSidebarCollectionRow.label` (nom collection). */
-  category: string;
-  treeDepth: number;
-  items: FlowSidebarOverlayProps["data"]["questions"];
-};
+type QuestionGroup = FlowSidebarQuestionListGroup;
 
 /**
  * Orchestre onglets sidebar, filtres collections / questions / personnalités et drag HTML5 vers React Flow.
@@ -184,13 +182,10 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
 
   const questionGroups = useMemo(() => {
     const query = questionSearch.trim().toLowerCase();
+    /** Recherche uniquement sur l’intitulé brut de la question ; les collections restent toutes listées. */
     const questionsFiltered =
       query.length > 0
-        ? data.questions.filter(
-            (item) =>
-              item.title.toLowerCase().includes(query) ||
-              item.category.toLowerCase().includes(query),
-          )
+        ? data.questions.filter((item) => item.title.toLowerCase().includes(query))
         : data.questions;
 
     const byCollectionId = new Map<number, FlowSidebarOverlayProps["data"]["questions"]>();
@@ -198,6 +193,11 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       const list = byCollectionId.get(item.collectionId);
       if (list) list.push(item);
       else byCollectionId.set(item.collectionId, [item]);
+    }
+
+    const totalByCollectionId = new Map<number, number>();
+    for (const item of data.questions) {
+      totalByCollectionId.set(item.collectionId, (totalByCollectionId.get(item.collectionId) ?? 0) + 1);
     }
 
     const hierarchy = data.collectionHierarchy ?? [];
@@ -219,15 +219,12 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     for (const row of rowsOrdered) {
       const rawItems = byCollectionId.get(row.collectionId) ?? [];
       const items = [...rawItems].sort((a, b) => Number(a.id) - Number(b.id));
-      if (query.length > 0) {
-        const labelMatches = row.label.toLowerCase().includes(query);
-        if (!labelMatches && items.length === 0) continue;
-      }
       groups.push({
         collectionId: row.collectionId,
         category: row.label,
         treeDepth: row.treeDepth,
         items,
+        totalQuestionCount: totalByCollectionId.get(row.collectionId) ?? 0,
       });
     }
 

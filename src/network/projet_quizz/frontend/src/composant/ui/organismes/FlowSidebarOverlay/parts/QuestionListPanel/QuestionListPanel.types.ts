@@ -1,11 +1,10 @@
-import type { FlowSidebarMoveQuestionArgs, FlowSidebarQuestionRow, MovedQuestionHighlight } from "../../FlowSidebarOverlay.types";
+import type {
+  FlowSidebarMoveQuestionArgs,
+  FlowSidebarQuestionListGroup,
+  MovedQuestionHighlight,
+} from "../../FlowSidebarOverlay.types";
 
-export type QuestionListGroup = {
-  collectionId: number;
-  category: string;
-  treeDepth: number;
-  items: FlowSidebarQuestionRow[];
-};
+export type QuestionListGroup = FlowSidebarQuestionListGroup;
 
 export type QuestionListPanelProps = {
   data: {

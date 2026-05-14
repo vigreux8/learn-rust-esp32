@@ -40,6 +40,16 @@ export type FlowSidebarQuestionRow = {
   treeDepth?: number;
 };
 
+/** Bloc accordéon « une collection » dans le panneau Questions par collection. */
+export type FlowSidebarQuestionListGroup = {
+  collectionId: number;
+  category: string;
+  treeDepth: number;
+  items: FlowSidebarQuestionRow[];
+  /** Nombre de questions dans la collection (hors filtre recherche sur l’intitulé). */
+  totalQuestionCount: number;
+};
+
 /** Hiérarchie plate pour filtre personnalités (parent → enfants). */
 export type FlowSidebarCollectionHierarchyRef = {
   id: number;
