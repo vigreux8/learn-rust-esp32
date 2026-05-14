@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { collectSubtreeCollectionIds } from "../../../../lib/collectionHierarchyVis";
 import { useClosePanelOnDocumentClickOutside } from "../../../../lib/useClosePanelOnDocumentClickOutside";
+import {
+  buildSidebarEnfantChipsForParents,
+  buildSidebarEnfantChipsFromQuestionsFallback,
+  buildSidebarParentChipsFromHierarchy,
+  buildSidebarParentChipsFromQuestions,
+  collectAllowedEnfantIdsUnion,
+  questionMatchesSidebarCategoryFilters,
+} from "./parts/QuestionListPanel/QuestionListPanel.categoryFilter.metier";
 import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME, dedupePersonalityRowsByPersonId, personalityLabelsMatchesNameTokens } from "./FlowSidebarOverlay.metier";
 import type {
   FlowSidebarOverlayProps,
@@ -53,6 +61,8 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const [collectionSearch, setCollectionSearch] = useState("");
   const [collectionSubtreeSearch, setCollectionSubtreeSearch] = useState("");
   const [questionSearch, setQuestionSearch] = useState("");
+  const [questionFilterParentId, setQuestionFilterParentId] = useState<number | null>(null);
+  const [questionFilterEnfantId, setQuestionFilterEnfantId] = useState<number | null>(null);
   /** Indices de palette (0…dernier) : même regroupement visuel que les bords de carte collections. */
   const [paletteBucketFilters, setPaletteBucketFilters] = useState<number[]>([]);
   const [subtreePaletteBucketFilters, setSubtreePaletteBucketFilters] = useState<number[]>([]);
@@ -100,6 +110,58 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       slot.current = null;
     };
   }, [activeTab, closePanel, openTab, presentation?.sidebarHostApiRef]);
+
+  const refCategoriesHierarchyRows = data.refCategoriesHierarchy ?? [];
+
+  const toggleQuestionFilterParent = useCallback((parentCategorieId: number) => {
+    setQuestionFilterParentId((prev) => {
+      if (prev === parentCategorieId) return null;
+      return parentCategorieId;
+    });
+    setQuestionFilterEnfantId(null);
+  }, []);
+
+  const toggleQuestionFilterEnfant = useCallback((enfantCategorieId: number) => {
+    setQuestionFilterEnfantId((prev) => (prev === enfantCategorieId ? null : enfantCategorieId));
+  }, []);
+
+  const parentScopeForEnfantChips = useMemo(
+    () => (questionFilterParentId != null ? [questionFilterParentId] : []),
+    [questionFilterParentId],
+  );
+
+  const allowedEnfantIdsForSelection = useMemo(() => {
+    if (questionFilterParentId == null) return new Set<number>();
+    if (refCategoriesHierarchyRows.length > 0) {
+      return collectAllowedEnfantIdsUnion(refCategoriesHierarchyRows, parentScopeForEnfantChips);
+    }
+    return new Set(
+      buildSidebarEnfantChipsFromQuestionsFallback(data.questions, parentScopeForEnfantChips).map((c) => c.id),
+    );
+  }, [data.questions, parentScopeForEnfantChips, questionFilterParentId, refCategoriesHierarchyRows]);
+
+  useEffect(() => {
+    if (questionFilterEnfantId == null) return;
+    if (!allowedEnfantIdsForSelection.has(questionFilterEnfantId)) {
+      setQuestionFilterEnfantId(null);
+    }
+  }, [allowedEnfantIdsForSelection, questionFilterEnfantId]);
+
+  const questionFilterParentChips = useMemo(
+    () =>
+      refCategoriesHierarchyRows.length > 0
+        ? buildSidebarParentChipsFromHierarchy(refCategoriesHierarchyRows)
+        : buildSidebarParentChipsFromQuestions(data.questions),
+    [data.questions, refCategoriesHierarchyRows],
+  );
+
+  const questionFilterEnfantChips = useMemo(() => {
+    if (questionFilterParentId == null) return [];
+    if (refCategoriesHierarchyRows.length > 0) {
+      return buildSidebarEnfantChipsForParents(refCategoriesHierarchyRows, parentScopeForEnfantChips);
+    }
+    return buildSidebarEnfantChipsFromQuestionsFallback(data.questions, parentScopeForEnfantChips);
+  }, [data.questions, parentScopeForEnfantChips, questionFilterParentId, refCategoriesHierarchyRows]);
 
   const togglePaletteBucket = useCallback((bucket: number) => {
     setPaletteBucketFilters((prev) =>
@@ -204,10 +266,15 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const questionGroups = useMemo(() => {
     const query = questionSearch.trim().toLowerCase();
     /** Recherche uniquement sur l’intitulé brut de la question ; les collections restent toutes listées. */
-    const questionsFiltered =
+    let questionsFiltered =
       query.length > 0
         ? data.questions.filter((item) => item.title.toLowerCase().includes(query))
         : data.questions;
+    if (questionFilterParentId != null || questionFilterEnfantId != null) {
+      questionsFiltered = questionsFiltered.filter((item) =>
+        questionMatchesSidebarCategoryFilters(item, questionFilterParentId, questionFilterEnfantId),
+      );
+    }
 
     const byCollectionId = new Map<number, FlowSidebarOverlayProps["data"]["questions"]>();
     for (const item of questionsFiltered) {
@@ -256,6 +323,8 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     data.questions,
     presentation?.questionsCanvasCollectionIds,
     presentation?.questionsDetailsExpandCollectionId,
+    questionFilterEnfantId,
+    questionFilterParentId,
     questionSearch,
   ]);
 
@@ -288,6 +357,14 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
       search: questionSearch,
       setSearch: setQuestionSearch,
       groups: questionGroups,
+      categoryFilter: {
+        parentChips: questionFilterParentChips,
+        enfantChips: questionFilterEnfantChips,
+        selectedParentId: questionFilterParentId,
+        selectedEnfantId: questionFilterEnfantId,
+      },
+      toggleParentCategory: toggleQuestionFilterParent,
+      toggleEnfantCategory: toggleQuestionFilterEnfant,
     },
     personalities: {
       search: personalitySearch,

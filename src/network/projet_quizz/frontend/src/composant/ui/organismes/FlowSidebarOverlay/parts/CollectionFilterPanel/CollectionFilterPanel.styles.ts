@@ -5,7 +5,7 @@ export const COLLECTION_FILTER_PANEL_STYLES = {
     "rounded-lg border border-base-content/10 bg-base-200/40 px-3 py-6 text-center text-xs text-base-content/60",
   depthChip: (active: boolean) =>
     cn(
-      "btn btn-xs gap-1.5 border font-normal",
+      "btn btn-xs shrink-0 gap-1.5 border font-normal",
       active ? "border-base-content/25 bg-base-100 shadow-sm" : "btn-ghost border-base-300",
     ),
   depthDot: "h-2.5 w-2.5 shrink-0 rounded-full border border-base-content/20",

@@ -107,11 +107,14 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
                 data={{
                   search: questions.search,
                   groups: questions.groups,
+                  categoryFilter: questions.categoryFilter,
                   detailsExpandCollectionId: presentation?.questionsDetailsExpandCollectionId ?? null,
                   movedQuestionHighlight: presentation?.movedQuestionHighlight ?? null,
                 }}
                 actions={{
                   setSearch: questions.setSearch,
+                  toggleParentCategory: questions.toggleParentCategory,
+                  toggleEnfantCategory: questions.toggleEnfantCategory,
                   onDragStart: drag.onDragStart,
                   onMoveQuestionToCollection: actions?.onMoveQuestionToCollection,
                   onEditQuestionInSidebar: actions?.onEditQuestionInSidebar,

@@ -36,17 +36,21 @@ function scrollMovedQuestionRowIntoView(flash: MovedQuestionFlash): void {
     `[data-moved-question-row="${String(flash.token)}"]`,
   ) as HTMLElement | null;
   if (row == null) return;
-  const details = row.closest("details");
-  const outer = row.closest("[data-question-list-outer-scroll]");
-  if (details == null || outer == null || !(outer instanceof HTMLElement)) return;
 
-  const inner = details.querySelector<HTMLElement>(
-    `[data-question-collection-body="${String(flash.collectionId)}"]`,
-  );
+  const details = row.closest("details");
+  if (details instanceof HTMLDetailsElement && !details.open) {
+    details.open = true;
+  }
+
+  const outer = row.closest("[data-question-list-outer-scroll]") as HTMLElement | null;
+  if (outer == null) return;
+
   const margin = 8;
-  const summary = details.querySelector("summary");
-  const outerAnchor = summary instanceof HTMLElement ? summary : (details as HTMLElement);
-  scrollRegionToRevealChildEdge(outer, outerAnchor, margin);
+  scrollRegionToRevealChildEdge(outer, row, margin);
+
+  const inner = document.querySelector(
+    `[data-question-collection-body="${String(flash.collectionId)}"]`,
+  ) as HTMLElement | null;
   if (inner != null && inner.contains(row)) {
     scrollRegionToRevealChildEdge(inner, row, margin);
   }
@@ -97,6 +101,10 @@ function flashIdSet(flash: MovedQuestionFlash, collectionId: number): Set<number
  */
 export function QuestionListPanel(props: QuestionListPanelProps) {
   const { data, actions } = props;
+  const hasTitleSearch = data.search.trim().length > 0;
+  const hasCategoryFilter =
+    data.categoryFilter.selectedParentId != null || data.categoryFilter.selectedEnfantId != null;
+  const hasListFilter = hasTitleSearch || hasCategoryFilter;
   const [detailsOpenOverride, setDetailsOpenOverride] = useState<Partial<Record<number, boolean>>>(
     {},
   );
@@ -120,12 +128,12 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
     setDetailsOpenOverride({});
   }, [data.detailsExpandCollectionId]);
 
-  /** Recherche vidée : on repasse sur le seul défaut graphe (`detailsExpandCollectionId`) sans vieux `false` qui bloquerait le dépliage. */
+  /** Filtres vidés : on repasse sur le seul défaut graphe (`detailsExpandCollectionId`) sans vieux `false` qui bloquerait le dépliage. */
   useEffect(() => {
-    if (data.search.trim().length === 0) {
+    if (!hasListFilter) {
       setDetailsOpenOverride({});
     }
-  }, [data.search]);
+  }, [hasListFilter]);
 
   useEffect(() => {
     setSelectedQuestionIds((prev) => {
@@ -146,6 +154,60 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
     document.addEventListener("dragend", clearDrop);
     return () => document.removeEventListener("dragend", clearDrop);
   }, [moveQuestion]);
+
+  const mainListScrollRef = useRef<HTMLDivElement>(null);
+  const gutterScrollRef = useRef<HTMLDivElement>(null);
+  const scrollSyncLockRef = useRef(false);
+  const [gutterTrackHeightPx, setGutterTrackHeightPx] = useState(1);
+
+  const updateGutterTrackHeight = useCallback(() => {
+    const el = mainListScrollRef.current;
+    if (el == null) return;
+    setGutterTrackHeightPx(Math.max(1, el.scrollHeight));
+  }, []);
+
+  useLayoutEffect(() => {
+    updateGutterTrackHeight();
+  }, [updateGutterTrackHeight, data.groups, data.search, hasListFilter, detailsOpenOverride]);
+
+  useLayoutEffect(() => {
+    const el = mainListScrollRef.current;
+    if (el == null) return;
+    const ro = new ResizeObserver(() => {
+      updateGutterTrackHeight();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [updateGutterTrackHeight]);
+
+  useLayoutEffect(() => {
+    const main = mainListScrollRef.current;
+    const gutter = gutterScrollRef.current;
+    if (main == null || gutter == null) return;
+    scrollSyncLockRef.current = true;
+    gutter.scrollTop = main.scrollTop;
+    scrollSyncLockRef.current = false;
+  }, [gutterTrackHeightPx]);
+
+  const onMainListScroll = useCallback(() => {
+    if (scrollSyncLockRef.current) return;
+    const main = mainListScrollRef.current;
+    const gutter = gutterScrollRef.current;
+    if (main == null || gutter == null) return;
+    scrollSyncLockRef.current = true;
+    gutter.scrollTop = main.scrollTop;
+    scrollSyncLockRef.current = false;
+  }, []);
+
+  const onGutterScroll = useCallback(() => {
+    if (scrollSyncLockRef.current) return;
+    const main = mainListScrollRef.current;
+    const gutter = gutterScrollRef.current;
+    if (main == null || gutter == null) return;
+    scrollSyncLockRef.current = true;
+    main.scrollTop = gutter.scrollTop;
+    scrollSyncLockRef.current = false;
+  }, []);
 
   useLayoutEffect(() => {
     const flash = data.movedQuestionHighlight;
@@ -206,15 +268,93 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
       </label>
 
       <div
-        data-question-list-outer-scroll
-        class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain"
+        class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterBlock}
+        role="toolbar"
+        aria-label="Filtrer par type et sous-type de question"
+      >
+        <p class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterSectionTitle}>Type</p>
+        <div
+          class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterChipRow}
+          role="group"
+          aria-label="Catégorie parente"
+        >
+          {data.categoryFilter.parentChips.map((chip) => {
+            const active = data.categoryFilter.selectedParentId === chip.id;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                class={cn(
+                  FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterChip,
+                  active ? FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterChipActive : undefined,
+                )}
+                aria-pressed={active}
+                title={
+                  active
+                    ? `Retirer « ${chip.label} » du filtre (cliquer à nouveau pour tout afficher)`
+                    : chip.title
+                }
+                onClick={() => actions.toggleParentCategory(chip.id)}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+        {data.categoryFilter.enfantChips.length > 0 ? (
+          <div class="mt-1 flex flex-col gap-1">
+            <p class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterSectionTitle}>
+              Sous-types (selon le type)
+            </p>
+            <div
+              class={FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterChipRow}
+              role="group"
+              aria-label="Sous-catégories pour le type sélectionné"
+            >
+              {data.categoryFilter.enfantChips.map((chip) => {
+                const active = data.categoryFilter.selectedEnfantId === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    class={cn(
+                      FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterChip,
+                      "max-w-22 truncate font-medium",
+                      active ? FLOW_SIDEBAR_OVERLAY_STYLES.questionCategoryFilterChipActive : undefined,
+                    )}
+                    aria-pressed={active}
+                    title={
+                      active
+                        ? `Retirer le filtre sous-type « ${chip.label} »`
+                        : chip.title
+                    }
+                    onClick={() => actions.toggleEnfantCategory(chip.id)}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        class="flex min-h-0 min-w-0 flex-1 flex-row"
         onDragLeave={(event) => {
           if (moveQuestion == null) return;
           const rel = event.relatedTarget as Node | null;
-          if (rel != null && (event.currentTarget as HTMLElement).contains(rel)) return;
+          const root = event.currentTarget as HTMLElement;
+          if (rel != null && root.contains(rel)) return;
           setDropTargetCollectionId(null);
         }}
       >
+        <div
+          ref={mainListScrollRef}
+          data-question-list-outer-scroll
+          class={FLOW_SIDEBAR_OVERLAY_STYLES.questionListMainColumn}
+          onScroll={onMainListScroll}
+        >
         {data.groups.length === 0 ? (
           <p class="rounded-lg border border-base-content/10 bg-base-200/40 px-3 py-6 text-center text-xs text-base-content/60">
             Aucune collection dans ce périmètre ; ajoute des nœuds collection ou question sur le graphe, ou élargis
@@ -228,8 +368,7 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
           const flash = data.movedQuestionHighlight;
           const flashIds = flash != null ? flashIdSet(flash, collectionId) : null;
           const override = detailsOpenOverride[collectionId];
-          const hasActiveSearch = data.search.trim().length > 0;
-          const collectionHasSearchHit = hasActiveSearch && group.items.length > 0;
+          const collectionHasFilterHit = hasListFilter && group.items.length > 0;
           const defaultOpen = defaultDetailsOpenForCollection(
             collectionId,
             data.detailsExpandCollectionId,
@@ -238,7 +377,7 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
           const isOpen =
             override === false
               ? false
-              : collectionHasSearchHit
+              : collectionHasFilterHit
                 ? true
                 : override === true
                   ? true
@@ -331,8 +470,8 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
                     style={{ color: accentHex }}
                   >
                     <span class="opacity-65">
-                      {data.search.trim().length > 0 && group.totalQuestionCount > 0
-                        ? "Aucune question ne correspond à ta recherche dans cette collection."
+                      {hasListFilter && group.totalQuestionCount > 0
+                        ? "Aucune question ne correspond au filtre dans cette collection."
                         : "Aucune question dans cette collection."}
                     </span>
                   </p>
@@ -422,6 +561,20 @@ export function QuestionListPanel(props: QuestionListPanelProps) {
             </details>
           );
         })}
+        </div>
+        <div
+          ref={gutterScrollRef}
+          class={FLOW_SIDEBAR_OVERLAY_STYLES.questionListScrollGutter}
+          onScroll={onGutterScroll}
+          aria-label="Défilement de la liste des collections"
+          title="Faire défiler la liste des collections sans passer sur les questions (glisser-déposer)"
+        >
+          <div
+            aria-hidden
+            class="pointer-events-none w-px shrink-0"
+            style={{ minHeight: "100%", height: `${gutterTrackHeightPx}px` }}
+          />
+        </div>
       </div>
     </div>
   );

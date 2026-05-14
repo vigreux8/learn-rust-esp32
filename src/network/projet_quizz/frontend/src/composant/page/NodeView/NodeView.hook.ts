@@ -18,6 +18,7 @@ import {
   fetchCollections,
   fetchPersonalitesPicker,
   fetchQuestions,
+  fetchRefCategoriesHierarchy,
   linkCollectionParentCollection,
   postMoveQuestionToCollection,
   unlinkCollectionParentCollection,
@@ -29,7 +30,7 @@ import type { AppEdge, AppNode } from "../../node/config/flow.types";
 import { DEFAULT_COLLECTION_NODE_DATA } from "../../node/costumeNode/CollectionNode";
 import { readReactFlowDnDFromEvent } from "../../../lib/reactFlowDnD";
 import { readStoredNodeViewGraph, writeStoredNodeViewGraph } from "../../../lib/nodeViewGraphSession";
-import type { CollectionUi, QuizzQuestionRow } from "../../../types/quizz";
+import type { CollectionUi, QuizzQuestionRow, RefCategorieHierarchyRow } from "../../../types/quizz";
 import {
   buildCollectionSubtreeGraphElements,
   buildHierarchyQuestionSidebarRows,
@@ -110,6 +111,9 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const questionsPaneDismissStreakRef = useRef(0);
 
   const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
+  const [sidebarRefCategoriesHierarchy, setSidebarRefCategoriesHierarchy] = useState<
+    RefCategorieHierarchyRow[]
+  >([]);
   const [questionsScopeCollectionId, setQuestionsScopeCollectionId] = useState<number | null>(
     () => graphBootstrap?.questionsScopeCollectionId ?? null,
   );
@@ -142,6 +146,20 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       cancelled = true;
     };
   }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRefCategoriesHierarchy()
+      .then((rows) => {
+        if (!cancelled) setSidebarRefCategoriesHierarchy(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setSidebarRefCategoriesHierarchy([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -642,6 +660,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       questions: hierarchyQuestionRows.filter((row) =>
         questionsCanvasCollectionScope.idsOnCanvas.has(row.collectionId),
       ),
+      refCategoriesHierarchy: sidebarRefCategoriesHierarchy,
     };
     if (questionsScopeCollectionId == null) {
       return merged;
@@ -655,8 +674,15 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       ),
       personalities: merged.personalities,
       collectionHierarchy: merged.collectionHierarchy,
+      refCategoriesHierarchy: merged.refCategoriesHierarchy,
     };
-  }, [hierarchyQuestionRows, questionsCanvasCollectionScope, questionsScopeCollectionId, sidebarBase]);
+  }, [
+    hierarchyQuestionRows,
+    questionsCanvasCollectionScope,
+    questionsScopeCollectionId,
+    sidebarBase,
+    sidebarRefCategoriesHierarchy,
+  ]);
 
   const questionsPanelHint = useMemo(() => {
     const canvasIntro =

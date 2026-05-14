@@ -11,15 +11,23 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   railButtonActiveCreate: "btn-active text-accent",
   railButtonActiveCollectionSubtree: "btn-active text-secondary",
   panel: cn(
-    "pointer-events-auto flex h-[80vh] w-80 flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl transition-all duration-300",
+    "pointer-events-auto flex h-[80vh] min-h-0 min-w-0 w-80 flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl transition-all duration-300",
   ),
   panelHeader:
     "flex shrink-0 items-center justify-between border-b border-base-300 bg-base-200/50 p-4",
   panelTitle: "text-xs font-bold uppercase tracking-wider opacity-60",
   /** Corps du panneau : hauteur contrainte ; le défilement est géré par chaque sous-panneau. */
-  panelBody: "flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-3",
+  panelBody: "flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-3",
   searchLabel: "input input-bordered input-sm flex items-center gap-2",
   searchInput: "grow",
+  /** Filtre type / sous-type (liste Questions par collection), aligné session quiz. */
+  questionCategoryFilterBlock: "flex shrink-0 flex-col gap-1.5",
+  questionCategoryFilterSectionTitle:
+    "text-[10px] font-semibold uppercase tracking-wide text-base-content/50",
+  questionCategoryFilterChipRow: "flex flex-wrap items-center gap-1",
+  questionCategoryFilterChip:
+    "btn btn-ghost btn-xs h-6 min-h-6 shrink-0 border border-base-content/12 px-1.5 py-0 text-[10px] font-semibold normal-case tracking-tight text-base-content/80 hover:border-base-content/25 hover:bg-base-content/6",
+  questionCategoryFilterChipActive: "border-primary/70 bg-primary/12 text-primary hover:bg-primary/18",
   levelRow: "mb-2 flex flex-wrap gap-1",
   dragItem: cn(
     "flex cursor-grab items-start gap-2 rounded-xl border-2 border-transparent bg-base-200 p-3 transition-all hover:border-flow/35 hover:bg-flow/8 active:cursor-grabbing",
@@ -65,10 +73,25 @@ export const FLOW_SIDEBAR_OVERLAY_STYLES = {
   questionCollectionDropOver:
     "border border-dashed border-primary/60 bg-primary/10 ring-2 ring-primary/25",
   /**
-   * Défilement des questions : plafond de hauteur pour ne pas masquer les autres collections.
+   * Colonne liste (scroll masqué) : le défilement visible se fait via `questionListScrollGutter` à droite.
+   */
+  questionListMainColumn: cn(
+    "nodrag flex min-h-0 min-w-0 flex-1 flex-col gap-2 touch-pan-y overflow-y-auto overscroll-y-contain",
+    "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+  ),
+  /**
+   * Rail droit synchronisé avec la colonne liste : la molette / la barre ici ne chevauche pas le drag des questions.
+   */
+  questionListScrollGutter: cn(
+    "nodrag w-3 shrink-0 overflow-y-auto overscroll-y-contain border-l border-base-content/15 bg-base-200/50 py-1",
+    "[scrollbar-width:thin]",
+  ),
+  /**
+   * Défilement des questions dans une collection : hauteur plafonnée pour pouvoir glisser-déposer tout en scrollant
+   * dans le bloc (molette séparée du rail droit « entre collections »).
    */
   questionListScrollInner:
-    "flex max-h-[min(50vh,20rem)] min-h-0 flex-col gap-2 overflow-y-auto overscroll-y-contain px-1 pb-2 pt-1",
+    "flex max-h-[min(50vh,20rem)] min-h-0 flex-col gap-2 overflow-y-auto overscroll-y-contain px-1 pb-2 pt-1 [overscroll-behavior-y:contain]",
   /** Zone de liste vide : garde une hauteur minimale pour pouvoir déposer une question sur la collection. */
   questionListScrollInnerEmptyDropTarget: "min-h-[4.5rem] justify-center",
 } as const;

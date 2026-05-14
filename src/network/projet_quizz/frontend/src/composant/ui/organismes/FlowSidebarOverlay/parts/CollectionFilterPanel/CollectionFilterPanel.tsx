@@ -50,7 +50,7 @@ export function CollectionFilterPanel(props: CollectionFilterPanelProps) {
         })}
       </div>
 
-      <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain">
+      <div class="nodrag nowheel flex min-h-0 flex-1 flex-col gap-2 touch-pan-y overflow-y-auto overscroll-y-contain">
         {data.rows.length === 0 ? (
           <p class={COLLECTION_FILTER_PANEL_STYLES.emptyState}>
             Aucune collection à afficher (chargement ou liste vide). Les données viennent de l’API comme sur la page

@@ -1,4 +1,5 @@
 import type { RefObject } from "preact";
+import type { RefCategorieHierarchyRow } from "../../../../types/quizz";
 
 export type SidebarTab =
   | "collections"
@@ -38,6 +39,14 @@ export type FlowSidebarQuestionRow = {
   collectionId: number;
   /** Profondeur d’arbre de la collection (`computeTreeDepth`) ; couleur comme les filtres collections. */
   treeDepth?: number;
+  /** `ref_p_categorie.id` — filtre aligné sur la hiérarchie session quiz. */
+  categorie_id: number;
+  /** `ref_e_categorie.id` ou `null`. */
+  categorie_e_id: number | null;
+  /** `ref_p_categorie.type` (affichage / fallback filtre). */
+  categorie_type: string;
+  /** `ref_e_categorie.type` ou `null`. */
+  categorie_e_type: string | null;
 };
 
 /** Bloc accordéon « une collection » dans le panneau Questions par collection. */
@@ -88,6 +97,8 @@ export type FlowSidebarOverlayProps = {
     questions: FlowSidebarQuestionRow[];
     personalities: FlowSidebarPersonalityRow[];
     collectionHierarchy: FlowSidebarCollectionHierarchyRef[];
+    /** Hiérarchie `ref_p_categorie` + enfants (comme session quiz) pour filtrer les sous-types. */
+    refCategoriesHierarchy?: RefCategorieHierarchyRow[];
   };
   actions: {
     onNodeCreate?: (type: string, position: { x: number; y: number }, data: unknown) => void;

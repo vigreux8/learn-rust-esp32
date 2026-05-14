@@ -48,6 +48,10 @@ export function buildNodeViewSidebarData(collections: CollectionUi[]): {
         title: q.question,
         category: c.nom,
         collectionId: c.id,
+        categorie_id: q.categorie_id,
+        categorie_e_id: q.categorie_e_id,
+        categorie_type: q.categorie_type,
+        categorie_e_type: q.categorie_e_type,
       });
     }
     for (const p of c.personnalites ?? []) {
@@ -114,6 +118,10 @@ export function buildHierarchyQuestionSidebarRows(collections: CollectionUi[]): 
         category: coll.nom,
         collectionId: coll.id,
         treeDepth,
+        categorie_id: q.categorie_id,
+        categorie_e_id: q.categorie_e_id,
+        categorie_type: q.categorie_type,
+        categorie_e_type: q.categorie_e_type,
       });
     }
   }
