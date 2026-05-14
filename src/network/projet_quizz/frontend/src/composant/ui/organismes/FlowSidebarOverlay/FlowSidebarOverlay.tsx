@@ -124,14 +124,16 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
               <PersonalityFilterPanel
                 data={{
                   search: personalities.search,
+                  collectionSearch: personalities.collectionSearch,
                   rows: personalities.rows,
-                  collectionOptions: personalities.collectionOptions,
-                  branchRootCollectionId: personalities.branchRootCollectionId,
+                  personalityLabelSuggestions: personalities.personalityLabelSuggestions,
+                  collectionLabelSuggestions: personalities.collectionLabelSuggestions,
                 }}
                 actions={{
                   setSearch: personalities.setSearch,
-                  setBranchRootCollectionId: personalities.setBranchRootCollectionId,
+                  setCollectionSearch: personalities.setCollectionSearch,
                   onDragStart: drag.onDragStart,
+                  onOpenQuestionsForPersonalityFiche: actions?.onOpenQuestionsForPersonalityFiche,
                 }}
               />
             ) : null}

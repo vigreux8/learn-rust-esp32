@@ -95,6 +95,8 @@ export type FlowSidebarOverlayProps = {
     onEditQuestionInSidebar?: (questionId: number) => void;
     /** Suppression depuis la liste Questions (ex. `/node`). */
     onDeleteQuestionInSidebar?: (questionId: number) => void | Promise<void>;
+    /** Liste personnalités : ouvre `/questions/:ficheCollectionId?from=node` (même retour graphe que le bouton Questions du nœud collection). */
+    onOpenQuestionsForPersonalityFiche?: (ficheCollectionId: number) => void;
   };
   presentation?: {
     /** Affiché sous le titre du panneau Questions lorsque la liste est restreinte au graphe. */

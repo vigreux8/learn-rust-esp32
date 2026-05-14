@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { route } from "preact-router";
 import {
   addEdge,
   applyEdgeChanges,
@@ -44,8 +45,13 @@ import {
 } from "./NodeView.metier";
 import { useNodeViewPlayMode } from "./hooks/useNodeViewPlayMode";
 import { useNodeViewQuestionSidebarEdit } from "./hooks/useNodeViewQuestionSidebarEdit";
+import { buildQuestionsRoutePath } from "../../ui/molecules/CollectionCard/CollectionCard.metier";
 import type { FlowSidebarHostApi, MovedQuestionHighlight } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
 import type { NodeViewProps } from "./NodeView.types";
+
+function stripLegacyPersonalityNodes(nodes: AppNode[]): AppNode[] {
+  return nodes.filter((n) => (n as { type: string }).type !== "personalityNode");
+}
 
 /**
  * État du canvas `/node` : nœuds, arêtes, drop depuis la sidebar, données collections / questions depuis l’API.
@@ -56,7 +62,9 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   const { screenToFlowPosition, fitView, getNode, getViewport, setViewport } = useReactFlow<AppNode, AppEdge>();
 
   const graphBootstrap = useMemo(() => readStoredNodeViewGraph(), []);
-  const shouldRestoreGraph = Boolean(graphBootstrap?.nodes?.length);
+  const graphBootstrapStripped =
+    graphBootstrap?.nodes != null ? stripLegacyPersonalityNodes(graphBootstrap.nodes) : [];
+  const shouldRestoreGraph = graphBootstrapStripped.length > 0;
 
   const defaultDemoNodes = useMemo<AppNode[]>(
     () => [
@@ -71,9 +79,16 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
   );
 
   const initialNodesForCanvas =
-    shouldRestoreGraph && graphBootstrap != null ? graphBootstrap.nodes : defaultDemoNodes;
+    shouldRestoreGraph && graphBootstrap != null ? graphBootstrapStripped : defaultDemoNodes;
+
   const initialEdgesForCanvas =
-    shouldRestoreGraph && graphBootstrap != null ? graphBootstrap.edges : [];
+    shouldRestoreGraph && graphBootstrap != null
+      ? graphBootstrap.edges.filter(
+          (e) =>
+            graphBootstrapStripped.some((n) => n.id === e.source) &&
+            graphBootstrapStripped.some((n) => n.id === e.target),
+        )
+      : [];
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodesForCanvas);
   const [edges, setEdges] = useEdgesState<AppEdge>(initialEdgesForCanvas);
@@ -560,14 +575,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       }
 
       if (parsed.type === "personalityNode") {
-        const patch = (parsed.data ?? {}) as {
-          label?: unknown;
-          importanceType?: unknown;
-          personaliteId?: unknown;
-          collectionLabel?: unknown;
-          ficheCollectionId?: unknown;
-          blankTemplate?: unknown;
-        };
+        const patch = (parsed.data ?? {}) as { blankTemplate?: unknown };
         const blankTemplate = patch.blankTemplate === true;
         if (blankTemplate) {
           setPendingGraphNodePosition(position);
@@ -575,31 +583,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
           setGraphCreatePersoOpen(true);
           return;
         }
-        const label = typeof patch.label === "string" ? patch.label : "Personnalité";
-        const importanceType =
-          patch.importanceType === null || patch.importanceType === undefined
-            ? null
-            : typeof patch.importanceType === "string"
-              ? patch.importanceType
-              : null;
-        const personaliteId = typeof patch.personaliteId !== "number" ? undefined : patch.personaliteId;
-        const collectionLabel = typeof patch.collectionLabel !== "string" ? undefined : patch.collectionLabel;
-        const ficheCollectionId =
-          typeof patch.ficheCollectionId !== "number" ? undefined : patch.ficheCollectionId;
-        const newNode: AppNode = {
-          id,
-          type: "personalityNode",
-          position,
-          data: {
-            label,
-            importanceType,
-            personaliteId,
-            collectionLabel,
-            ficheCollectionId,
-          },
-        };
-        setNodes((nds) => nds.concat(newNode));
-        onNodeCreate?.(parsed.type, position, newNode.data);
+        return;
       }
     },
     [apiCollections, collectionByIdForGraph, onNodeCreate, screenToFlowPosition, setNodes],
@@ -737,6 +721,10 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     setNodes,
   });
 
+  const openQuestionsForPersonalityFiche = useCallback((ficheCollectionId: number) => {
+    void route(buildQuestionsRoutePath(ficheCollectionId, [], { fromNode: true }));
+  }, []);
+
   const moveQuestionToCollection = useCallback(
     async (args: { questionId: number; fromCollectionId: number; toCollectionId: number }) => {
       const { questionId, fromCollectionId, toCollectionId } = args;
@@ -825,6 +813,7 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         onShowCollectionSubtreeOnGraph,
         onMoveQuestionToCollection: moveQuestionToCollection,
         ...questionSidebarEdit.flowSidebarQuestionActions,
+        onOpenQuestionsForPersonalityFiche: openQuestionsForPersonalityFiche,
       },
       presentation: {
         questionsPanelHint,

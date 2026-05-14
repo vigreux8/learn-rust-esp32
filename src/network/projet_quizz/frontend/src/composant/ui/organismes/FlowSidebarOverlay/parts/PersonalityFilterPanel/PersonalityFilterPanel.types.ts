@@ -1,22 +1,18 @@
 import type { FlowSidebarPersonalityRow } from "../../FlowSidebarOverlay.types";
 
-export type PersonalityCollectionOption = {
-  id: number;
-  label: string;
-};
-
 export type PersonalityFilterPanelProps = {
   data: {
     search: string;
+    collectionSearch: string;
     rows: FlowSidebarPersonalityRow[];
-    /** Collections pour le filtre branche (parent + enfants). */
-    collectionOptions: PersonalityCollectionOption[];
-    /** `null` = toutes les personnalités. */
-    branchRootCollectionId: number | null;
+    /** Libellés distincts pour autocomplétion (données brutes). */
+    personalityLabelSuggestions: readonly string[];
+    collectionLabelSuggestions: readonly string[];
   };
   actions: {
     setSearch: (value: string) => void;
-    setBranchRootCollectionId: (value: number | null) => void;
+    setCollectionSearch: (value: string) => void;
     onDragStart: (event: DragEvent, nodeType: string, payload: unknown) => void;
+    onOpenQuestionsForPersonalityFiche?: (ficheCollectionId: number) => void;
   };
 };

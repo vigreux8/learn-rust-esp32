@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { collectSubtreeCollectionIds } from "../../../../lib/collectionHierarchyVis";
 import { useClosePanelOnDocumentClickOutside } from "../../../../lib/useClosePanelOnDocumentClickOutside";
-import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
+import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME, dedupePersonalityRowsByPersonId, personalityLabelsMatchesNameTokens } from "./FlowSidebarOverlay.metier";
 import type {
   FlowSidebarOverlayProps,
   FlowSidebarQuestionListGroup,
@@ -57,10 +57,7 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const [paletteBucketFilters, setPaletteBucketFilters] = useState<number[]>([]);
   const [subtreePaletteBucketFilters, setSubtreePaletteBucketFilters] = useState<number[]>([]);
   const [personalitySearch, setPersonalitySearch] = useState("");
-  /** Collection racine : personnalités liées à cette collection ou à une collection enfant. `null` = tout. */
-  const [personalityBranchRootCollectionId, setPersonalityBranchRootCollectionId] = useState<
-    number | null
-  >(null);
+  const [personalityCollectionSearch, setPersonalityCollectionSearch] = useState("");
 
   useEffect(() => {
     persistSidebarTab(activeTab);
@@ -131,36 +128,60 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const personalitiesSource = data.personalities ?? [];
   const collectionHierarchy = data.collectionHierarchy ?? [];
 
-  const personalityCollectionOptions = useMemo(
-    () =>
-      data.collections.map((row) => ({
-        id: row.collectionId,
-        label: row.label,
-      })),
-    [data.collections],
-  );
+  const personalityLabelSuggestions = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of personalitiesSource) {
+      const t = p.label.trim();
+      if (t.length > 0) s.add(t);
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, "fr")).slice(0, 400);
+  }, [personalitiesSource]);
+
+  const collectionLabelSuggestions = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of data.collections) {
+      const t = c.label.trim();
+      if (t.length > 0) s.add(t);
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, "fr")).slice(0, 400);
+  }, [data.collections]);
 
   const filteredPersonalities = useMemo(() => {
     let rows = personalitiesSource;
-    if (personalityBranchRootCollectionId != null && collectionHierarchy.length > 0) {
-      const subtree = collectSubtreeCollectionIds(
-        personalityBranchRootCollectionId,
-        collectionHierarchy,
-      );
-      rows = rows.filter((row) => subtree.has(row.collectionId));
+
+    const collQ = personalityCollectionSearch.trim().toLowerCase();
+    if (collQ.length > 0) {
+      if (collectionHierarchy.length > 0) {
+        const matchedRoots: number[] = [];
+        for (const c of data.collections) {
+          if (c.label.toLowerCase().includes(collQ)) matchedRoots.push(c.collectionId);
+        }
+        if (matchedRoots.length === 0) {
+          rows = [];
+        } else {
+          const scope = new Set<number>();
+          for (const rootId of matchedRoots) {
+            for (const id of collectSubtreeCollectionIds(rootId, collectionHierarchy)) {
+              scope.add(id);
+            }
+          }
+          rows = rows.filter((row) => scope.has(row.collectionId));
+        }
+      } else {
+        rows = rows.filter((row) => row.collectionLabel.toLowerCase().includes(collQ));
+      }
     }
-    const query = personalitySearch.trim().toLowerCase();
-    if (query.length > 0) {
-      rows = rows.filter(
-        (row) =>
-          row.label.toLowerCase().includes(query) ||
-          row.collectionLabel.toLowerCase().includes(query),
-      );
+
+    const nameQ = personalitySearch.trim();
+    if (nameQ.length > 0) {
+      rows = rows.filter((row) => personalityLabelsMatchesNameTokens(row.label, personalitySearch));
     }
-    return rows;
+
+    return dedupePersonalityRowsByPersonId(rows);
   }, [
     collectionHierarchy,
-    personalityBranchRootCollectionId,
+    data.collections,
+    personalityCollectionSearch,
     personalitySearch,
     personalitiesSource,
   ]);
@@ -271,10 +292,11 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     personalities: {
       search: personalitySearch,
       setSearch: setPersonalitySearch,
+      collectionSearch: personalityCollectionSearch,
+      setCollectionSearch: setPersonalityCollectionSearch,
       rows: filteredPersonalities,
-      branchRootCollectionId: personalityBranchRootCollectionId,
-      setBranchRootCollectionId: setPersonalityBranchRootCollectionId,
-      collectionOptions: personalityCollectionOptions,
+      personalityLabelSuggestions,
+      collectionLabelSuggestions,
     },
     drag: { onDragStart },
   };
