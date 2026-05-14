@@ -7,6 +7,7 @@ import {
   fetchQuestionDetail,
   fetchQuestions,
   fetchRefCategories,
+  fetchRefCategoriesHierarchy,
   fetchSousCollections,
   patchQuestion,
   postAttachQuestionToSousCollection,
@@ -15,7 +16,13 @@ import {
 import { useRoutePath } from "../../../lib/routePathContext";
 import { useUserSession } from "../../../lib/userSession";
 import type { PlayQtype } from "../../../lib/playOrder";
-import type { CollectionUi, QuizzQuestionDetail, QuizzQuestionRow, RefCategorieRow } from "../../../types/quizz";
+import type {
+  CollectionUi,
+  QuizzQuestionDetail,
+  QuizzQuestionRow,
+  RefCategorieHierarchyRow,
+  RefCategorieRow,
+} from "../../../types/quizz";
 import {
   collectionFilterToQuery,
   filterFromRouteParam,
@@ -23,6 +30,7 @@ import {
 } from "./QuestionsView.metier";
 import type { QuestionsViewProps } from "./QuestionsView.types";
 import type { QuestionCreateSavePayload } from "../../ui/organismes/QuestionEditModal/QuestionEditModal";
+import { buildCategorieFieldsForQuestionPatch } from "../../ui/organismes/QuestionEditModal/QuestionEditModal.metier";
 
 function readFromNodeFromWindowLocation(): boolean {
   if (typeof window === "undefined") return false;
@@ -76,6 +84,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refCategories, setRefCategories] = useState<RefCategorieRow[]>([]);
+  const [refCategoriesHierarchy, setRefCategoriesHierarchy] = useState<RefCategorieHierarchyRow[]>([]);
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [questionModalVariant, setQuestionModalVariant] = useState<"edit" | "create">("edit");
   const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<{ id: number; nom: string }[]>(
@@ -88,6 +97,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   const [editDraftQuestion, setEditDraftQuestion] = useState("");
   const [editDraftCommentaire, setEditDraftCommentaire] = useState("");
   const [editDraftCategorieId, setEditDraftCategorieId] = useState<number | null>(null);
+  const [editDraftCategorieEnfantId, setEditDraftCategorieEnfantId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [listFilterQtype, setListFilterQtype] = useState<PlayQtype>("melanger");
 
@@ -129,6 +139,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
   useEffect(() => {
     fetchCollections().then(setCollections).catch(() => {});
     fetchRefCategories().then(setRefCategories).catch(() => {});
+    fetchRefCategoriesHierarchy().then(setRefCategoriesHierarchy).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -159,6 +170,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     setEditModalLoading(false);
     setEditModalError(null);
     setEditDetail(null);
+    setEditDraftCategorieEnfantId(null);
     setSousCollectionsForCreateModal([]);
     setDraftSousCollectionId(null);
   }, []);
@@ -177,6 +189,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
         setEditDraftQuestion(d.question);
         setEditDraftCommentaire(d.commentaire);
         setEditDraftCategorieId(d.categorie_id);
+        setEditDraftCategorieEnfantId(d.categorie_e_id ?? null);
       })
       .catch(() => setEditModalError("fetch"))
       .finally(() => setEditModalLoading(false));
@@ -196,6 +209,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     setEditDraftQuestion("");
     setEditDraftCommentaire("");
     setEditDraftCategorieId(firstCat);
+    setEditDraftCategorieEnfantId(null);
     setSousCollectionsForCreateModal([]);
     setDraftSousCollectionId(null);
     if (targetCollectionNumeric != null) {
@@ -210,6 +224,10 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     try {
       const d = await fetchQuestionDetail(editDetail.id);
       setEditDetail(d);
+      setEditDraftCategorieId(d.categorie_id);
+      setEditDraftCategorieEnfantId(d.categorie_e_id ?? null);
+      setEditDraftCategorieId(d.categorie_id);
+      setEditDraftCategorieEnfantId(d.categorie_e_id ?? null);
     } catch {
       /* ignore */
     }
@@ -231,10 +249,24 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     if (editDetail == null) return;
     setSaving(true);
     try {
-      const payload: { question?: string; commentaire?: string; categorie_id?: number } = {};
+      const payload: {
+        question?: string;
+        commentaire?: string;
+        categorie_id?: number;
+        categorie_e_id?: number | null;
+      } = {};
       if (editDraftQuestion !== editDetail.question) payload.question = editDraftQuestion;
       if (editDraftCommentaire !== editDetail.commentaire) payload.commentaire = editDraftCommentaire;
-      if (editDraftCategorieId != null && editDraftCategorieId !== editDetail.categorie_id) payload.categorie_id = editDraftCategorieId;
+      Object.assign(
+        payload,
+        buildCategorieFieldsForQuestionPatch({
+          useHierarchy: refCategoriesHierarchy.length > 0,
+          detailCategorieId: editDetail.categorie_id,
+          detailCategorieEId: editDetail.categorie_e_id ?? null,
+          draftCategorieId: editDraftCategorieId,
+          draftCategorieEId: editDraftCategorieEnfantId,
+        }),
+      );
       if (Object.keys(payload).length === 0) {
         closeQuestionModal();
         return;
@@ -247,7 +279,15 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     } finally {
       setSaving(false);
     }
-  }, [closeQuestionModal, editDetail, editDraftCategorieId, editDraftCommentaire, editDraftQuestion]);
+  }, [
+    closeQuestionModal,
+    editDetail,
+    editDraftCategorieEnfantId,
+    editDraftCategorieId,
+    editDraftCommentaire,
+    editDraftQuestion,
+    refCategoriesHierarchy.length,
+  ]);
 
   const saveCreateModal = useCallback(
     async (payload: QuestionCreateSavePayload) => {
@@ -376,6 +416,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
       onDraftQuestion: setEditDraftQuestion,
       onDraftCommentaire: setEditDraftCommentaire,
       onDraftCategorieId: setEditDraftCategorieId,
+      onDraftCategorieEnfantId: setEditDraftCategorieEnfantId,
       onDraftSousCollectionId: setDraftSousCollectionId,
       onReponseUpdated: () => void refreshEditDetail(),
       onCreateSave: async (payload: QuestionCreateSavePayload) => saveCreateModal(payload),
@@ -386,6 +427,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
     data: {
       questionDetail: editDetail,
       categorieOptions: refCategories,
+      categorieHierarchy: refCategoriesHierarchy,
       sousCollectionsForCreate:
         questionModalVariant === "create" ? sousCollectionsForCreateModal : undefined,
     } as const,
@@ -393,6 +435,7 @@ export function useQuestionsView({ collectionId }: QuestionsViewProps) {
       question: editDraftQuestion,
       commentaire: editDraftCommentaire,
       categorieId: editDraftCategorieId,
+      categorieEnfantId: editDraftCategorieEnfantId,
       sousCollectionId: draftSousCollectionId ?? null,
     },
   };

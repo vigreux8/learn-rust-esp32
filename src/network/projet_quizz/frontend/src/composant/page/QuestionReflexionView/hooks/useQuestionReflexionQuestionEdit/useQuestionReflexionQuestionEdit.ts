@@ -1,6 +1,7 @@
 import { useCallback, useState } from "preact/hooks";
 import { fetchCollection, fetchQuestionDetail, patchQuestion } from "../../../../../lib/api";
 import type { QuizzQuestionDetail, QuizzQuestionRow } from "../../../../../types/quizz";
+import { buildCategorieFieldsForQuestionPatch } from "../../../../ui/organismes/QuestionEditModal/QuestionEditModal.metier";
 import type { ReflexionLocalPoolDraft } from "../../QuestionReflexionView.types";
 import type { UseQuestionReflexionQuestionEditProps } from "./useQuestionReflexionQuestionEdit.types";
 
@@ -14,6 +15,7 @@ export function useQuestionReflexionQuestionEdit({
   refs,
   chain,
   refCategories,
+  refCategoriesHierarchy,
   categoryTypeForId,
   status,
 }: UseQuestionReflexionQuestionEditProps) {
@@ -30,6 +32,7 @@ export function useQuestionReflexionQuestionEdit({
   const [editDraftQuestion, setEditDraftQuestion] = useState("");
   const [editDraftCommentaire, setEditDraftCommentaire] = useState("");
   const [editDraftCategorieId, setEditDraftCategorieId] = useState<number | null>(null);
+  const [editDraftCategorieEnfantId, setEditDraftCategorieEnfantId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   const closeQuestionModal = useCallback(() => {
@@ -37,6 +40,7 @@ export function useQuestionReflexionQuestionEdit({
     setEditModalLoading(false);
     setEditModalError(null);
     setEditDetail(null);
+    setEditDraftCategorieEnfantId(null);
   }, []);
 
   const openEditModal = useCallback((q: QuizzQuestionRow) => {
@@ -58,6 +62,7 @@ export function useQuestionReflexionQuestionEdit({
       setEditDraftQuestion(q.question);
       setEditDraftCommentaire(q.commentaire);
       setEditDraftCategorieId(q.categorie_id);
+      setEditDraftCategorieEnfantId(q.categorie_e_id ?? null);
       return;
     }
     setQuestionModalOpen(true);
@@ -70,6 +75,7 @@ export function useQuestionReflexionQuestionEdit({
         setEditDraftQuestion(d.question);
         setEditDraftCommentaire(d.commentaire);
         setEditDraftCategorieId(d.categorie_id);
+        setEditDraftCategorieEnfantId(d.categorie_e_id ?? null);
       })
       .catch(() => setEditModalError("fetch"))
       .finally(() => setEditModalLoading(false));
@@ -81,6 +87,8 @@ export function useQuestionReflexionQuestionEdit({
     try {
       const d = await fetchQuestionDetail(editDetail.id);
       setEditDetail(d);
+      setEditDraftCategorieId(d.categorie_id);
+      setEditDraftCategorieEnfantId(d.categorie_e_id ?? null);
     } catch {
       /* ignore */
     }
@@ -90,19 +98,37 @@ export function useQuestionReflexionQuestionEdit({
     if (editDetail == null) return;
     setSaving(true);
     try {
-      const payload: { question?: string; commentaire?: string; categorie_id?: number } = {};
+      const payload: {
+        question?: string;
+        commentaire?: string;
+        categorie_id?: number;
+        categorie_e_id?: number | null;
+      } = {};
       if (editDraftQuestion !== editDetail.question) payload.question = editDraftQuestion;
       if (editDraftCommentaire !== editDetail.commentaire) payload.commentaire = editDraftCommentaire;
-      if (editDraftCategorieId != null && editDraftCategorieId !== editDetail.categorie_id) {
-        payload.categorie_id = editDraftCategorieId;
-      }
+      Object.assign(
+        payload,
+        buildCategorieFieldsForQuestionPatch({
+          useHierarchy: refCategoriesHierarchy.length > 0,
+          detailCategorieId: editDetail.categorie_id,
+          detailCategorieEId: editDetail.categorie_e_id ?? null,
+          draftCategorieId: editDraftCategorieId,
+          draftCategorieEId: editDraftCategorieEnfantId,
+        }),
+      );
       if (Object.keys(payload).length === 0) {
         closeQuestionModal();
         return;
       }
       if (editDetail.id < 0) {
         const nextCategorieId = editDraftCategorieId ?? editDetail.categorie_id;
+        const nextCategorieEId = editDraftCategorieEnfantId ?? null;
         const nextCategorieType = categoryTypeForId(nextCategorieId, editDetail.categorie_type);
+        const parentNodeH = refCategoriesHierarchy.find((h) => h.id === nextCategorieId);
+        const nextCategorieEType =
+          nextCategorieEId != null
+            ? parentNodeH?.enfants.find((e) => e.id === nextCategorieEId)?.type ?? null
+            : null;
         const nextReponses = editDetail.reponses.map((r) => ({
           texte: r.reponse,
           correcte: r.bonne_reponse,
@@ -116,6 +142,8 @@ export function useQuestionReflexionQuestionEdit({
                   commentaire: editDraftCommentaire,
                   categorie_id: nextCategorieId,
                   categorie_type: nextCategorieType,
+                  categorie_e_id: nextCategorieEId,
+                  categorie_e_type: nextCategorieEType,
                 }
               : q,
           ),
@@ -129,6 +157,8 @@ export function useQuestionReflexionQuestionEdit({
                   commentaire: editDraftCommentaire,
                   categorie_id: nextCategorieId,
                   categorie_type: nextCategorieType,
+                  categorie_e_id: nextCategorieEId,
+                  categorie_e_type: nextCategorieEType,
                 }
               : q,
           ),
@@ -151,6 +181,8 @@ export function useQuestionReflexionQuestionEdit({
                     commentaire: editDraftCommentaire,
                     categorie_id: nextCategorieId,
                     categorie_type: nextCategorieType,
+                    categorie_e_id: nextCategorieEId,
+                    categorie_e_type: nextCategorieEType,
                   },
                 }
               : d,
@@ -159,35 +191,13 @@ export function useQuestionReflexionQuestionEdit({
         closeQuestionModal();
         return;
       }
-      await patchQuestion(editDetail.id, payload);
+      const updated = await patchQuestion(editDetail.id, payload);
       if (collectionIdNum != null) {
         if (!chainDirtyRef.current) {
           await loadChainFor(collectionIdNum, selectedGroupeIdRef.current);
         } else {
-          setOrdered((rows) =>
-            rows.map((q) =>
-              q.id === editDetail.id
-                ? {
-                    ...q,
-                    question: editDraftQuestion,
-                    commentaire: editDraftCommentaire,
-                    categorie_id: editDraftCategorieId ?? q.categorie_id,
-                  }
-                : q,
-            ),
-          );
-          setPool((rows) =>
-            rows.map((q) =>
-              q.id === editDetail.id
-                ? {
-                    ...q,
-                    question: editDraftQuestion,
-                    commentaire: editDraftCommentaire,
-                    categorie_id: editDraftCategorieId ?? q.categorie_id,
-                  }
-                : q,
-            ),
-          );
+          setOrdered((rows) => rows.map((q) => (q.id === editDetail.id ? { ...q, ...updated } : q)));
+          setPool((rows) => rows.map((q) => (q.id === editDetail.id ? { ...q, ...updated } : q)));
         }
         void fetchCollection(collectionIdNum).then(setCollection).catch(() => {});
       }
@@ -203,9 +213,11 @@ export function useQuestionReflexionQuestionEdit({
     closeQuestionModal,
     collectionIdNum,
     editDetail,
+    editDraftCategorieEnfantId,
     editDraftCategorieId,
     editDraftCommentaire,
     editDraftQuestion,
+    refCategoriesHierarchy,
     loadChainFor,
     selectedGroupeIdRef,
     setCollection,
@@ -261,17 +273,20 @@ export function useQuestionReflexionQuestionEdit({
         onDraftQuestion: setEditDraftQuestion,
         onDraftCommentaire: setEditDraftCommentaire,
         onDraftCategorieId: setEditDraftCategorieId,
+        onDraftCategorieEnfantId: setEditDraftCategorieEnfantId,
         onReponseUpdated: () => void refreshEditDetail(),
         onLocalDraftReponseSave: saveLocalDraftReponse,
       },
       data: {
         questionDetail: editDetail,
         categorieOptions: refCategories,
+        categorieHierarchy: refCategoriesHierarchy,
       },
       drafts: {
         question: editDraftQuestion,
         commentaire: editDraftCommentaire,
         categorieId: editDraftCategorieId,
+        categorieEnfantId: editDraftCategorieEnfantId,
       },
       status: {
         loading: editModalLoading,

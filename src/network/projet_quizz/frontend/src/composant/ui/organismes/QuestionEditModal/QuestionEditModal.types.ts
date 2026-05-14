@@ -1,4 +1,4 @@
-import type { QuizzQuestionDetail, RefCategorieRow } from "../../../../types/quizz";
+import type { QuizzQuestionDetail, RefCategorieHierarchyRow, RefCategorieRow } from "../../../../types/quizz";
 
 export type QuestionEditModalProps = {
   // Ce qui vient du parent
@@ -13,6 +13,8 @@ export type QuestionEditModalProps = {
   data: {
     questionDetail: QuizzQuestionDetail | null;
     categorieOptions: RefCategorieRow[];
+    /** Si présent (édition) : type parent + sous-types comme sur la session quiz. */
+    categorieHierarchy?: RefCategorieHierarchyRow[];
     /** Liste pour le formulaire de création (liée à une collection). */
     sousCollectionsForCreate?: { id: number; nom: string }[];
   };
@@ -23,6 +25,8 @@ export type QuestionEditModalProps = {
     onDraftQuestion: (v: string) => void;
     onDraftCommentaire: (v: string) => void;
     onDraftCategorieId: (id: number) => void;
+    /** Sous-type (`ref_e_categorie`) en édition ; requis si `data.categorieHierarchy` est fourni. */
+    onDraftCategorieEnfantId?: (id: number | null) => void;
     onDraftSousCollectionId?: (id: number | null) => void;
     onDraftCreateLinkImplicit?: (value: boolean) => void;
     onReponseUpdated: () => void | Promise<void>;
@@ -38,6 +42,8 @@ export type QuestionEditModalProps = {
     question: string;
     commentaire: string;
     categorieId: number | null;
+    /** Sous-type (`categorie_e_id`) ; aligné sur `QuizzQuestionDetail.categorie_e_id`. */
+    categorieEnfantId?: number | null;
     /** Sélection pour rattacher la nouvelle question à une sous-collection. */
     sousCollectionId?: number | null;
     /**

@@ -81,7 +81,7 @@ export function useQuizSessionView(props: QuizSessionViewProps) {
     navigation: { viewingIndex: navigate.navigation.index },
     identity: { userId },
     session: hydrate.data.session,
-    refs: { refCategories: bootstrap.refCategories },
+    refs: { refCategories: bootstrap.refCategories, refCategoriesHierarchy: bootstrap.refCategoriesHierarchy },
     feedback: { setMessage: feedback.setMessage },
     dataDeps: { setSession: hydrate.data.setSession },
   });

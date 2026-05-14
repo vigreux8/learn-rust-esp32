@@ -1,4 +1,10 @@
 import { X } from "lucide-preact";
+import {
+  formatQuestionCategorieEnfantLabel,
+  formatQuestionCategorieParentLabel,
+  formatSessionDraftCategorieResume,
+} from "../../../../lib/questionCategories";
+import { cn } from "../../../../lib/cn";
 import { Button } from "../../atomes/Button";
 import { MarkdownViewer } from "../../atomes/MarkdownViewer";
 import { QuestionsLlmImportPromptPanel } from "../../molecules/QuestionsLlmImportPromptPanel";
@@ -6,6 +12,124 @@ import { useQuestionEditModal } from "./QuestionEditModal.hook";
 import { QUESTION_EDIT_MODAL_STYLES } from "./QuestionEditModal.styles";
 import type { QuestionEditModalProps } from "./QuestionEditModal.types";
 export type { QuestionCreateSavePayload } from "./QuestionEditModal.types";
+
+function QuestionEditModalCategorieBlock(
+  props: Pick<QuestionEditModalProps, "data" | "drafts" | "actions" | "status">,
+) {
+  const { data, drafts, actions, status } = props;
+  const detail = data.questionDetail;
+  if (detail == null) return null;
+
+  const hier = data.categorieHierarchy ?? [];
+  const useChips = hier.length > 0 && actions.onDraftCategorieEnfantId != null;
+
+  if (useChips) {
+    const draftParent = drafts.categorieId;
+    const draftEnfant = drafts.categorieEnfantId ?? null;
+    const parentNode = hier.find((h) => h.id === draftParent);
+    const enfants = parentNode?.enfants ?? [];
+
+    const onParent = (parentId: number) => {
+      if (draftParent === parentId && draftEnfant == null) {
+        actions.onDraftCategorieId(detail.categorie_id);
+        actions.onDraftCategorieEnfantId!(detail.categorie_e_id ?? null);
+        return;
+      }
+      actions.onDraftCategorieId(parentId);
+      actions.onDraftCategorieEnfantId!(null);
+    };
+
+    const onChild = (childId: number) => {
+      if (draftEnfant === childId) actions.onDraftCategorieEnfantId!(null);
+      else actions.onDraftCategorieEnfantId!(childId);
+    };
+
+    return (
+      <div class={QUESTION_EDIT_MODAL_STYLES.categorieSectionWrap}>
+        <p class={QUESTION_EDIT_MODAL_STYLES.categorieResume}>
+          Type et sous-type : {formatSessionDraftCategorieResume(draftParent, draftEnfant, hier)}
+        </p>
+        <div class={QUESTION_EDIT_MODAL_STYLES.categorieBlockInner}>
+          <div>
+            <p class={QUESTION_EDIT_MODAL_STYLES.categorieAsideTitle}>Catégorie (type)</p>
+            <div class={QUESTION_EDIT_MODAL_STYLES.categorieButtonRow} role="group" aria-label="Catégorie parente">
+              {hier.map((h) => {
+                const active = draftParent === h.id;
+                return (
+                  <button
+                    key={h.id}
+                    type="button"
+                    disabled={status.saving}
+                    class={cn(
+                      QUESTION_EDIT_MODAL_STYLES.categorieChip,
+                      active
+                        ? QUESTION_EDIT_MODAL_STYLES.categorieChipActive
+                        : QUESTION_EDIT_MODAL_STYLES.categorieChipInactive,
+                    )}
+                    onClick={() => onParent(h.id)}
+                  >
+                    {formatQuestionCategorieParentLabel(h.type)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {enfants.length > 0 ? (
+            <div class={QUESTION_EDIT_MODAL_STYLES.categorieBlockSubDivider}>
+              <p class={QUESTION_EDIT_MODAL_STYLES.categorieAsideTitle}>Sous-catégorie (sous-type)</p>
+              <div class={QUESTION_EDIT_MODAL_STYLES.categorieButtonRow} role="group" aria-label="Sous-catégories">
+                {enfants.map((e) => {
+                  const active = draftEnfant === e.id;
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      disabled={status.saving}
+                      class={cn(
+                        QUESTION_EDIT_MODAL_STYLES.categorieChip,
+                        active
+                          ? QUESTION_EDIT_MODAL_STYLES.categorieChipActive
+                          : QUESTION_EDIT_MODAL_STYLES.categorieChipInactive,
+                      )}
+                      onClick={() => onChild(e.id)}
+                    >
+                      {formatQuestionCategorieEnfantLabel(e.type)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (data.categorieOptions.length > 0) {
+    return (
+      <div class={QUESTION_EDIT_MODAL_STYLES.categorieSectionWrap}>
+        <label class="mb-1 block text-xs font-medium text-base-content/60" for="qe-categorie-flat">
+          Type de question (catégorie)
+        </label>
+        <select
+          id="qe-categorie-flat"
+          class="select select-bordered select-sm mb-0 w-full max-w-md rounded-xl border-base-content/15 bg-base-100"
+          value={drafts.categorieId ?? ""}
+          disabled={status.saving}
+          onChange={(e) => actions.onDraftCategorieId(Number((e.target as HTMLSelectElement).value))}
+        >
+          {data.categorieOptions.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.type}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export function QuestionEditModal(props: QuestionEditModalProps) {
   const { settings, actions, status, data, drafts } = props;
@@ -101,6 +225,7 @@ export function QuestionEditModal(props: QuestionEditModalProps) {
           <div class="py-8 text-center"><p class="mb-4 text-sm text-base-content/60">Chargement…</p><Button variant="ghost" class="btn-sm" onClick={settings.onClose}>Annuler</Button></div>
         ) : (
           <>
+            <QuestionEditModalCategorieBlock data={data} drafts={drafts} actions={actions} status={status} />
             <label class="mb-1 block text-xs font-medium text-base-content/60" for="qe-question">Énoncé</label>
             <textarea id="qe-question" class="textarea textarea-bordered mb-2 w-full rounded-xl border-base-content/15 text-sm" rows={4} value={drafts.question} onInput={(e) => actions.onDraftQuestion((e.target as HTMLTextAreaElement).value)} />
             <div class="mb-4 rounded-xl border border-base-content/10 bg-base-200/30 p-3">

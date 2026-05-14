@@ -5,6 +5,7 @@ import type {
 import type {
   QuestionUi,
   QuizzQuestionDetail,
+  RefCategorieHierarchyRow,
   RefCategorieRow,
 } from "../../../../../types/quizz";
 import type { SessionData } from "../../QuizSessionView.types";
@@ -19,6 +20,7 @@ export type UseQuizSessionEditModalOptions = {
   session: SessionData | null;
   refs: {
     refCategories: RefCategorieRow[];
+    refCategoriesHierarchy: RefCategorieHierarchyRow[];
   };
   feedback: {
     setMessage: Dispatch<StateUpdater<string | null>>;
@@ -41,6 +43,7 @@ export type UseQuizSessionEditModalResult = {
       onDraftQuestion: Dispatch<StateUpdater<string>>;
       onDraftCommentaire: Dispatch<StateUpdater<string>>;
       onDraftCategorieId: Dispatch<StateUpdater<number | null>>;
+      onDraftCategorieEnfantId: Dispatch<StateUpdater<number | null>>;
       onDraftSousCollectionId: Dispatch<StateUpdater<number | null>>;
       onDraftCreateLinkImplicit: Dispatch<StateUpdater<boolean>>;
       onReponseUpdated: () => void;
@@ -55,12 +58,14 @@ export type UseQuizSessionEditModalResult = {
     data: {
       questionDetail: QuizzQuestionDetail | null;
       categorieOptions: RefCategorieRow[];
+      categorieHierarchy: RefCategorieHierarchyRow[];
       sousCollectionsForCreate: { id: number; nom: string }[];
     };
     drafts: {
       question: string;
       commentaire: string;
       categorieId: number | null;
+      categorieEnfantId: number | null;
       sousCollectionId: number | null;
       createLinkImplicit: boolean | undefined;
     };

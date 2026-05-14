@@ -9,6 +9,7 @@ import {
 } from "../../../../../lib/api";
 import type { QuestionUi, QuizzQuestionDetail } from "../../../../../types/quizz";
 import type { QuestionCreateSavePayload } from "../../../../ui/organismes/QuestionEditModal/QuestionEditModal.types";
+import { buildCategorieFieldsForQuestionPatch } from "../../../../ui/organismes/QuestionEditModal/QuestionEditModal.metier";
 import { mergeQuizSessionQuestionFromRow } from "../../QuizSessionView.metier";
 import type {
   UseQuizSessionEditModalOptions,
@@ -32,6 +33,7 @@ export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): U
   const [draftQuestion, setDraftQuestion] = useState("");
   const [draftCommentaire, setDraftCommentaire] = useState("");
   const [draftCategorieId, setDraftCategorieId] = useState<number | null>(null);
+  const [draftCategorieEnfantId, setDraftCategorieEnfantId] = useState<number | null>(null);
   const [questionModalSaving, setQuestionModalSaving] = useState(false);
   const [sousCollectionsForCreateModal, setSousCollectionsForCreateModal] = useState<
     { id: number; nom: string }[]
@@ -52,6 +54,7 @@ export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): U
     setSousCollectionsForCreateModal([]);
     setDraftSousCollectionId(null);
     setDraftCreateLinkImplicit(true);
+    setDraftCategorieEnfantId(null);
   };
 
   const refreshQuestionModalDetail = async () => {
@@ -59,6 +62,10 @@ export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): U
     try {
       const d = await fetchQuestionDetail(questionModalDetail.id);
       setQuestionModalDetail(d);
+      setDraftQuestion(d.question);
+      setDraftCommentaire(d.commentaire);
+      setDraftCategorieId(d.categorie_id);
+      setDraftCategorieEnfantId(d.categorie_e_id ?? null);
       dataDeps.setSession((prev) => {
         if (!prev) return prev;
         const qi = prev.questions.findIndex((x) => x.id === d.id);
@@ -88,12 +95,24 @@ export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): U
     if (questionModalDetail == null) return;
     setQuestionModalSaving(true);
     try {
-      const payload: { question?: string; commentaire?: string; categorie_id?: number } = {};
+      const payload: {
+        question?: string;
+        commentaire?: string;
+        categorie_id?: number;
+        categorie_e_id?: number | null;
+      } = {};
       if (draftQuestion !== questionModalDetail.question) payload.question = draftQuestion;
       if (draftCommentaire !== questionModalDetail.commentaire) payload.commentaire = draftCommentaire;
-      if (draftCategorieId != null && draftCategorieId !== questionModalDetail.categorie_id) {
-        payload.categorie_id = draftCategorieId;
-      }
+      Object.assign(
+        payload,
+        buildCategorieFieldsForQuestionPatch({
+          useHierarchy: refs.refCategoriesHierarchy.length > 0,
+          detailCategorieId: questionModalDetail.categorie_id,
+          detailCategorieEId: questionModalDetail.categorie_e_id ?? null,
+          draftCategorieId: draftCategorieId,
+          draftCategorieEId: draftCategorieEnfantId,
+        }),
+      );
       if (Object.keys(payload).length === 0) {
         closeQuestionModal();
         return;
@@ -172,6 +191,7 @@ export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): U
         setDraftQuestion(d.question);
         setDraftCommentaire(d.commentaire);
         setDraftCategorieId(d.categorie_id);
+        setDraftCategorieEnfantId(d.categorie_e_id ?? null);
       })
       .catch(() => setQuestionModalError("fetch"))
       .finally(() => setQuestionModalLoading(false));
@@ -197,6 +217,7 @@ export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): U
       ? parent.categorie_id
       : refs.refCategories[0]!.id;
     setDraftCategorieId(cat);
+    setDraftCategorieEnfantId(null);
     const snap = session;
     if (snap?.mode === "collection" && snap.collectionId != null) {
       void fetchSousCollections(snap.collectionId).then((rows) => {
@@ -220,6 +241,7 @@ export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): U
       onDraftQuestion: setDraftQuestion,
       onDraftCommentaire: setDraftCommentaire,
       onDraftCategorieId: setDraftCategorieId,
+      onDraftCategorieEnfantId: setDraftCategorieEnfantId,
       onDraftSousCollectionId: setDraftSousCollectionId,
       onDraftCreateLinkImplicit: setDraftCreateLinkImplicit,
       onReponseUpdated: () => void refreshQuestionModalDetail(),
@@ -234,12 +256,14 @@ export function useQuizSessionEditModal(opts: UseQuizSessionEditModalOptions): U
     data: {
       questionDetail: questionModalDetail,
       categorieOptions: refs.refCategories,
+      categorieHierarchy: refs.refCategoriesHierarchy,
       sousCollectionsForCreate: sousCollectionsForCreateModal,
     },
     drafts: {
       question: draftQuestion,
       commentaire: draftCommentaire,
       categorieId: draftCategorieId,
+      categorieEnfantId: draftCategorieEnfantId,
       sousCollectionId: draftSousCollectionId,
       createLinkImplicit:
         questionModalVariant === "create" && createParentQuestionId != null ? draftCreateLinkImplicit : undefined,

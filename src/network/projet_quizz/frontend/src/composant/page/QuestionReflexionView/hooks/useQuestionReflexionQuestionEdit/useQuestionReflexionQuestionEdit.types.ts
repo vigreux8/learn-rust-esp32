@@ -1,5 +1,5 @@
 import type { Dispatch, StateUpdater } from "preact/hooks";
-import type { CollectionUi, QuizzQuestionRow, RefCategorieRow } from "../../../../../types/quizz";
+import type { CollectionUi, QuizzQuestionRow, RefCategorieHierarchyRow, RefCategorieRow } from "../../../../../types/quizz";
 import type { ReflexionLocalPoolDraft } from "../../QuestionReflexionView.types";
 
 export type UseQuestionReflexionQuestionEditProps = {
@@ -20,6 +20,7 @@ export type UseQuestionReflexionQuestionEditProps = {
     loadChainFor: (cid: number, gid: number | null) => Promise<void>;
   };
   refCategories: RefCategorieRow[];
+  refCategoriesHierarchy: RefCategorieHierarchyRow[];
   categoryTypeForId: (id: number | null, fallback: string) => string;
   status: { setOperationError: (value: string | null) => void };
 };

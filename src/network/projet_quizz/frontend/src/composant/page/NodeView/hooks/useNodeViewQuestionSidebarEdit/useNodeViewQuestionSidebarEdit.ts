@@ -5,11 +5,18 @@ import {
   fetchCollections,
   fetchQuestionDetail,
   fetchRefCategories,
+  fetchRefCategoriesHierarchy,
   patchQuestion,
 } from "../../../../../lib/api";
-import type { CollectionUi, QuizzQuestionDetail, RefCategorieRow } from "../../../../../types/quizz";
+import type {
+  CollectionUi,
+  QuizzQuestionDetail,
+  RefCategorieHierarchyRow,
+  RefCategorieRow,
+} from "../../../../../types/quizz";
 import type { AppNode } from "../../../../node/config/flow.types";
 import { hydrateCollectionNodesTreeDepthFromCollections } from "../../NodeView.metier";
+import { buildCategorieFieldsForQuestionPatch } from "../../../../ui/organismes/QuestionEditModal/QuestionEditModal.metier";
 import type { UseNodeViewQuestionSidebarEditParams } from "./useNodeViewQuestionSidebarEdit.types";
 
 /**
@@ -25,12 +32,17 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
   const [editDraftQuestion, setEditDraftQuestion] = useState("");
   const [editDraftCommentaire, setEditDraftCommentaire] = useState("");
   const [editDraftCategorieId, setEditDraftCategorieId] = useState<number | null>(null);
+  const [editDraftCategorieEnfantId, setEditDraftCategorieEnfantId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [refCategories, setRefCategories] = useState<RefCategorieRow[]>([]);
+  const [refCategoriesHierarchy, setRefCategoriesHierarchy] = useState<RefCategorieHierarchyRow[]>([]);
 
   useEffect(() => {
     void fetchRefCategories()
       .then(setRefCategories)
+      .catch(() => {});
+    void fetchRefCategoriesHierarchy()
+      .then(setRefCategoriesHierarchy)
       .catch(() => {});
   }, []);
 
@@ -50,6 +62,7 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
     setEditModalLoading(false);
     setEditModalError(null);
     setEditDetail(null);
+    setEditDraftCategorieEnfantId(null);
   }, []);
 
   const openEditModalByQuestionId = useCallback((questionId: number) => {
@@ -63,6 +76,7 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
         setEditDraftQuestion(d.question);
         setEditDraftCommentaire(d.commentaire);
         setEditDraftCategorieId(d.categorie_id);
+        setEditDraftCategorieEnfantId(d.categorie_e_id ?? null);
       })
       .catch(() => setEditModalError("fetch"))
       .finally(() => setEditModalLoading(false));
@@ -73,6 +87,8 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
     try {
       const d = await fetchQuestionDetail(editDetail.id);
       setEditDetail(d);
+      setEditDraftCategorieId(d.categorie_id);
+      setEditDraftCategorieEnfantId(d.categorie_e_id ?? null);
     } catch {
       /* ignore */
     }
@@ -94,12 +110,24 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
     if (editDetail == null) return;
     setSaving(true);
     try {
-      const body: { question?: string; commentaire?: string; categorie_id?: number } = {};
+      const body: {
+        question?: string;
+        commentaire?: string;
+        categorie_id?: number;
+        categorie_e_id?: number | null;
+      } = {};
       if (editDraftQuestion !== editDetail.question) body.question = editDraftQuestion;
       if (editDraftCommentaire !== editDetail.commentaire) body.commentaire = editDraftCommentaire;
-      if (editDraftCategorieId != null && editDraftCategorieId !== editDetail.categorie_id) {
-        body.categorie_id = editDraftCategorieId;
-      }
+      Object.assign(
+        body,
+        buildCategorieFieldsForQuestionPatch({
+          useHierarchy: refCategoriesHierarchy.length > 0,
+          detailCategorieId: editDetail.categorie_id,
+          detailCategorieEId: editDetail.categorie_e_id ?? null,
+          draftCategorieId: editDraftCategorieId,
+          draftCategorieEId: editDraftCategorieEnfantId,
+        }),
+      );
       if (Object.keys(body).length === 0) {
         closeQuestionModal();
         return;
@@ -122,9 +150,11 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
     applyListToGraph,
     closeQuestionModal,
     editDetail,
+    editDraftCategorieEnfantId,
     editDraftCategorieId,
     editDraftCommentaire,
     editDraftQuestion,
+    refCategoriesHierarchy.length,
   ]);
 
   const deleteQuestionFromSidebar = useCallback(
@@ -158,6 +188,7 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
       onDraftQuestion: setEditDraftQuestion,
       onDraftCommentaire: setEditDraftCommentaire,
       onDraftCategorieId: setEditDraftCategorieId,
+      onDraftCategorieEnfantId: setEditDraftCategorieEnfantId,
       onReponseUpdated: () => void refreshEditDetail(),
       onRemoveImplicitRelation: (relationId: number) => void removeImplicitRelationFromEditModal(relationId),
     },
@@ -165,11 +196,13 @@ export function useNodeViewQuestionSidebarEdit(params: UseNodeViewQuestionSideba
     data: {
       questionDetail: editDetail,
       categorieOptions: refCategories,
+      categorieHierarchy: refCategoriesHierarchy,
     } as const,
     drafts: {
       question: editDraftQuestion,
       commentaire: editDraftCommentaire,
       categorieId: editDraftCategorieId,
+      categorieEnfantId: editDraftCategorieEnfantId,
     },
   };
 

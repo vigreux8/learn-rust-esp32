@@ -69,6 +69,7 @@ export function useQuestionReflexionViewState(props: QuestionReflexionViewProps)
       loadChainFor: chain.loadChainFor,
     },
     refCategories: chain.refCategories,
+    refCategoriesHierarchy: chain.refCategoriesHierarchy,
     categoryTypeForId: chain.categoryTypeForId,
     status: { setOperationError },
   });

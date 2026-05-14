@@ -1,8 +1,8 @@
 import { route as routeNavigate } from "preact-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { deleteQuestion, fetchGroupeQuestions, fetchRefCategories, fetchReflexionChain } from "../../../../../lib/api";
+import { deleteQuestion, fetchGroupeQuestions, fetchRefCategories, fetchRefCategoriesHierarchy, fetchReflexionChain } from "../../../../../lib/api";
 import type { QuestionCategorieKey } from "../../../../../lib/questionCategories";
-import type { QuizzQuestionRow, RefCategorieRow } from "../../../../../types/quizz";
+import type { QuizzQuestionRow, RefCategorieHierarchyRow, RefCategorieRow } from "../../../../../types/quizz";
 import { filterQuestionsBySearch } from "../../../SousCollectionsView/SousCollectionsView.metier";
 import type { LlmImportPayload } from "../../../../ui/molecules/QuestionsLlmImportPanel";
 import {
@@ -58,6 +58,7 @@ export function useQuestionReflexionChainDraft({
   const localPoolDraftsRef = useRef<ReflexionLocalPoolDraft[]>([]);
 
   const [refCategories, setRefCategories] = useState<RefCategorieRow[]>([]);
+  const [refCategoriesHierarchy, setRefCategoriesHierarchy] = useState<RefCategorieHierarchyRow[]>([]);
 
   const orderedIdsRef = useRef<number[]>([]);
   const orderedRowsRef = useRef<QuizzQuestionRow[]>([]);
@@ -112,6 +113,7 @@ export function useQuestionReflexionChainDraft({
 
   useEffect(() => {
     fetchRefCategories().then(setRefCategories).catch(() => {});
+    fetchRefCategoriesHierarchy().then(setRefCategoriesHierarchy).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -320,6 +322,7 @@ export function useQuestionReflexionChainDraft({
     loadChainFor,
     saveChainDraft,
     refCategories,
+    refCategoriesHierarchy,
     categoryTypeForId,
     localPoolDraftsRef,
     setCollection,
