@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { collectSubtreeCollectionIds } from "../../../../lib/collectionHierarchyVis";
 import { useClosePanelOnDocumentClickOutside } from "../../../../lib/useClosePanelOnDocumentClickOutside";
 import { filterFlowSidebarCollectionRows, REACT_FLOW_DND_MIME } from "./FlowSidebarOverlay.metier";
@@ -76,13 +76,35 @@ export function useFlowSidebarOverlay(props: FlowSidebarOverlayProps) {
     setActiveTab(null);
   }, []);
 
+  const openTab = useCallback((tab: Exclude<SidebarTab, null>) => {
+    setActiveTab(tab);
+  }, []);
+
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  const documentClickIgnoreRefs = useMemo(() => {
+    const base = presentation?.clickOutsideIgnoreRefs ?? [];
+    if (activeTab === "questions" && presentation?.reactFlowRootRef != null) {
+      return [...base, presentation.reactFlowRootRef];
+    }
+    return [...base];
+  }, [activeTab, presentation?.clickOutsideIgnoreRefs, presentation?.reactFlowRootRef]);
 
   useClosePanelOnDocumentClickOutside({
     open: activeTab !== null,
     containerRef: overlayRef,
+    ignoreRefs: documentClickIgnoreRefs,
     onClose: closePanel,
   });
+
+  useLayoutEffect(() => {
+    const slot = presentation?.sidebarHostApiRef;
+    if (slot == null) return;
+    slot.current = { activeTab, closePanel, openTab };
+    return () => {
+      slot.current = null;
+    };
+  }, [activeTab, closePanel, openTab, presentation?.sidebarHostApiRef]);
 
   const togglePaletteBucket = useCallback((bucket: number) => {
     setPaletteBucketFilters((prev) =>

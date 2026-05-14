@@ -1,4 +1,6 @@
 import { X } from "lucide-preact";
+import { useCallback } from "preact/hooks";
+import type { RefObject } from "preact";
 import { useFlowSidebarOverlay } from "./FlowSidebarOverlay.hook";
 import { FLOW_SIDEBAR_OVERLAY_STYLES } from "./FlowSidebarOverlay.styles";
 import type { FlowSidebarCollectionRow, FlowSidebarOverlayProps } from "./FlowSidebarOverlay.types";
@@ -15,6 +17,14 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
   const { presentation, actions } = props;
   const { shell, rail, panneau, collections, collectionSubtree, questions, personalities, drag } =
     useFlowSidebarOverlay(props);
+  const assignOverlayRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      (shell.overlayRef as RefObject<HTMLDivElement | null>).current = node;
+      const forwarded = presentation?.shellRef;
+      if (forwarded != null) forwarded.current = node;
+    },
+    [shell.overlayRef, presentation?.shellRef],
+  );
   const panelOpen = panneau.activeTab !== null;
   const onShowCollectionSubtreeRow =
     actions?.onShowCollectionSubtreeOnGraph != null
@@ -36,7 +46,7 @@ export function FlowSidebarOverlay(props: FlowSidebarOverlayProps) {
               : "";
 
   return (
-    <div ref={shell.overlayRef} class={FLOW_SIDEBAR_OVERLAY_STYLES.overlayWrapper}>
+    <div ref={assignOverlayRef} class={FLOW_SIDEBAR_OVERLAY_STYLES.overlayWrapper}>
       <SidebarRail data={{ activeTab: rail.activeTab }} actions={{ toggleTab: rail.toggleTab }} />
 
       {panelOpen ? (

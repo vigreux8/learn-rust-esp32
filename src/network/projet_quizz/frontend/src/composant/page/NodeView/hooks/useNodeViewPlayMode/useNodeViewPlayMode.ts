@@ -15,7 +15,7 @@ import type { UseNodeViewPlayModeOptions, UseNodeViewPlayModeResult } from "./us
  * État du mode de jeu sur `/node` et navigation vers une session `/play/:id` alignée sur `CollectionCard`.
  */
 export function useNodeViewPlayMode(opts: UseNodeViewPlayModeOptions): UseNodeViewPlayModeResult {
-  const { userId, getGraphPlayIncludedCollectionIds } = opts;
+  const { userId, getGraphPlayIncludedCollectionIds, clickOutsideIgnoreRefs } = opts;
   const {
     playMode,
     setPlayMode,
@@ -35,6 +35,7 @@ export function useNodeViewPlayMode(opts: UseNodeViewPlayModeOptions): UseNodeVi
   useClosePanelOnDocumentClickOutside({
     open: panelExpanded,
     containerRef: panelRootRef,
+    ignoreRefs: clickOutsideIgnoreRefs,
     onClose: closePanel,
   });
 

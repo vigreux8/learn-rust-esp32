@@ -23,26 +23,30 @@ function NodeViewFlowWorkspace(props: Pick<NodeViewProps, "actions">) {
     <NodeViewGraphActionsContext.Provider value={graphActions}>
     <div class={NODE_VIEW_STYLES.flowShell}>
       <div class={`${NODE_VIEW_STYLES.canvasInner} relative`}>
-        <ReactFlow
-          className="h-full w-full"
-          nodes={flow.nodes}
-          edges={flow.edges}
-          onNodesChange={flow.onNodesChange}
-          onEdgesChange={flow.onEdgesChange}
-          onConnect={flow.onConnect}
-          onDrop={flow.onDrop}
-          onDragOver={flow.onDragOver}
-          onSelectionChange={flow.onSelectionChange}
-          onPaneClick={flow.onPaneClick}
-          isValidConnection={flow.isValidConnection}
-          nodeTypes={flow.nodeTypes}
-          edgeTypes={flow.edgeTypes}
-          fitView={flow.reactFlowFitView}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background gap={16} />
-          <Controls />
-        </ReactFlow>
+        <div ref={flow.reactFlowRootRef} class="h-full min-h-0 w-full">
+          <ReactFlow
+            className="h-full w-full"
+            nodes={flow.nodes}
+            edges={flow.edges}
+            onNodesChange={flow.onNodesChange}
+            onEdgesChange={flow.onEdgesChange}
+            onConnect={flow.onConnect}
+            onDrop={flow.onDrop}
+            onDragOver={flow.onDragOver}
+            onSelectionChange={flow.onSelectionChange}
+            onPaneClick={flow.onPaneClick}
+            onNodeDoubleClick={flow.onNodeDoubleClick}
+            isValidConnection={flow.isValidConnection}
+            nodeTypes={flow.nodeTypes}
+            edgeTypes={flow.edgeTypes}
+            fitView={flow.reactFlowFitView}
+            zoomOnDoubleClick={false}
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background gap={16} />
+            <Controls />
+          </ReactFlow>
+        </div>
         <FlowSidebarOverlay
           data={sidebar.data}
           actions={sidebar.actions}

@@ -8,6 +8,7 @@ import {
   type Connection,
   type EdgeChange,
   type IsValidConnection,
+  type NodeMouseHandler,
   type OnSelectionChangeFunc,
 } from "@xyflow/react";
 import {
@@ -42,6 +43,7 @@ import {
   resolveQuestionsScopeCollectionIdFromSelection,
 } from "./NodeView.metier";
 import { useNodeViewPlayMode } from "./hooks/useNodeViewPlayMode";
+import type { FlowSidebarHostApi } from "../../ui/organismes/FlowSidebarOverlay/FlowSidebarOverlay.types";
 import type { NodeViewProps } from "./NodeView.types";
 
 /**
@@ -77,6 +79,14 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
 
   const nodesPlayScopeRef = useRef(nodes);
   nodesPlayScopeRef.current = nodes;
+
+  /** Même nœud DOM que le wrapper `FlowSidebarOverlay` : exclu du « clic extérieur » du panneau mode jeu. */
+  const flowSidebarShellRef = useRef<HTMLDivElement | null>(null);
+  /** Conteneur du canvas React Flow : exclu du clic extérieur quand l’onglet Questions est ouvert. */
+  const reactFlowRootRef = useRef<HTMLDivElement | null>(null);
+  const flowSidebarHostApiRef = useRef<FlowSidebarHostApi | null>(null);
+  /** Compteur de `onPaneClick` consécutifs pour fermer le panneau Questions au 2ᵉ clic sur le fond. */
+  const questionsPaneDismissStreakRef = useRef(0);
 
   const [apiCollections, setApiCollections] = useState<CollectionUi[]>([]);
   const [questionsScopeCollectionId, setQuestionsScopeCollectionId] = useState<number | null>(
@@ -306,11 +316,49 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     const flagged = selNodes.filter((n) => n.selected);
     const selected = flagged.length > 0 ? flagged : selNodes;
     setQuestionsScopeCollectionId(resolveQuestionsScopeCollectionIdFromSelection(selected));
+    if (selected.length > 0) {
+      questionsPaneDismissStreakRef.current = 0;
+    }
   }, []);
 
   const onPaneClick = useCallback(() => {
     setQuestionsScopeCollectionId(null);
+    const api = flowSidebarHostApiRef.current;
+    if (api != null && api.activeTab === "questions") {
+      questionsPaneDismissStreakRef.current += 1;
+      if (questionsPaneDismissStreakRef.current >= 2) {
+        api.closePanel();
+        questionsPaneDismissStreakRef.current = 0;
+      }
+    } else {
+      questionsPaneDismissStreakRef.current = 0;
+    }
   }, []);
+
+  const onNodeDoubleClick = useCallback<NodeMouseHandler<AppNode>>(
+    (event, node) => {
+      event.preventDefault();
+      let collectionId: number | null = null;
+      if (node.type === "collectionNode" && typeof node.data.collectionId === "number") {
+        collectionId = node.data.collectionId;
+      } else if (node.type === "questionNode" && typeof node.data.collectionId === "number") {
+        collectionId = node.data.collectionId;
+      }
+      if (collectionId == null) return;
+
+      setQuestionsScopeCollectionId(collectionId);
+      questionsPaneDismissStreakRef.current = 0;
+      flowSidebarHostApiRef.current?.openTab("questions");
+
+      setNodes((nds) =>
+        nds.map((n) => ({
+          ...n,
+          selected: n.id === node.id,
+        })),
+      );
+    },
+    [setNodes],
+  );
 
   const closeGraphNormaleModal = useCallback(() => {
     if (graphNormaleBusy) return;
@@ -662,7 +710,11 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
     [],
   );
 
-  const playModeUi = useNodeViewPlayMode({ userId, getGraphPlayIncludedCollectionIds });
+  const playModeUi = useNodeViewPlayMode({
+    userId,
+    getGraphPlayIncludedCollectionIds,
+    clickOutsideIgnoreRefs: [flowSidebarShellRef],
+  });
 
   const moveQuestionToCollection = useCallback(
     async (args: { questionId: number; fromCollectionId: number; toCollectionId: number }) => {
@@ -714,10 +766,12 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
       onDragOver,
       onSelectionChange,
       onPaneClick,
+      onNodeDoubleClick,
       isValidConnection,
       nodeTypes: flowNodeTypes,
       edgeTypes: flowEdgeTypes,
       reactFlowFitView: !shouldRestoreGraph,
+      reactFlowRootRef,
     },
     sidebar: {
       data: sidebarData,
@@ -730,6 +784,10 @@ export function useNodeViewFlow(page: Pick<NodeViewProps, "actions"> = {}) {
         questionsPanelHint,
         questionsDetailsExpandCollectionId: questionsScopeCollectionId,
         questionsCanvasCollectionIds: questionsCanvasCollectionScope.orderedIds,
+        shellRef: flowSidebarShellRef,
+        clickOutsideIgnoreRefs: [playModeUi.panel.containerRef],
+        reactFlowRootRef,
+        sidebarHostApiRef: flowSidebarHostApiRef,
       },
     },
     graphActions,

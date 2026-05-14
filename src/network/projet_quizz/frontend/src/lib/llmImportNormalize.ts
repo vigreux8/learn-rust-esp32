@@ -4,6 +4,7 @@ import type {
   LlmImportQuestion,
   LlmImportReponse,
 } from "../composant/ui/molecules/QuestionsLlmImportPanel";
+import { parseJsonWithLatexFriendlyBackslashes } from "./jsonParseLatexFriendly";
 
 function parseReponses(value: unknown, ctx: string): LlmImportQuestion["reponses"] {
   if (!Array.isArray(value) || value.length !== 4) {
@@ -78,7 +79,7 @@ function parseCollections(value: unknown): LlmImportCollectionBlock[] {
 
 /** Valide et normalise le texte JSON pour l’import LLM (mêmes règles que l’écran Questions). */
 export function normalizeAndValidateImportText(importText: string): LlmImportPayload {
-  const parsed = JSON.parse(importText) as unknown;
+  const parsed = parseJsonWithLatexFriendlyBackslashes(importText) as unknown;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("JSON invalide : objet racine attendu.");
   }

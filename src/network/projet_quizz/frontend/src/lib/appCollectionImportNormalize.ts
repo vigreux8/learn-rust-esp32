@@ -1,4 +1,5 @@
 import type { LlmImportReponse } from "../composant/ui/molecules/QuestionsLlmImportPanel";
+import { parseJsonWithLatexFriendlyBackslashes } from "./jsonParseLatexFriendly";
 
 export type AppCollectionImportPayload = {
   format: "flowlearn-app-collection-export";
@@ -88,7 +89,7 @@ function parseQuestion(value: unknown, ctx: string): AppCollectionImportPayload[
 
 /** Valide le JSON d’import “application” (export FlowLearn). */
 export function normalizeAndValidateAppCollectionImportText(importText: string): AppCollectionImportPayload {
-  const parsed = JSON.parse(importText) as unknown;
+  const parsed = parseJsonWithLatexFriendlyBackslashes(importText) as unknown;
   if (!isRecord(parsed)) throw new Error("JSON invalide : objet racine attendu.");
 
   if (parsed.format !== "flowlearn-app-collection-export") {

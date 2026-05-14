@@ -6,6 +6,10 @@ export type UseNodeViewPlayModeOptions = {
   userId: number | null;
   /** Collections cochées sur le graphe pour le paramètre `graphIncludeIds` au lancement `/play`. */
   getGraphPlayIncludedCollectionIds: () => number[];
+  /**
+   * Clics dans ces conteneurs ne replient pas le panneau mode jeu (ex. sidebar gauche sur `/node`).
+   */
+  clickOutsideIgnoreRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;
 };
 
 export type UseNodeViewPlayModeResult = {

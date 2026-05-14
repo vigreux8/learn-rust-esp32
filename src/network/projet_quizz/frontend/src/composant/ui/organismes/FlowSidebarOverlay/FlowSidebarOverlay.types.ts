@@ -1,3 +1,5 @@
+import type { RefObject } from "preact";
+
 export type SidebarTab =
   | "collections"
   | "collectionSubtree"
@@ -51,6 +53,13 @@ export type FlowSidebarMoveQuestionArgs = {
   toCollectionId: number;
 };
 
+/** API côté page (`/node`) : fermeture au double clic sur le fond, ouverture d’onglet depuis le graphe. */
+export type FlowSidebarHostApi = {
+  activeTab: SidebarTab;
+  closePanel: () => void;
+  openTab: (tab: Exclude<SidebarTab, null>) => void;
+};
+
 export type FlowSidebarOverlayProps = {
   data: {
     collections: FlowSidebarCollectionRow[];
@@ -79,5 +88,22 @@ export type FlowSidebarOverlayProps = {
      * Tableau vide = aucune collection sur le graphe avec id API → liste vide.
      */
     questionsCanvasCollectionIds?: readonly number[];
+    /**
+     * Réf. du wrapper overlay (même nœud que la ref interne) pour coordonner le clic extérieur avec d’autres panneaux.
+     */
+    shellRef?: RefObject<HTMLDivElement | null>;
+    /**
+     * Clics à l’intérieur de ces éléments ne ferment pas l’onglet latéral (ex. panneau « Mode jeu » à droite sur `/node`).
+     */
+    clickOutsideIgnoreRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;
+    /**
+     * Conteneur du `<ReactFlow />` (`/node`) : tant que l’onglet « Questions » est ouvert, les clics graphe
+     * ne ferment pas le panneau (fermeture au 2ᵉ `onPaneClick` côté page).
+     */
+    reactFlowRootRef?: RefObject<HTMLElement | null>;
+    /**
+     * Mis à jour par la sidebar : onglet actif, fermeture, ouverture d’onglet (ex. double-clic nœud → Questions).
+     */
+    sidebarHostApiRef?: RefObject<FlowSidebarHostApi | null>;
   };
 };
