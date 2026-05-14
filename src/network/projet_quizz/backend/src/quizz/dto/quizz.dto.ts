@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -289,8 +289,19 @@ export class AssignPersonaliteToCollectionDto {
   @Min(1)
   personaliteId!: number;
 
-  /** `null` ou omis : `importance_id` NULL dans `personnalité_collection`. */
+  /**
+   * `null`, absent ou chaîne vide : `importance_id` NULL dans `personnalité_collection`
+   * (voir `architecture.md` § collections / personnalités).
+   */
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === '' || value === undefined) return null;
+    if (typeof value === 'string') {
+      const t = value.trim();
+      return t === '' ? null : t;
+    }
+    return value;
+  })
   @ValidateIf((_o, v) => v != null && v !== '')
   @IsIn(['pionnier', 'important', 'secondaire'])
   importanceType?: 'pionnier' | 'important' | 'secondaire' | null;

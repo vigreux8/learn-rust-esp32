@@ -6,11 +6,13 @@ import { useClosePanelOnDocumentClickOutside } from "../../../../../../lib/useCl
 import type { InfluenceurRolePick } from "./CreatorPanel.metier";
 import type { CreatorPanelProps } from "./CreatorPanel.types";
 
-/** Position du menu rôle en viewport (`fixed`) pour éviter le clip du panneau `h-40`. */
+/** Position du menu rôle en `fixed` : ancré sous le bouton (évite le clip `overflow-y` du panneau). */
 export type RoleMenuListStyle = Record<string, string>;
 
 export type CreatorPanelViewModel = {
   rootRef: RefObject<HTMLDivElement | null>;
+  /** Portail `document.body` : `position:fixed` aligné sur le viewport réel (pas le sous-repère transform XYFlow). */
+  menuPortalRef: RefObject<HTMLUListElement | null>;
   data: CreatorPanelProps["data"];
   settings: CreatorPanelProps["settings"];
   status: CreatorPanelProps["status"];
@@ -23,40 +25,34 @@ export type CreatorPanelViewModel = {
   };
 };
 
-const MENU_MIN_SPACE_PX = 220;
+const MENU_VIEWPORT_MARGIN_PX = 8;
 
+/** Menu juste sous le bouton rôle, même largeur mini, bord gauche aligné sur le bouton (rester dans le viewport). */
 function computeRoleMenuListStyle(anchor: HTMLElement): RoleMenuListStyle {
   const r = anchor.getBoundingClientRect();
-  const spaceBelow = window.innerHeight - r.bottom;
   const widthPx = Math.max(200, Math.ceil(r.width));
-  let leftPx = Math.ceil(r.right - widthPx);
-  leftPx = Math.max(8, Math.min(leftPx, window.innerWidth - widthPx - 8));
-
-  if (spaceBelow < MENU_MIN_SPACE_PX) {
-    const bottomPx = Math.ceil(window.innerHeight - r.top + 6);
-    return {
-      position: "fixed",
-      zIndex: "6000",
-      bottom: `${bottomPx}px`,
-      left: `${leftPx}px`,
-      width: `${widthPx}px`,
-    };
-  }
+  let leftPx = Math.floor(r.left);
+  leftPx = Math.max(
+    MENU_VIEWPORT_MARGIN_PX,
+    Math.min(leftPx, window.innerWidth - widthPx - MENU_VIEWPORT_MARGIN_PX),
+  );
+  const topPx = Math.ceil(r.bottom + 6);
   return {
     position: "fixed",
     zIndex: "6000",
-    top: `${Math.ceil(r.bottom + 6)}px`,
+    top: `${topPx}px`,
     left: `${leftPx}px`,
     width: `${widthPx}px`,
   };
 }
 
 /**
- * Menu rôle : position `fixed` + recalcul au layout pour lisibilité hors du panneau étroit.
+ * Menu rôle : position `fixed` recalculée sous le bouton (lisible malgré `overflow-y-auto` du panneau).
  */
 export function useCreatorPanel(props: CreatorPanelProps): CreatorPanelViewModel {
   const { data, settings, status, actions } = props;
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const menuPortalRef = useRef<HTMLUListElement | null>(null);
   const menuAnchorRef = useRef<HTMLElement | null>(null);
   const [openCreatorId, setOpenCreatorId] = useState<string | null>(null);
   const [menuListStyle, setMenuListStyle] = useState<RoleMenuListStyle | null>(null);
@@ -70,6 +66,7 @@ export function useCreatorPanel(props: CreatorPanelProps): CreatorPanelViewModel
   useClosePanelOnDocumentClickOutside({
     open: openCreatorId != null,
     containerRef: rootRef,
+    ignoreRefs: [menuPortalRef],
     onClose: closeMenu,
   });
 
@@ -88,14 +85,17 @@ export function useCreatorPanel(props: CreatorPanelProps): CreatorPanelViewModel
 
   useEffect(() => {
     if (openCreatorId == null) return;
-    const onScrollOrResize = () => closeMenu();
-    window.addEventListener("scroll", onScrollOrResize, true);
-    window.addEventListener("resize", onScrollOrResize);
-    return () => {
-      window.removeEventListener("scroll", onScrollOrResize, true);
-      window.removeEventListener("resize", onScrollOrResize);
+    const sync = () => {
+      const el = menuAnchorRef.current;
+      if (el != null) setMenuListStyle(computeRoleMenuListStyle(el));
     };
-  }, [openCreatorId, closeMenu]);
+    window.addEventListener("resize", sync);
+    window.addEventListener("scroll", sync, true);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("scroll", sync, true);
+    };
+  }, [openCreatorId]);
 
   const toggleRowMenu = useCallback(
     (creatorId: string, anchor: HTMLElement | null) => {
@@ -138,6 +138,7 @@ export function useCreatorPanel(props: CreatorPanelProps): CreatorPanelViewModel
 
   return {
     rootRef,
+    menuPortalRef,
     data,
     settings,
     status,

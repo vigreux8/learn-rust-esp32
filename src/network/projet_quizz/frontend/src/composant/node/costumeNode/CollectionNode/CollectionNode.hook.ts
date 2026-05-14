@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useState } from "preact/hooks";
 import { useReactFlow } from "@xyflow/react";
-import { useNodeViewGraphActions } from "../../../../lib/nodeViewGraphActionsContext";
+import {
+  useNodeViewGraphActions,
+  type NodeViewGraphUpdatePersonaliteImportanceArgs,
+} from "../../../../lib/nodeViewGraphActionsContext";
 import { normalizeQuestionNodeMovePayload, normalizeReflexionGroupeNodeMovePayload, readReactFlowDnDFromEvent } from "../../../../lib/reactFlowDnD";
 import type { AppEdge, AppNode } from "../../config/flow.types";
 import {
@@ -108,6 +111,18 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
       }
 
       if (parsed.type === "personalityNode") {
+        const toCollectionId = typeof data.collectionId === "number" ? data.collectionId : null;
+        const record = parsed.data as Record<string, unknown>;
+        const pidRaw = record.personaliteId;
+        const personaliteId = typeof pidRaw === "number" ? pidRaw : null;
+        const persist = graphActions?.updatePersonaliteImportanceOnCollection;
+
+        if (toCollectionId != null && personaliteId != null && persist != null) {
+          const importanceType = parsePersonalityDropImportanceType(record);
+          void persist({ collectionId: toCollectionId, personaliteId, importanceType });
+          return;
+        }
+
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id !== id || node.type !== "collectionNode") return node;
@@ -294,12 +309,23 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     () => ({
       data: { creators: data.creators ?? [] },
       settings: {
-        roleChangeEnabled: data.isMine === true && typeof data.collectionId === "number",
+        /** Sur `/node`, le contexte graphe suffit : l’API impose le propriétaire ; `isMine` seul bloquait l’UI à tort. */
+        roleChangeEnabled:
+          typeof data.collectionId === "number" &&
+          (graphActions?.updatePersonaliteImportanceOnCollection != null || data.isMine === true),
       },
       status: { savingPersonaliteId },
       actions: { onRoleChange: onCreatorRoleChange, onRemoveCreator: onRemoveCreator },
     }),
-    [data.collectionId, data.creators, data.isMine, onCreatorRoleChange, onRemoveCreator, savingPersonaliteId],
+    [
+      data.collectionId,
+      data.creators,
+      data.isMine,
+      graphActions?.updatePersonaliteImportanceOnCollection,
+      onCreatorRoleChange,
+      onRemoveCreator,
+      savingPersonaliteId,
+    ],
   );
 
   const collectionApiId = typeof data.collectionId === "number" ? data.collectionId : null;
@@ -327,4 +353,12 @@ export function useCollectionNode(props: CollectionNodeProps): CollectionNodeVie
     },
     actions: { onPlay },
   };
+}
+
+function parsePersonalityDropImportanceType(
+  record: Record<string, unknown>,
+): NodeViewGraphUpdatePersonaliteImportanceArgs["importanceType"] {
+  const raw = record.importanceType;
+  if (raw === "pionnier" || raw === "important" || raw === "secondaire") return raw;
+  return null;
 }

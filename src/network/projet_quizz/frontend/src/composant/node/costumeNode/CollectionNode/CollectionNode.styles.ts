@@ -10,47 +10,47 @@ export const COLLECTION_NODE_STYLES = {
   wrapper: "relative min-w-[280px] max-w-md overflow-visible font-sans sm:min-w-[320px]",
   coreColumn: "relative flex w-full flex-col",
   panelsFloating: cn(
-    "absolute bottom-full left-0 right-0 z-10 mb-2 flex h-40 gap-3 sm:gap-4",
+    "nopan nodrag absolute bottom-full left-0 right-0 z-[110] mb-2 flex h-40 gap-3 sm:gap-4",
     "transition-opacity duration-200",
   ),
   /** Bandeau connexion entrée — discret, teinte flow comme le reste de l’app. */
   topStrip: "relative h-0.5 w-full shrink-0 rounded-full bg-flow/25",
   mainBar: cn("relative flex w-full items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3", cardLike),
   /** Case « inclure au jeu » à gauche du bandeau (hors drag du canvas). */
-  playIncludeToggle: "nodrag flex shrink-0 cursor-pointer items-center leading-none",
+  playIncludeToggle: "nopan nodrag flex shrink-0 cursor-pointer items-center leading-none",
   /** Boutons Questions / Suite logique sous la barre d’icônes (hors drag du canvas). */
   actionsRow: cn(
-    "nodrag nowheel mt-1.5 flex w-full flex-wrap items-center justify-end gap-2 px-2 pb-1.5 pt-0.5",
+    "nopan nodrag nowheel mt-1.5 flex w-full flex-wrap items-center justify-end gap-2 px-2 pb-1.5 pt-0.5",
     cardLike,
   ),
   panel: cn(
-    "nodrag flex flex-1 flex-col gap-2 overflow-y-auto rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/90 p-2.5 shadow-sm backdrop-blur-sm",
+    "nopan nodrag flex flex-1 flex-col gap-2 overflow-y-auto rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/90 p-2.5 shadow-sm backdrop-blur-sm",
     "nowheel",
   ),
   /** Panneau influenceurs : `overflow-visible` pour ne pas rogner le menu rôle en `fixed`. */
   creatorPanelShell: cn(
-    "nodrag nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-visible rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/95 p-2.5 shadow-sm backdrop-blur-sm",
+    "nopan nodrag nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-visible rounded-[var(--radius-box)] border border-dashed border-base-content/12 bg-base-100/95 p-2.5 shadow-sm backdrop-blur-sm",
   ),
-  creatorPanelBody: "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto",
+  creatorPanelBody: "nopan nodrag nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto",
   panelLegend: "text-[11px] font-medium uppercase tracking-wide text-base-content/45",
   title: "min-w-0 flex-1 truncate text-center text-base font-semibold tracking-tight text-base-content",
   badge: cn(
     "inline-flex items-center rounded-full border border-flow/25 bg-flow/10 px-2.5 py-0.5 text-xs font-medium text-flow",
   ),
   creatorRow:
-    "flex items-center justify-between gap-1 border-b border-base-content/5 border-l-4 py-0.5 pl-1.5 text-sm text-base-content",
+    "nopan nodrag flex items-center justify-between gap-1 border-b border-base-content/5 border-l-4 py-0.5 pl-1.5 text-sm text-base-content",
   creatorChevron: "h-3 w-3 shrink-0 text-base-content/40",
   footerHint: "mt-auto text-center text-[10px] text-base-content/45",
   buttonIconCollections: cn(
-    "btn btn-circle btn-ghost btn-xs shrink-0 nodrag text-flow",
+    "btn btn-circle btn-ghost btn-xs shrink-0 nopan nodrag text-flow",
     "transition duration-300 hover:bg-flow/12 active:scale-[0.97]",
   ),
   buttonIconCreators: cn(
-    "btn btn-circle btn-ghost btn-xs shrink-0 nodrag text-learn",
+    "btn btn-circle btn-ghost btn-xs shrink-0 nopan nodrag text-learn",
     "transition duration-300 hover:bg-learn/12 active:scale-[0.97]",
   ),
   playButton: cn(
-    "btn btn-circle btn-sm shrink-0 nodrag rounded-full border-0 bg-flow text-white shadow-md shadow-flow/20",
+    "btn btn-circle btn-sm shrink-0 nopan nodrag rounded-full border-0 bg-flow text-white shadow-md shadow-flow/20",
     "transition duration-300 ease-out hover:brightness-110 active:scale-[0.97]",
   ),
   bottomStrip: "relative mt-1.5 h-0.5 w-full shrink-0 rounded-full bg-learn/25",
