@@ -1,3 +1,4 @@
+import { LLM_PROMPT_JSON_FORMAT_RULES } from "./llmImportPrompts";
 import type { RefCategorieRow } from "../types/quizz";
 
 export type ParsedCreateQuestionLlm = {
@@ -145,10 +146,11 @@ ${brouillon}
 ---
 
 Dans le JSON de sortie :
-- "question" : la version reformulée et soignée du brouillon (énoncé final du QCM, une phrase ou deux au plus si nécessaire). IMPORTANT : N'hésite pas à utiliser du texte riche quand c'est pertinent (Markdown, blocs de code comme \`\`\`ts ou \`\`\`python, et LaTeX pour les maths entouré de $ ou $$).
-- "commentaire" : une courte anecdote ou explication pédagogique affichée après la révélation de la bonne réponse ; ne recopie pas mot pour mot la bonne proposition ; reste utile et factuel. Tu peux aussi y inclure du Markdown, du LaTeX ou des blocs de code.
+- "question" : énoncé final reformulé (Markdown, LaTeX $…$, code court autorisés dans la chaîne).
+- "commentaire" : explication pédagogique ; ne recopie pas mot pour mot la bonne réponse.
+${LLM_PROMPT_JSON_FORMAT_RULES}
 
-Réponds UNIQUEMENT avec un objet JSON valide, sans bloc markdown englobant le JSON (pas de \`\`\`json au début), sans texte avant ni après. L'utilisation du markdown et code (ex: \`\`\`ts) doit se faire uniquement DANS les chaînes de caractères ("question", "commentaire", "texte").
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après.
 
 Format exact attendu :
 {
@@ -164,7 +166,7 @@ Format exact attendu :
 }
 
 Contraintes :
-- exactement 4 éléments dans "reponses" ;
+- exactement 4 éléments dans "reponses", chaque "texte" non vide ;
 - exactement une seule avec "correcte": true ;
 - "categorie_type" doit être l’un des libellés listés ci-dessus.
 

@@ -49,7 +49,7 @@ run-quizz-backend:
 	cd src/network/projet_quizz/backend && PORT=$(QUIZZ_BACKEND_PORT) npm run start:dev
 
 run-quizz-frontend:
-	cd src/network/projet_quizz/frontend && npm run dev
+	cd src/network/projet_quizz/frontend && npm run dev -- --host
 
 ## Lance Nest (bg) puis Vite au premier plan ; Ctrl+C arrête les deux (trap).
 dev-quizz:

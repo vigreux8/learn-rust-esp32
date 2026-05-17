@@ -11,13 +11,7 @@ export function apiUrl(path: string): string {
     const base = fromEnv.replace(/\/$/, "");
     return `${base}/api${normalized}`;
   }
-  // En `vite dev`, appel direct vers Nest (CORS activé) : évite les échecs de proxy selon l’OS / le navigateur.
-  if (import.meta.env.DEV) {
-    const origin =
-      import.meta.env.VITE_DEV_API_ORIGIN?.trim().replace(/\/$/, "") ||
-      "http://127.0.0.1:3001";
-    return `${origin}/api${normalized}`;
-  }
+  // Même origine : proxy Vite → Nest (local ou via tunnel ngrok sur le front uniquement).
   return `/api${normalized}`;
 }
 
